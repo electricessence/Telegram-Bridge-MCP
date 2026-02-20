@@ -92,4 +92,28 @@ describe("wait_for_message tool", () => {
     const result = await call({ timeout_seconds: 1 });
     expect((parseResult(result) as any).timed_out).toBe(true);
   });
+
+  it("returns message_reaction updates alongside the message", async () => {
+    const reactionUpdate = {
+      update_id: 2,
+      message_reaction: {
+        message_id: 50,
+        user: { id: 10, first_name: "Alice", username: "alice" },
+        new_reaction: [{ type: "emoji", emoji: "👍" }],
+        old_reaction: [],
+      },
+    };
+    mocks.getUpdates.mockResolvedValue([
+      reactionUpdate,
+      makeUpdate(42, 10, "hello"),
+    ]);
+    const result = await call({ timeout_seconds: 5 });
+    const data = parseResult(result) as any;
+    expect(data.timed_out).toBe(false);
+    expect(data.text).toBe("hello");
+    expect(data.reactions).toHaveLength(1);
+    expect(data.reactions[0].message_id).toBe(50);
+    expect(data.reactions[0].emoji_added).toEqual(["👍"]);
+    expect(data.reactions[0].user.username).toBe("alice");
+  });
 });
