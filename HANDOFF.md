@@ -66,7 +66,7 @@ All tools that receive messages (`wait_for_message`, `ask`, `choose`, `get_updat
 
 ## Agent behavior notes
 
-- Prefer `choose` (buttons) over `ask` (free-text) when possible — easier for mobile users to tap
+- **Always use `choose` for any question with a finite set of answers** — even yes/no, proceed/cancel, option A/B. Only use `ask` or `wait_for_message` for truly open-ended free-text input where choices can't be enumerated.
 - Only call `start_typing` after receiving a message, before doing work — not while idle/polling
 - The confirmed selection indicator in `choose` uses `▸` (triangle), not a checkmark
 
