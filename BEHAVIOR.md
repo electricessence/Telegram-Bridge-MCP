@@ -29,8 +29,6 @@ When starting a new session with this MCP:
 3. Send a brief **silent** `notify` that you're online and ready.
 4. Enter the `wait_for_message` loop.
 
-If resuming a prior session, read any `HANDOFF.md` file in the workspace for session context (it is gitignored and written/updated by the agent).
-
 ---
 
 ## Proactive silent notifications
