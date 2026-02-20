@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, getOffset, advanceOffset, toResult, toError } from "../telegram.js";
+import { getApi, getOffset, advanceOffset, filterAllowedUpdates, toResult, toError } from "../telegram.js";
 
 /**
  * Long-polls for a callback_query update (inline button press).
@@ -47,7 +47,8 @@ export function register(server: McpServer) {
         // Always advance offset so future calls don't re-process these updates
         advanceOffset(updates);
 
-        const match = updates.find((u) => {
+        const allowed = filterAllowedUpdates(updates);
+        const match = allowed.find((u) => {
           if (!u.callback_query) return false;
           if (chat_id && String(u.callback_query.message?.chat.id) !== chat_id)
             return false;

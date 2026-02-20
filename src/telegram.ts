@@ -33,6 +33,8 @@ export type TelegramErrorCode =
   | "MESSAGE_CANT_BE_DELETED"
   | "RATE_LIMITED"
   | "BUTTON_DATA_INVALID"
+  | "UNAUTHORIZED_SENDER"
+  | "UNAUTHORIZED_CHAT"
   | "UNKNOWN";
 
 export interface TelegramError {
@@ -111,6 +113,111 @@ export function getApi(): Api {
     _api = new Api(token);
   }
   return _api;
+}
+
+// ---------------------------------------------------------------------------
+// Security: allowed user / chat enforcement
+// ---------------------------------------------------------------------------
+
+/**
+ * ALLOWED_USER_ID  — Numeric Telegram user ID of the owner.
+ *   When set, every inbound update whose sender is NOT this user is dropped.
+ *   Prevents message-injection attacks from anyone who discovers the bot username.
+ *
+ * ALLOWED_CHAT_ID  — Chat ID (numeric string, may be negative for groups) that
+ *   the bot is permitted to operate in.
+ *   When set:
+ *     • Inbound updates from other chats are dropped.
+ *     • Outbound send calls targeting a different chat are rejected before
+ *       hitting the Telegram API.
+ *
+ * Both are optional at runtime, but omitting ALLOWED_USER_ID is strongly
+ * discouraged — a startup warning is emitted.
+ */
+export interface SecurityConfig {
+  userId: number | null;
+  chatId: string | null;
+}
+
+let _securityConfig: SecurityConfig | null = null;
+
+export function getSecurityConfig(): SecurityConfig {
+  if (_securityConfig) return _securityConfig;
+
+  const rawUser = process.env.ALLOWED_USER_ID?.trim();
+  const rawChat = process.env.ALLOWED_CHAT_ID?.trim();
+
+  const userId = rawUser ? parseInt(rawUser, 10) : null;
+  const chatId = rawChat ?? null;
+
+  if (!userId) {
+    console.warn(
+      "[telegram-mcp] WARNING: ALLOWED_USER_ID is not set. " +
+        "Any Telegram user who messages the bot can inject updates. " +
+        "Set ALLOWED_USER_ID to your numeric Telegram user ID."
+    );
+  }
+
+  _securityConfig = { userId, chatId };
+  return _securityConfig;
+}
+
+/** For testing only: resets the security config singleton so env vars are re-read. */
+export function resetSecurityConfig(): void {
+  _securityConfig = null;
+}
+
+/** Structured error for inbound updates that fail the sender check. */
+export function unauthorizedSenderError(fromId: number | undefined): TelegramError {
+  return {
+    code: "UNAUTHORIZED_SENDER",
+    message: `Update discarded: sender ${fromId ?? "unknown"} is not the configured ALLOWED_USER_ID.`,
+  };
+}
+
+/** Structured error for outbound sends targeting a disallowed chat. */
+export function unauthorizedChatError(chatId: string): TelegramError {
+  return {
+    code: "UNAUTHORIZED_CHAT",
+    message: `Operation rejected: chat ${chatId} is not the configured ALLOWED_CHAT_ID. This server is locked to a single conversation.`,
+  };
+}
+
+/**
+ * Filters an update array to only those from the allowed user and/or chat.
+ * Updates that fail the check are silently consumed (offset still advances)
+ * to keep the Telegram queue clean — they are never surfaced to the agent.
+ */
+export function filterAllowedUpdates(updates: Update[]): Update[] {
+  const { userId, chatId } = getSecurityConfig();
+  if (!userId && !chatId) return updates;
+
+  return updates.filter((u) => {
+    const senderId = u.message?.from?.id ?? u.callback_query?.from?.id;
+    const updateChatId =
+      u.message?.chat.id != null
+        ? String(u.message.chat.id)
+        : u.callback_query?.message?.chat.id != null
+          ? String(u.callback_query.message.chat.id)
+          : null;
+
+    if (userId && senderId !== undefined && senderId !== userId) return false;
+    if (chatId && updateChatId !== null && updateChatId !== chatId) return false;
+    return true;
+  });
+}
+
+/**
+ * Validates that an outbound target chat is permitted.
+ * Returns a TelegramError if ALLOWED_CHAT_ID is set and the target differs.
+ */
+export function validateTargetChat(chatId: string): TelegramError | null {
+  const { chatId: allowed } = getSecurityConfig();
+  if (!allowed) return null;
+  if (String(chatId).trim() !== String(allowed).trim()) {
+    return unauthorizedChatError(chatId);
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------

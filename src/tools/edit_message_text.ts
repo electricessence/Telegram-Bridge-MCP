@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError } from "../telegram.js";
+import { getApi, toResult, toError, validateTargetChat } from "../telegram.js";
 
 export function register(server: McpServer) {
   server.tool(
@@ -20,6 +20,8 @@ export function register(server: McpServer) {
         .describe("Updated InlineKeyboardMarkup, or omit to remove keyboard"),
     },
     async ({ chat_id, message_id, text, parse_mode, reply_markup }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       try {
         const result = await getApi().editMessageText(
           chat_id,

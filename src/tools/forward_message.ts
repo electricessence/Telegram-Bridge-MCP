@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError } from "../telegram.js";
+import { getApi, toResult, toError, validateTargetChat } from "../telegram.js";
 
 export function register(server: McpServer) {
   server.tool(
@@ -13,6 +13,8 @@ export function register(server: McpServer) {
       disable_notification: z.boolean().optional().describe("Forward silently"),
     },
     async ({ chat_id, from_chat_id, message_id, disable_notification }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       try {
         const msg = await getApi().forwardMessage(chat_id, from_chat_id, message_id, {
           disable_notification,

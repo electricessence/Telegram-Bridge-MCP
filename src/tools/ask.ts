@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, getOffset, advanceOffset, toResult, toError, validateText } from "../telegram.js";
+import { getApi, getOffset, advanceOffset, filterAllowedUpdates, validateTargetChat, toResult, toError, validateText } from "../telegram.js";
 
 /**
  * Sends a question and blocks until the user types a reply.
@@ -23,6 +23,8 @@ export function register(server: McpServer) {
         .describe("Seconds to wait for a reply before returning timed_out: true"),
     },
     async ({ chat_id, question, timeout_seconds }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       const textErr = validateText(question);
       if (textErr) return toError(textErr);
 
@@ -39,7 +41,8 @@ export function register(server: McpServer) {
 
         advanceOffset(updates);
 
-        const match = updates.find(
+        const allowed = filterAllowedUpdates(updates);
+        const match = allowed.find(
           (u) => u.message?.text && String(u.message.chat.id) === chat_id
         );
 

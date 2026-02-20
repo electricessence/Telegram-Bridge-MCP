@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   getApi, getOffset, advanceOffset,
+  filterAllowedUpdates, validateTargetChat,
   toResult, toError, validateText, validateCallbackData, LIMITS,
 } from "../telegram.js";
 
@@ -45,6 +46,8 @@ export function register(server: McpServer) {
         .describe("Buttons per row (default 2)"),
     },
     async ({ chat_id, question, options, timeout_seconds, columns }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       const textErr = validateText(question);
       if (textErr) return toError(textErr);
 
@@ -84,7 +87,8 @@ export function register(server: McpServer) {
 
         advanceOffset(updates);
 
-        const match = updates.find(
+        const allowed = filterAllowedUpdates(updates);
+        const match = allowed.find(
           (u) =>
             u.callback_query &&
             u.callback_query.message?.message_id === sent.message_id &&

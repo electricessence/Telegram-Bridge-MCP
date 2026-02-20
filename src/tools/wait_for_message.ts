@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, getOffset, advanceOffset, toResult, toError } from "../telegram.js";
+import { getApi, getOffset, advanceOffset, filterAllowedUpdates, toResult, toError } from "../telegram.js";
 
 /**
  * Long-polls for the next text message in a chat.
@@ -41,7 +41,8 @@ export function register(server: McpServer) {
 
         advanceOffset(updates);
 
-        const match = updates.find((u) => {
+        const allowed = filterAllowedUpdates(updates);
+        const match = allowed.find((u) => {
           if (!u.message?.text) return false;
           if (chat_id && String(u.message.chat.id) !== chat_id) return false;
           if (user_id !== undefined && u.message.from?.id !== user_id)

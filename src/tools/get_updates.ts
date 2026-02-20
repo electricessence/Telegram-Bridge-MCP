@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, getOffset, advanceOffset, resetOffset, toResult, toError } from "../telegram.js";
+import { getApi, getOffset, advanceOffset, resetOffset, filterAllowedUpdates, toResult, toError } from "../telegram.js";
 
 export function register(server: McpServer) {
   server.tool(
@@ -46,7 +46,7 @@ export function register(server: McpServer) {
         });
 
         advanceOffset(updates);
-        return toResult(updates);
+        return toResult(filterAllowedUpdates(updates));
       } catch (err) {
         return toError(err);
       }

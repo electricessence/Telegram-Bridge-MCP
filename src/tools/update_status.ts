@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError } from "../telegram.js";
+import { getApi, toResult, toError, validateTargetChat } from "../telegram.js";
 
 const STATUS_ICON: Record<string, string> = {
   pending:  "⬜",
@@ -55,6 +55,8 @@ export function register(server: McpServer) {
         .describe("ID of the message to edit. Omit on the first call; pass the returned message_id on subsequent calls."),
     },
     async ({ chat_id, title, steps, message_id }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       try {
         const text = renderStatus(title, steps);
 

@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError, validateText } from "../telegram.js";
+import { getApi, toResult, toError, validateText, validateTargetChat } from "../telegram.js";
 
 const SEVERITY_PREFIX: Record<string, string> = {
   info: "ℹ️",
@@ -31,6 +31,8 @@ export function register(server: McpServer) {
         .describe("Send silently (no phone notification)"),
     },
     async ({ chat_id, title, body, severity, disable_notification }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       try {
         const prefix = SEVERITY_PREFIX[severity];
         const lines = [`${prefix} <b>${title}</b>`];

@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError } from "../telegram.js";
+import { getApi, toResult, toError, validateTargetChat } from "../telegram.js";
 
 export function register(server: McpServer) {
   server.tool(
@@ -15,6 +15,8 @@ export function register(server: McpServer) {
         .describe("Pin without notifying members"),
     },
     async ({ chat_id, message_id, disable_notification }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       try {
         const ok = await getApi().pinChatMessage(chat_id, message_id, {
           disable_notification,

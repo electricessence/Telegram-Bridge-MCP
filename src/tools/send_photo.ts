@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError, validateCaption } from "../telegram.js";
+import { getApi, toResult, toError, validateCaption, validateTargetChat } from "../telegram.js";
 
 export function register(server: McpServer) {
   server.tool(
@@ -28,6 +28,8 @@ export function register(server: McpServer) {
         .describe("Send silently"),
     },
     async ({ chat_id, photo, caption, parse_mode, reply_markup, disable_notification }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       if (caption) {
         const capErr = validateCaption(caption);
         if (capErr) return toError(capErr);

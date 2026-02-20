@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError } from "../telegram.js";
+import { getApi, toResult, toError, validateTargetChat } from "../telegram.js";
 
 export function register(server: McpServer) {
   server.tool(
@@ -11,6 +11,8 @@ export function register(server: McpServer) {
       message_id: z.number().int().describe("ID of the message to delete"),
     },
     async ({ chat_id, message_id }) => {
+      const chatErr = validateTargetChat(chat_id);
+      if (chatErr) return toError(chatErr);
       try {
         const ok = await getApi().deleteMessage(chat_id, message_id);
         return toResult({ ok });

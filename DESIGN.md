@@ -8,7 +8,7 @@ A Model Context Protocol (MCP) server that exposes Telegram Bot API actions as M
 
 ## Architecture
 
-```
+```text
 AI Assistant (MCP Client)
         │  MCP over stdio
         ▼
@@ -30,9 +30,11 @@ Polling is supported as a first-class pattern: the server maintains a persistent
 
 ## Configuration
 
-| Variable      | Required | Description                        |
-|---------------|----------|------------------------------------|
-| `BOT_TOKEN`   | Yes      | Telegram Bot API token from @BotFather |
+| Variable           | Required    | Description                                                       |
+|--------------------|-------------|-------------------------------------------------------------------|
+| `BOT_TOKEN`        | Yes         | Telegram Bot API token from @BotFather                            |
+| `ALLOWED_USER_ID`  | Recommended | Numeric Telegram user ID; inbound updates from others are dropped |
+| `ALLOWED_CHAT_ID`  | Recommended | Chat ID; outbound to other chats and inbound from them rejected   |
 
 Set via environment variable, or a `.env` file (loaded with `dotenv`).
 
@@ -41,6 +43,7 @@ Set via environment variable, or a `.env` file (loaded with `dotenv`).
 ## Tools
 
 ### `get_me`
+
 Returns basic information about the bot.
 
 **Input:** _(none)_
@@ -50,26 +53,29 @@ Returns basic information about the bot.
 ---
 
 ### `send_message`
+
 Sends a text message to a chat.
 
 **Input:**
-| Field       | Type   | Required | Description |
-|-------------|--------|----------|-------------|
-| `chat_id`   | string | Yes      | Target chat/user ID or `@username` |
-| `text`      | string | Yes      | Message text |
-| `parse_mode`| string | No       | `"HTML"` or `"Markdown"` |
+
+| Field        | Type   | Required | Description                        |
+|--------------|--------|----------|------------------------------------|\n| `chat_id`    | string | Yes      | Target chat/user ID or `@username` |
+| `text`       | string | Yes      | Message text                       |
+| `parse_mode` | string | No       | `"HTML"` or `"Markdown"`           |
 
 **Output:** Sent message object (id, date, text).
 
 ---
 
 ### `get_updates`
+
 Retrieves recent incoming messages (polling, one-shot).
 
 **Input:**
-| Field    | Type   | Required | Description |
-|----------|--------|----------|-------------|
-| `offset` | number | No       | Update ID offset (exclusive lower bound) |
+
+| Field    | Type   | Required | Description                               |
+|----------|--------|----------|-------------------------------------------|
+| `offset` | number | No       | Update ID offset (exclusive lower bound)  |
 | `limit`  | number | No       | Max updates to return (1–100, default 10) |
 
 **Output:** Array of update objects (update_id, message.from, message.chat, message.text, message.date).
@@ -77,11 +83,13 @@ Retrieves recent incoming messages (polling, one-shot).
 ---
 
 ### `get_chat`
+
 Gets detailed information about a chat.
 
 **Input:**
-| Field     | Type   | Required | Description |
-|-----------|--------|----------|-------------|
+
+| Field     | Type   | Required | Description            |
+|-----------|--------|----------|------------------------|
 | `chat_id` | string | Yes      | Chat ID or `@username` |
 
 **Output:** Chat object (id, type, title/first_name, username).
@@ -89,14 +97,16 @@ Gets detailed information about a chat.
 ---
 
 ### `send_photo`
+
 Sends a photo by URL.
 
 **Input:**
-| Field     | Type   | Required | Description |
-|-----------|--------|----------|-------------|
+
+| Field     | Type   | Required | Description                   |
+|-----------|--------|----------|-------------------------------|
 | `chat_id` | string | Yes      | Target chat ID or `@username` |
-| `photo`   | string | Yes      | Public URL of the photo |
-| `caption` | string | No       | Optional caption |
+| `photo`   | string | Yes      | Public URL of the photo       |
+| `caption` | string | No       | Optional caption              |
 
 **Output:** Sent message object.
 
@@ -104,7 +114,7 @@ Sends a photo by URL.
 
 ## Project Structure
 
-```
+```text
 telegram-mcp/
 ├── src/
 │   ├── index.ts             # Entry point — creates and starts MCP server
@@ -149,5 +159,6 @@ telegram-mcp/
 ---
 
 ## Error Handling
+
 - All Telegram API errors are caught and returned as MCP tool errors (non-fatal).
 - Missing `BOT_TOKEN` at startup causes an immediate fatal exit with a clear message.
