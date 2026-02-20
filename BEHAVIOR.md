@@ -11,6 +11,7 @@ Do this proactively, not just for actions that block or require confirmation.
 Format: title = short action label, body = brief description of what and why. Keep it concise.
 
 Examples:
+
 - "Editing src/tools/choose.ts — adding button label length validation"  
 - "Running pnpm test — verifying changes"
 - "Committing — fix: normalize \\n in markdownToV2"
@@ -35,6 +36,7 @@ When the user selects an option in `choose`, the confirmation edit uses `▸` (t
 ## Tool usage: `set_reaction`
 
 React to user messages instead of sending a separate acknowledgement text. Common conventions:
+
 - 👍 — confirmed / noted
 - 🫡 — task complete / will do
 - 👀 — seen / noted without full ack
@@ -46,6 +48,7 @@ React to user messages instead of sending a separate acknowledgement text. Commo
 ## Button label length limits (`choose`)
 
 Telegram buttons are cut off on mobile above a certain width:
+
 - **2-column layout (default):** max 20 chars per label — enforced with `BUTTON_LABEL_TOO_LONG` error
 - **1-column layout (`columns=1`):** max 35 chars per label — enforced with `BUTTON_LABEL_TOO_LONG` error
 
@@ -82,6 +85,7 @@ Use this to acknowledge what the user reacted to and adapt behavior accordingly.
 ## Restart flow
 
 After calling `restart_server` (or the server restarts for any reason):
+
 1. Call `get_updates` (twice if needed) to drain stale messages — discard everything
 2. Send a "back online" message via `notify` describing what changed
 3. Return to `wait_for_message` loop
