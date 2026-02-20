@@ -23,6 +23,10 @@ export function register(server: McpServer) {
       message_id: z.number().int().describe("ID of the message to react to"),
       emoji: z
         .string()
+        .refine(
+          (v) => (ALLOWED_EMOJI as readonly string[]).includes(v),
+          (v) => ({ message: `"${v}" is not an allowed reaction emoji. Allowed: ${ALLOWED_EMOJI.join(" ")}` })
+        )
         .optional()
         .describe("Emoji to react with. Omit or pass empty array to remove reactions. Allowed: 👍 👎 ❤ 🔥 🥰 👏 😁 🤔 🤯 😱 🎉 🤩 🙏 👌 💯 🤣 ⚡ 🏆 👀 ✍ 🤗 🫡 👾 👻 👨‍💻 😢 and 50+ more"),
       is_big: z

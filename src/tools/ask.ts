@@ -36,16 +36,21 @@ export function register(server: McpServer) {
 
       try {
         // Send the question
-        await getApi().sendMessage(chatId, markdownToV2(question), {
+        const sent = await getApi().sendMessage(chatId, markdownToV2(question), {
           parse_mode: "MarkdownV2",
           reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
         });
 
-        // Poll with 1 s ticks for the reply (text or voice)
+        // Poll with 1 s ticks for the reply (text or voice).
+        // Only match messages sent AFTER our question (message_id > sent.message_id)
+        // so that a voice message the user sent before we asked is not treated as the answer.
         const { match } = await pollUntil(
           (updates) => {
             const msg = updates.find(
-              (u) => (u.message?.text || u.message?.voice) && String(u.message.chat.id) === chatId
+              (u) =>
+                (u.message?.text || u.message?.voice) &&
+                String(u.message!.chat.id) === chatId &&
+                u.message!.message_id > sent.message_id
             );
             return msg?.message;
           },

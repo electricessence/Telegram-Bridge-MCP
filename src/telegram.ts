@@ -164,7 +164,14 @@ export function getSecurityConfig(): SecurityConfig {
   const rawUser = process.env.ALLOWED_USER_ID?.trim();
   const rawChat = process.env.ALLOWED_CHAT_ID?.trim();
 
-  const userId = rawUser ? parseInt(rawUser, 10) : null;
+  let userId: number | null = rawUser ? parseInt(rawUser, 10) : null;
+  if (userId !== null && isNaN(userId)) {
+    console.warn(
+      `[telegram-mcp] WARNING: ALLOWED_USER_ID "${rawUser}" is not a valid integer — user filter disabled. ` +
+        "Set ALLOWED_USER_ID to your numeric Telegram user ID."
+    );
+    userId = null;
+  }
   const chatId = rawChat ?? null;
 
   if (!userId) {

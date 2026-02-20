@@ -41,14 +41,25 @@ describe("ask tool", () => {
 
   it("sends question and returns reply text", async () => {
     mocks.sendMessage.mockResolvedValue(BASE_MSG);
+    // Reply must have a higher message_id than the sent question (message_id: 10)
     mocks.getUpdates.mockResolvedValue([
-      { update_id: 1, message: { ...BASE_MSG, text: "sure", from: null, chat: { id: 42 } } },
+      { update_id: 1, message: { ...BASE_MSG, message_id: 11, text: "sure", from: null, chat: { id: 42 } } },
     ]);
     const result = await call({ question: "Continue?" });
     expect(isError(result)).toBe(false);
     const data = parseResult(result) as any;
     expect(data.timed_out).toBe(false);
     expect(data.text).toBe("sure");
+  });
+
+  it("ignores messages with message_id <= sent message_id (stale pre-question messages)", async () => {
+    mocks.sendMessage.mockResolvedValue(BASE_MSG); // sent message_id: 10
+    // Stale message with same message_id as the sent question — should be ignored
+    mocks.getUpdates.mockResolvedValue([
+      { update_id: 1, message: { ...BASE_MSG, message_id: 10, text: "old voice reply", from: null, chat: { id: 42 } } },
+    ]);
+    const result = await call({ question: "Continue?" });
+    expect((parseResult(result) as any).timed_out).toBe(true);
   });
 
   it("returns timed_out when no matching update arrives", async () => {

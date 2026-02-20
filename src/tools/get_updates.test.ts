@@ -20,7 +20,7 @@ vi.mock("../telegram.js", async (importActual) => {
 });
 
 vi.mock("../transcribe.js", () => ({
-  transcribeVoice: vi.fn().mockResolvedValue("transcribed text"),
+  transcribeWithIndicator: vi.fn().mockResolvedValue("transcribed text"),
 }));
 
 import { register } from "./get_updates.js";

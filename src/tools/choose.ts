@@ -112,12 +112,13 @@ export function register(server: McpServer) {
             );
             if (cq?.callback_query) return { kind: "button", cq: cq.callback_query };
 
-            // Check for a text message (user typed instead of pressing a button)
-            const tm = updates.find((u) => u.message?.text);
+            // Check for a text message (user typed instead of pressing a button).
+            // Only match messages sent AFTER our question so a pre-existing message isn't consumed.
+            const tm = updates.find((u) => u.message?.text && u.message.message_id > sent.message_id);
             if (tm?.message) return { kind: "text" as const, message_id: tm.message.message_id, text: tm.message.text!, reply_to_message_id: tm.message.reply_to_message?.message_id };
 
-            // Check for a voice message (user spoke instead of pressing a button)
-            const vm = updates.find((u) => u.message?.voice);
+            // Check for a voice message (user spoke instead of pressing a button).
+            const vm = updates.find((u) => u.message?.voice && u.message.message_id > sent.message_id);
             if (vm?.message?.voice) return { kind: "voice" as const, message_id: vm.message.message_id, fileId: vm.message.voice.file_id, reply_to_message_id: vm.message.reply_to_message?.message_id };
 
             return undefined;

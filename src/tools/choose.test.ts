@@ -200,6 +200,17 @@ describe("choose tool", () => {
     );
   });
 
+  it("ignores text messages with message_id <= sent message_id (stale pre-question messages)", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG); // sent message_id: 7
+    // Stale message — arrived before the question was sent
+    mocks.getUpdates.mockResolvedValue([
+      { update_id: 5, message: { message_id: 7, text: "old voice reply", chat: { id: 42 } } },
+    ]);
+    const result = await call({ question: "Pick", options: OPTIONS, timeout_seconds: 1 });
+    expect((parseResult(result) as any).timed_out).toBe(true);
+    expect(mocks.editMessageText).not.toHaveBeenCalled();
+  });
+
   it("callback_query takes priority over text in same batch", async () => {
     mocks.sendMessage.mockResolvedValue(SENT_MSG);
     // Both a text message and a callback_query arrive in the same batch
