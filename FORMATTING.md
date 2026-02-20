@@ -1,9 +1,11 @@
 # Telegram Message Formatting Guide
 
-## Recommended: HTML mode
+Telegram officially supports two formatting modes: **HTML** and **MarkdownV2**. Neither is officially preferred over the other. For agent (programmatic) use, HTML is strongly recommended because its escaping rules are minimal and predictable. MarkdownV2 requires escaping nearly all ASCII punctuation and is easy to get wrong when the content is generated rather than hand-written.
+
+## Recommended for agents: HTML mode
 
 Pass `parse_mode: "HTML"` to `send_message`, `notify`, `ask`, `choose`, or `update_status`.
-HTML is safe and predictable — only a small set of tags are supported and no special escaping is needed for regular text.
+HTML is safe and predictable — only a small set of tags are supported and only three characters need escaping.
 
 ### Supported HTML tags
 
