@@ -18,6 +18,14 @@ Examples:
 
 ---
 
+## Reply context
+
+When you receive a message that includes `reply_to_message_id`, the user is responding to a specific earlier message. You should:
+- Acknowledge which message they're replying to, if relevant
+- Use `reply_to_message_id` when sending your response — this creates a visible quote block showing the original message and makes the conversation thread easy to follow
+
+When sending a follow-up about a specific earlier message (e.g. sending a result that relates to a prior question), use `reply_to_message_id` to reply to that message rather than just sending a new standalone message.
+
 ## Tool usage: always use `choose` for confirmations
 
 **Never** ask a finite-answer question using `notify`/`send_message` + `wait_for_message` or `ask`.  
