@@ -1,5 +1,7 @@
 # Telegram Bridge MCP
 
+![Telegram Bridge MCP](logo.png)
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server that bridges AI assistants to a Telegram bot — enabling two-way messaging, interactive confirmations, live status updates, and automatic voice transcription.
 
 Works with any MCP-compatible AI host: VS Code Copilot, Claude Desktop, and others.
