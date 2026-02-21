@@ -24,6 +24,15 @@ Once configured, your AI assistant can:
 
 ---
 
+## Prerequisites
+
+- **Node.js 18+** — [nodejs.org](https://nodejs.org)
+- **pnpm** — install once via: `npm install -g pnpm`
+
+If you prefer `npm`, you can substitute all `pnpm` commands with their `npm` equivalents (`npm install`, `npm run build`, etc.). The project works with either.
+
+---
+
 ## Quick Start
 
 ### 1. Clone and install
