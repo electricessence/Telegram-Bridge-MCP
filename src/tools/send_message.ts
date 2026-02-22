@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, toResult, toError, validateText, resolveChat } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
+import { applyTopicToText } from "../topic-state.js";
 
 export function register(server: McpServer) {
   server.tool(
@@ -27,7 +28,8 @@ export function register(server: McpServer) {
     async ({ text, parse_mode, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();
       if (typeof chatId !== "string") return toError(chatId);
-      const finalText = parse_mode === "Markdown" ? markdownToV2(text) : text;
+      const textWithTopic = applyTopicToText(text, parse_mode);
+      const finalText = parse_mode === "Markdown" ? markdownToV2(textWithTopic) : textWithTopic;
       const finalMode = parse_mode === "Markdown" ? "MarkdownV2" : parse_mode;
       const textErr = validateText(finalText);
       if (textErr) return toError(textErr);

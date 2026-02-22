@@ -48,6 +48,7 @@ Tools are grouped by abstraction level.
 | Tool | Description |
 |------|-------------|
 | `get_agent_guide` | Returns BEHAVIOR.md — the behavioral guide for this server. Call at session start. |
+| `set_topic` | Sets a default title prepended to all outbound messages as `[Title]`. Useful when multiple VS Code windows share the same Telegram chat — each process labels its messages so you can tell which agent sent what. Pass empty string to clear. Scoped to this server process. |
 | `notify` | Sends a titled, severity-coded notification with optional body. Supports silent delivery. |
 | `ask` | Sends a question and blocks until the user replies with free text. |
 | `choose` | Sends a question with labeled inline keyboard buttons; blocks until a button is pressed. |
@@ -69,6 +70,8 @@ Tools are grouped by abstraction level.
 | `send_message` | Sends a text message. Supports Markdown, MarkdownV2, HTML. |
 | `edit_message_text` | Edits the text of a previously sent message. |
 | `send_photo` | Sends a photo by public URL or Telegram `file_id`. |
+| `send_document` | Sends a file by local path, public URL, or Telegram `file_id`. |
+| `download_file` | Downloads a received file to local disk by `file_id`. Returns text content for text-based files under 100 KB. |
 | `forward_message` | Forwards a message from another chat into the configured chat. |
 | `delete_message` | Deletes a message by ID. |
 | `pin_message` | Pins a message in the chat. |

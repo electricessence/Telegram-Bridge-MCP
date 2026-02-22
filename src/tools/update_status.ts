@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat, validateText } from "../telegram.js";
 import { escapeHtml } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
+import { applyTopicToTitle } from "../topic-state.js";
 
 const STATUS_ICON: Record<string, string> = {
   pending:  "⬜",
@@ -59,7 +60,7 @@ export function register(server: McpServer) {
       const chatId = resolveChat();
       if (typeof chatId !== "string") return toError(chatId);
       try {
-        const text = renderStatus(title, steps);
+        const text = renderStatus(applyTopicToTitle(title), steps);
         const textErr = validateText(text);
         if (textErr) return toError(textErr);
         cancelTyping();

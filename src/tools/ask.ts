@@ -4,6 +4,7 @@ import { getApi, resolveChat, toResult, toError, validateText, pollUntil } from 
 import { markdownToV2 } from "../markdown.js";
 import { transcribeWithIndicator } from "../transcribe.js";
 import { cancelTyping } from "../typing-state.js";
+import { applyTopicToText } from "../topic-state.js";
 
 /**
  * Sends a question and blocks until the user types a reply.
@@ -38,7 +39,7 @@ export function register(server: McpServer) {
       try {
         cancelTyping();
         // Send the question
-        const sent = await getApi().sendMessage(chatId, markdownToV2(question), {
+        const sent = await getApi().sendMessage(chatId, markdownToV2(applyTopicToText(question, "Markdown")), {
           parse_mode: "MarkdownV2",
           reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
         });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat, validateText } from "../telegram.js";
 import { resolveParseMode } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
+import { applyTopicToText } from "../topic-state.js";
 
 /**
  * Convenience tool for agent→human confirmation flows.
@@ -54,7 +55,7 @@ export function register(server: McpServer) {
     async ({ text, yes_text, no_text, yes_data, no_data, parse_mode, reply_to_message_id }) => {
       const chatId = resolveChat();
       if (typeof chatId !== "string") return toError(chatId);
-      const resolved = resolveParseMode(text, parse_mode);
+      const resolved = resolveParseMode(applyTopicToText(text, parse_mode), parse_mode);
       const textErr = validateText(resolved.text);
       if (textErr) return toError(textErr);
       try {

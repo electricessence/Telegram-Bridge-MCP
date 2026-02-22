@@ -31,17 +31,19 @@ import { register as registerChoose } from "./tools/choose.js";
 import { register as registerUpdateStatus } from "./tools/update_status.js";
 import { register as registerGetAgentGuide } from "./tools/get_agent_guide.js";
 import { register as registerSendConfirmation } from "./tools/send_confirmation.js";
+import { register as registerSetTopic } from "./tools/set_topic.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "telegram-bridge-mcp",
-    version: "1.0.0",
+    version: "1.1.0",
   });
 
   // ── High-level agent tools (use these 99% of the time) ─────────────────
   registerGetAgentGuide(server);
+  registerSetTopic(server);
   registerNotify(server);
   registerAsk(server);
   registerChoose(server);

@@ -118,6 +118,7 @@ Paste the contents of `LOOP-PROMPT.md` into your AI assistant's chat. It will co
 | Tool | What it does |
 | ------ | ------------- |
 | `get_agent_guide` | Loads the behavioral guide — call this at session start |
+| `set_topic` | Sets a default title prepended to all outbound messages as `[Title]` — e.g. `[Refactor Agent]`. Useful when multiple VS Code instances share one Telegram chat so you can tell which agent sent what. Pass empty string to clear. |
 | `notify` | Silent or audible notification with title, body, and severity |
 | `ask` | Sends a question; blocks until you reply with text |
 | `choose` | Sends a question with buttons; blocks until you tap one |

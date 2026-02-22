@@ -93,6 +93,27 @@ Only use `ask` or `wait_for_message` for truly open-ended free-text input where 
 
 ---
 
+## Tool usage: `set_topic`
+
+Call `set_topic` once at session start to brand every outbound message with a `[Title]` prefix for the lifetime of this server process.
+
+```
+set_topic("Refactor Agent")
+→ every subsequent message: [Refactor Agent]\n<text>
+→ every notify title:       [Refactor Agent] Build complete
+```
+
+**When to use:** When multiple VS Code instances share the same Telegram chat and you need to tell which agent sent what. Each VS Code window runs its own MCP server process, so each instance has its own independent title.
+
+**Behavior:**
+- Applies to: `send_message`, `notify`, `ask`, `choose`, `send_confirmation`, `update_status`
+- Does **not** apply to: `send_photo`, `send_document` (file captions stay clean)
+- The tag always appears — there is no per-message override
+- Pass an empty string to clear: `set_topic("")`
+- Process-scoped: resets if the server restarts
+
+---
+
 ## Tool usage: `show_typing`
 
 Call `show_typing` **after receiving a message**, right before doing actual work. It is idempotent — you can call it multiple times and only one interval runs; repeated calls just extend the deadline without spamming Telegram.

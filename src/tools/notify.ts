@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, toResult, toError, validateText, resolveChat } from "../telegram.js";
 import { markdownToV2, escapeV2, escapeHtml } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
+import { applyTopicToTitle } from "../topic-state.js";
 
 const SEVERITY_PREFIX: Record<string, string> = {
   info: "ℹ️",
@@ -46,9 +47,10 @@ export function register(server: McpServer) {
       try {
         const prefix = SEVERITY_PREFIX[severity];
         const useV2 = parse_mode === "Markdown" || parse_mode === "MarkdownV2";
+        const topicTitle = applyTopicToTitle(title);
         const titleFormatted = useV2
-          ? `*${escapeV2(title)}*`
-          : `<b>${escapeHtml(title)}</b>`;
+          ? `*${escapeV2(topicTitle)}*`
+          : `<b>${escapeHtml(topicTitle)}</b>`;
         const lines = [`${prefix} ${titleFormatted}`];
         if (body?.trim()) {
           const bodyText = parse_mode === "Markdown" ? markdownToV2(body.trim()) : body.trim();
