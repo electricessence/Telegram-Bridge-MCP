@@ -22,20 +22,24 @@ pub struct SetReactionParams {
     pub is_big: Option<bool>,
 }
 
+/// Builds the reaction list from an optional emoji string.
+/// Empty / None → empty list (removes all reactions).
+fn build_reactions(emoji: Option<&str>) -> Vec<ReactionType> {
+    match emoji {
+        Some(e) if !e.is_empty() => vec![
+            ReactionType::Emoji(ReactionTypeEmoji { emoji: e.to_owned() })
+        ],
+        _ => vec![],
+    }
+}
+
 pub async fn impl_set_reaction(params: SetReactionParams) -> CallToolResult {
     let chat_id = match resolve_chat() {
         Ok(id) => id,
         Err(e) => return to_error(&e),
     };
 
-    let reactions = match &params.emoji {
-        Some(e) if !e.is_empty() => vec![
-            ReactionType::Emoji(ReactionTypeEmoji {
-                emoji: e.clone(),
-            })
-        ],
-        _ => vec![], // empty = remove reactions
-    };
+    let reactions = build_reactions(params.emoji.as_deref());
 
     let mut reaction_params = SetMessageReactionParams::builder()
         .chat_id(make_chat_id(&chat_id))
@@ -50,5 +54,34 @@ pub async fn impl_set_reaction(params: SetReactionParams) -> CallToolResult {
     match call_api(|| get_api().set_message_reaction(&reaction_params)).await {
         Ok(resp) => to_result(&serde_json::json!({ "ok": resp.result })),
         Err(e) => frank_to_tool_result(e),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use frankenstein::types::ReactionType;
+
+    #[test]
+    fn build_reactions_with_emoji() {
+        let r = build_reactions(Some("👍"));
+        assert_eq!(r.len(), 1);
+        if let ReactionType::Emoji(re) = &r[0] {
+            assert_eq!(re.emoji, "👍");
+        } else {
+            panic!("wrong variant");
+        }
+    }
+
+    #[test]
+    fn build_reactions_with_empty_string() {
+        let r = build_reactions(Some(""));
+        assert!(r.is_empty());
+    }
+
+    #[test]
+    fn build_reactions_with_none() {
+        let r = build_reactions(None);
+        assert!(r.is_empty());
     }
 }

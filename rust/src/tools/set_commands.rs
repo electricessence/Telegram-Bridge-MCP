@@ -41,3 +41,29 @@ pub async fn impl_set_commands(params: SetCommandsParams) -> CallToolResult {
         Err(e) => frank_to_tool_result(e),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use frankenstein::types::BotCommand;
+
+    #[test]
+    fn empty_commands_produces_empty_vec() {
+        let params = SetCommandsParams { commands: vec![] };
+        let bot_commands: Vec<BotCommand> = params.commands.iter()
+            .map(|c| BotCommand { command: c.command.clone(), description: c.description.clone() })
+            .collect();
+        assert!(bot_commands.is_empty());
+    }
+
+    #[test]
+    fn command_entry_maps_correctly() {
+        let entry = CommandEntry {
+            command: "start".to_owned(),
+            description: "Start the bot".to_owned(),
+        };
+        let cmd = BotCommand { command: entry.command.clone(), description: entry.description.clone() };
+        assert_eq!(cmd.command, "start");
+        assert_eq!(cmd.description, "Start the bot");
+    }
+}

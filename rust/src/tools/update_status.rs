@@ -34,17 +34,21 @@ pub struct UpdateStatusParams {
 
 fn default_parse_mode() -> String { "Markdown".to_owned() }
 
+/// Combines optional title and body into the full status message text.
+pub fn format_status_body(title: Option<&str>, body: &str) -> String {
+    match title {
+        Some(t) => format!("**{t}**\n{body}"),
+        None => body.to_owned(),
+    }
+}
+
 pub async fn impl_update_status(params: UpdateStatusParams) -> CallToolResult {
     let chat_id = match resolve_chat() {
         Ok(id) => id,
         Err(e) => return to_error(&e),
     };
 
-    let full_text = if let Some(ref title) = params.title {
-        format!("**{title}**\n{}", params.body)
-    } else {
-        params.body.clone()
-    };
+    let full_text = format_status_body(params.title.as_deref(), &params.body);
 
     let (converted, mode) = if params.parse_mode == "HTML" {
         (full_text, ParseMode::Html)
@@ -93,4 +97,32 @@ pub async fn impl_update_status(params: UpdateStatusParams) -> CallToolResult {
 /// Reset the tracked status message ID (for testing)
 pub async fn reset_status_message_id() {
     *get_last_status_id().lock().await = None;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_parse_mode_is_markdown() {
+        assert_eq!(default_parse_mode(), "Markdown");
+    }
+
+    #[test]
+    fn format_status_body_with_title() {
+        let result = format_status_body(Some("Deploy"), "Build passed.");
+        assert_eq!(result, "**Deploy**\nBuild passed.");
+    }
+
+    #[test]
+    fn format_status_body_without_title() {
+        let result = format_status_body(None, "Build passed.");
+        assert_eq!(result, "Build passed.");
+    }
+
+    #[test]
+    fn format_status_body_empty_body() {
+        let result = format_status_body(Some("Title"), "");
+        assert_eq!(result, "**Title**\n");
+    }
 }

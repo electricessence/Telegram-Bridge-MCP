@@ -63,3 +63,25 @@ pub async fn impl_edit_message_text(params: EditMessageTextToolParams) -> CallTo
         Err(e) => frank_to_tool_result(e),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::telegram::validate_text;
+
+    #[test]
+    fn default_parse_mode_is_markdown() {
+        assert_eq!(default_parse_mode(), "Markdown");
+    }
+
+    #[test]
+    fn validate_text_rejects_empty() {
+        assert!(validate_text("").is_some());
+        assert!(validate_text("   ").is_some());
+    }
+
+    #[test]
+    fn validate_text_accepts_non_empty() {
+        assert!(validate_text("hello").is_none());
+    }
+}

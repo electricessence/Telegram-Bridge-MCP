@@ -51,3 +51,13 @@ pub async fn impl_wait_for_callback_query(params: WaitForCallbackQueryParams) ->
         to_result(&serde_json::json!({ "timed_out": true }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_timeout_is_60() {
+        assert_eq!(default_timeout(), 60);
+    }
+}

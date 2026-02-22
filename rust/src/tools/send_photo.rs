@@ -77,3 +77,25 @@ pub async fn impl_send_photo(params: SendPhotoToolParams) -> CallToolResult {
         Err(e) => frank_to_tool_result(e),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::telegram::validate_caption;
+
+    #[test]
+    fn default_parse_mode_is_markdown() {
+        assert_eq!(default_parse_mode(), "Markdown");
+    }
+
+    #[test]
+    fn validate_caption_rejects_too_long() {
+        let long = "x".repeat(1025);
+        assert!(validate_caption(&long).is_some());
+    }
+
+    #[test]
+    fn validate_caption_accepts_valid() {
+        assert!(validate_caption("a nice caption").is_none());
+    }
+}

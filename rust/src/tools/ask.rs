@@ -87,3 +87,13 @@ pub async fn impl_ask(params: AskParams) -> CallToolResult {
         to_result(&serde_json::json!({ "timed_out": true }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_timeout_is_60() {
+        assert_eq!(default_timeout(), 60);
+    }
+}

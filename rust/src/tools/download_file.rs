@@ -128,3 +128,33 @@ fn guess_mime(path: &str) -> Option<String> {
     };
     Some(guess.to_owned())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn guess_mime_known_types() {
+        assert_eq!(guess_mime("file.png"), Some("image/png".to_owned()));
+        assert_eq!(guess_mime("file.jpg"), Some("image/jpeg".to_owned()));
+        assert_eq!(guess_mime("file.jpeg"), Some("image/jpeg".to_owned()));
+        assert_eq!(guess_mime("file.mp3"), Some("audio/mpeg".to_owned()));
+        assert_eq!(guess_mime("file.ogg"), Some("audio/ogg".to_owned()));
+        assert_eq!(guess_mime("file.mp4"), Some("video/mp4".to_owned()));
+        assert_eq!(guess_mime("file.pdf"), Some("application/pdf".to_owned()));
+        assert_eq!(guess_mime("file.json"), Some("application/json".to_owned()));
+        assert_eq!(guess_mime("file.txt"), Some("text/plain".to_owned()));
+        assert_eq!(guess_mime("file.md"), Some("text/markdown".to_owned()));
+    }
+
+    #[test]
+    fn guess_mime_unknown_extension() {
+        assert_eq!(guess_mime("file.xyz"), None);
+        assert_eq!(guess_mime("file.bin"), None);
+    }
+
+    #[test]
+    fn guess_mime_no_extension() {
+        assert_eq!(guess_mime("noextension"), None);
+    }
+}

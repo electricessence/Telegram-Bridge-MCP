@@ -1,0 +1,20 @@
+# Build requirements for x86_64-pc-windows-gnu (Rust stable-gnu toolchain)
+# ─────────────────────────────────────────────────────────────────────────────
+# The bundled MinGW 14.1 is missing two things needed for a clean build:
+#
+#   1. nanosleep64 — required by aws-lc-sys >= 0.37 (via rustls-platform-verifier)
+#      FIX: build.rs adds C:\msys64\ucrt64\lib\libpthread.a (or mingw64) as an
+#      extra link argument so GNU ld can resolve the symbol.
+#
+#   2. dlltool.exe — the bundled dlltool causes CreateProcess failures when
+#      called by rustc to generate import libs for the windows-sys crate.
+#      FIX: Use MSYS2 mingw64 GCC as the linker below — its associated dlltool
+#      works correctly. Requires MSYS2 at C:\msys64 (standard install path).
+#
+# Together these two fixes (config.toml linker + build.rs libpthread) let
+# `cargo build --release` and `cargo test` complete with zero errors.
+
+[target.x86_64-pc-windows-gnu]
+# Use MSYS2 mingw64 GCC as the linker (and its associated dlltool/ar).
+linker = "C:\\msys64\\mingw64\\bin\\gcc.exe"
+ar = "C:\\msys64\\mingw64\\bin\\ar.exe"

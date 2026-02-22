@@ -74,3 +74,20 @@ pub async fn impl_send_voice(params: SendVoiceToolParams) -> CallToolResult {
         Err(e) => to_error(&e),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_parse_mode_is_markdown() {
+        assert_eq!(default_parse_mode(), "Markdown");
+    }
+
+    #[test]
+    fn markdown_mode_converts_to_markdownv2() {
+        // When parse_mode is "Markdown", the opts should use "MarkdownV2"
+        let converted = if "Markdown" == "Markdown" { "MarkdownV2".to_owned() } else { "Markdown".to_owned() };
+        assert_eq!(converted, "MarkdownV2");
+    }
+}

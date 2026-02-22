@@ -31,6 +31,19 @@ pub struct ChooseParams {
     pub timeout_seconds: Option<u64>,
 }
 
+/// Returns the button display label, appending description if provided.
+fn button_label(label: &str, description: Option<&str>) -> String {
+    match description {
+        Some(d) => format!("{label} — {d}"),
+        None => label.to_owned(),
+    }
+}
+
+/// Extracts the zero-based option index from a callback_data like "choice_2".
+fn parse_choice_index(data: &str) -> usize {
+    data.strip_prefix("choice_").and_then(|s| s.parse().ok()).unwrap_or(0)
+}
+
 pub async fn impl_choose(params: ChooseParams) -> CallToolResult {
     let chat_id = match resolve_chat() {
         Ok(id) => id,
@@ -50,11 +63,7 @@ pub async fn impl_choose(params: ChooseParams) -> CallToolResult {
         .iter()
         .enumerate()
         .map(|(i, opt)| {
-            let label = if let Some(ref desc) = opt.description {
-                format!("{} — {}", opt.label, desc)
-            } else {
-                opt.label.clone()
-            };
+            let label = button_label(&opt.label, opt.description.as_deref());
             vec![InlineKeyboardButton::builder()
                 .text(label)
                 .callback_data(format!("choice_{i}"))
@@ -120,7 +129,7 @@ pub async fn impl_choose(params: ChooseParams) -> CallToolResult {
 
     if let Some(matched) = result.matched {
         let data = matched["data"].as_str().unwrap_or("");
-        let idx: usize = data.strip_prefix("choice_").and_then(|s| s.parse().ok()).unwrap_or(0);
+        let idx: usize = parse_choice_index(data);
         let chosen_label = params.options.get(idx).map(|o| o.label.as_str()).unwrap_or("");
         to_result(&serde_json::json!({
             "chosen": chosen_label,
@@ -130,5 +139,33 @@ pub async fn impl_choose(params: ChooseParams) -> CallToolResult {
         }))
     } else {
         to_result(&serde_json::json!({ "timed_out": true }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn button_label_without_description() {
+        assert_eq!(button_label("Option A", None), "Option A");
+    }
+
+    #[test]
+    fn button_label_with_description() {
+        assert_eq!(button_label("Option A", Some("First choice")), "Option A — First choice");
+    }
+
+    #[test]
+    fn parse_choice_index_valid() {
+        assert_eq!(parse_choice_index("choice_0"), 0);
+        assert_eq!(parse_choice_index("choice_3"), 3);
+        assert_eq!(parse_choice_index("choice_10"), 10);
+    }
+
+    #[test]
+    fn parse_choice_index_invalid_falls_back_to_zero() {
+        assert_eq!(parse_choice_index("other_data"), 0);
+        assert_eq!(parse_choice_index(""), 0);
     }
 }

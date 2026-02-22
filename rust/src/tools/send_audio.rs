@@ -61,3 +61,13 @@ pub async fn impl_send_audio(params: SendAudioToolParams) -> CallToolResult {
         Err(e) => frank_to_tool_result(e),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_parse_mode_is_markdown() {
+        assert_eq!(default_parse_mode(), "Markdown");
+    }
+}
