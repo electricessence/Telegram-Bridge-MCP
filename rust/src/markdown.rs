@@ -177,10 +177,9 @@ fn tokenise_inline(text: &str, code_blocks: &[String], blockquotes: &[String]) -
         if chars[i] == '~' && chars.get(i+1) == Some(&'~') {
             if let Some(end_rel) = find_closing(&chars[i+2..], "~~") {
                 let end_abs = i + 2 + end_rel;
-                let inner: String = chars[i+2..end_abs].iter()
-                    .collect::<String>();
-                let inner_processed = tokenise_inline(&inner, code_blocks, blockquotes);
-                out.push_str(&format!("~{inner_processed}~"));
+                let inner: String = chars[i+2..end_abs].iter().collect();
+                let inner_escaped = escape_v2(&inner);
+                out.push_str(&format!("~{inner_escaped}~"));
                 i = end_abs + 2;
                 continue;
             }
@@ -199,13 +198,19 @@ fn tokenise_inline(text: &str, code_blocks: &[String], blockquotes: &[String]) -
                     continue;
                 }
             } else {
-                if let Some(end_rel) = find_closing_single(&chars[i+1..], '*') {
-                    let end_abs = i + 1 + end_rel;
-                    let inner: String = chars[i+1..end_abs].iter().collect();
-                    let inner_escaped = escape_v2_inline(&inner, code_blocks, blockquotes);
-                    out.push_str(&format!("*{inner_escaped}*"));
-                    i = end_abs + 1;
-                    continue;
+                // Guard: next char must not be space/newline (avoids matching list markers `* item`)
+                let next = chars.get(i + 1).copied();
+                if next != Some(' ') && next != Some('\n') && next.is_some() {
+                    let line_limit = chars[i+1..].iter().position(|&c| c == '\n')
+                        .unwrap_or(chars.len() - i - 1);
+                    if let Some(end_rel) = find_closing_single(&chars[i+1..i+1+line_limit], '*') {
+                        let end_abs = i + 1 + end_rel;
+                        let inner: String = chars[i+1..end_abs].iter().collect();
+                        let inner_escaped = escape_v2_inline(&inner, code_blocks, blockquotes);
+                        out.push_str(&format!("*{inner_escaped}*"));
+                        i = end_abs + 1;
+                        continue;
+                    }
                 }
             }
         }
@@ -223,13 +228,19 @@ fn tokenise_inline(text: &str, code_blocks: &[String], blockquotes: &[String]) -
                     continue;
                 }
             } else {
-                if let Some(end_rel) = find_closing_single(&chars[i+1..], '_') {
-                    let end_abs = i + 1 + end_rel;
-                    let inner: String = chars[i+1..end_abs].iter().collect();
-                    let inner_escaped = escape_v2_inline(&inner, code_blocks, blockquotes);
-                    out.push_str(&format!("_{inner_escaped}_"));
-                    i = end_abs + 1;
-                    continue;
+                // Guard: next char must not be space/newline
+                let next = chars.get(i + 1).copied();
+                if next != Some(' ') && next != Some('\n') && next.is_some() {
+                    let line_limit = chars[i+1..].iter().position(|&c| c == '\n')
+                        .unwrap_or(chars.len() - i - 1);
+                    if let Some(end_rel) = find_closing_single(&chars[i+1..i+1+line_limit], '_') {
+                        let end_abs = i + 1 + end_rel;
+                        let inner: String = chars[i+1..end_abs].iter().collect();
+                        let inner_escaped = escape_v2_inline(&inner, code_blocks, blockquotes);
+                        out.push_str(&format!("_{inner_escaped}_"));
+                        i = end_abs + 1;
+                        continue;
+                    }
                 }
             }
         }
@@ -240,8 +251,8 @@ fn tokenise_inline(text: &str, code_blocks: &[String], blockquotes: &[String]) -
                 let link_text: String = chars[i+1..i+text_end].iter().collect();
                 let url: String = chars[i+url_start..i+url_end].iter().collect();
                 let link_text_escaped = escape_v2(&link_text);
-                // Escape only parens in URL, not dots
-                let url_escaped = url.replace(')', "\\)");
+                // Escape ) and \ in URLs (matches TS behaviour)
+                let url_escaped = url.replace('\\', "\\\\").replace(')', "\\)");
                 out.push_str(&format!("[{link_text_escaped}]({url_escaped})"));
                 i += url_end + 1; // skip closing ')'
                 continue;
