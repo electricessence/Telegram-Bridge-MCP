@@ -34,6 +34,11 @@ describe("isTtsEnabled", () => {
     expect(isTtsEnabled()).toBe(true);
   });
 
+  it("returns true when TTS_PROVIDER=ollama", () => {
+    process.env.TTS_PROVIDER = "ollama";
+    expect(isTtsEnabled()).toBe(true);
+  });
+
   it("returns true when TTS_PROVIDER=local", () => {
     process.env.TTS_PROVIDER = "local";
     expect(isTtsEnabled()).toBe(true);
@@ -47,6 +52,10 @@ describe("isTtsEnabled", () => {
     process.env.TTS_PROVIDER = "LOCAL";
     expect(isTtsEnabled()).toBe(true);
     process.env.TTS_PROVIDER = "Local";
+    expect(isTtsEnabled()).toBe(true);
+    process.env.TTS_PROVIDER = "OLLAMA";
+    expect(isTtsEnabled()).toBe(true);
+    process.env.TTS_PROVIDER = "Ollama";
     expect(isTtsEnabled()).toBe(true);
   });
 
@@ -229,6 +238,118 @@ describe("synthesizeToOgg (openai provider)", () => {
     }));
 
     await expect(synthesizeToOgg("hello")).rejects.toThrow("401");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// synthesizeToOgg — Ollama provider (no network calls)
+// ---------------------------------------------------------------------------
+
+describe("synthesizeToOgg (ollama provider)", () => {
+  afterEach(() => {
+    delete process.env.TTS_PROVIDER;
+    delete process.env.TTS_OLLAMA_HOST;
+    delete process.env.TTS_VOICE;
+    delete process.env.TTS_MODEL;
+    vi.unstubAllGlobals();
+  });
+
+  it("calls Ollama /v1/audio/speech with default host, model, and voice", async () => {
+    process.env.TTS_PROVIDER = "ollama";
+
+    const { default: decode } = await import("audio-decode");
+    const { pcmToOggOpus } = await import("./ogg-opus-encoder.js");
+
+    const fakePcm = new Float32Array([0.1, -0.1, 0.0]);
+    vi.mocked(decode as any).mockResolvedValue({
+      sampleRate: 24000,
+      getChannelData: () => fakePcm,
+    });
+    const fakeOgg = Buffer.from("fake-ogg");
+    vi.mocked(pcmToOggOpus).mockResolvedValue(fakeOgg);
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await synthesizeToOgg("hello");
+    expect(result).toBe(fakeOgg);
+
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe("http://ollama.home.lan/v1/audio/speech");
+    const body = JSON.parse(opts.body);
+    expect(body.input).toBe("hello");
+    expect(body.model).toBe("kokoro");
+    expect(body.voice).toBe("af_sky");
+    expect(body.response_format).toBe("wav");
+  });
+
+  it("respects TTS_OLLAMA_HOST, TTS_MODEL, and TTS_VOICE overrides", async () => {
+    process.env.TTS_PROVIDER = "ollama";
+    process.env.TTS_OLLAMA_HOST = "http://myserver.local:11434";
+    process.env.TTS_MODEL = "kokoro-v1.1";
+    process.env.TTS_VOICE = "am_michael";
+
+    const { default: decode } = await import("audio-decode");
+    const { pcmToOggOpus } = await import("./ogg-opus-encoder.js");
+
+    vi.mocked(decode as any).mockResolvedValue({
+      sampleRate: 22050,
+      getChannelData: () => new Float32Array(1),
+    });
+    vi.mocked(pcmToOggOpus).mockResolvedValue(Buffer.alloc(4));
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await synthesizeToOgg("test");
+
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe("http://myserver.local:11434/v1/audio/speech");
+    const body = JSON.parse(opts.body);
+    expect(body.model).toBe("kokoro-v1.1");
+    expect(body.voice).toBe("am_michael");
+  });
+
+  it("strips trailing slash from TTS_OLLAMA_HOST", async () => {
+    process.env.TTS_PROVIDER = "ollama";
+    process.env.TTS_OLLAMA_HOST = "http://ollama.home.lan/";
+
+    const { default: decode } = await import("audio-decode");
+    const { pcmToOggOpus } = await import("./ogg-opus-encoder.js");
+
+    vi.mocked(decode as any).mockResolvedValue({
+      sampleRate: 24000,
+      getChannelData: () => new Float32Array(1),
+    });
+    vi.mocked(pcmToOggOpus).mockResolvedValue(Buffer.alloc(4));
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await synthesizeToOgg("test");
+
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toBe("http://ollama.home.lan/v1/audio/speech");
+  });
+
+  it("throws a descriptive error when Ollama returns non-ok status", async () => {
+    process.env.TTS_PROVIDER = "ollama";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => "Internal Server Error",
+    }));
+
+    await expect(synthesizeToOgg("hello")).rejects.toThrow("500");
   });
 });
 

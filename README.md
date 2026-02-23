@@ -191,8 +191,28 @@ WHISPER_CACHE_DIR=/path/to/cache            # optional
 
 `send_message` can deliver spoken voice notes (`voice: true`) via TTS.
 
-- OpenAI TTS path synthesizes audio, converts to Telegram-compatible OGG/Opus, and sends as a voice note
-- Local TTS path uses `@huggingface/transformers` + local OGG/Opus encoding
+Three providers are available via the `TTS_PROVIDER` env var:
+
+| Provider | Quality | Setup |
+|----------|---------|-------|
+| `ollama` ⭐ | Excellent | Requires a local [Ollama](https://ollama.com) instance with a TTS model pulled (e.g. `ollama pull kokoro`) |
+| `openai` | Excellent | Requires `OPENAI_API_KEY` |
+| `local` | Good | Zero config — downloads an ONNX model on first use |
+
+**Recommended: [Kokoro](https://ollama.com/library/kokoro) via Ollama** — high quality, fully local, no API key needed, and noticeably more natural than the default local model.
+
+```dotenv
+TTS_PROVIDER=ollama
+TTS_OLLAMA_HOST=http://your-ollama-host:8787   # default port is 11434
+TTS_MODEL=kokoro
+TTS_VOICE=am_onyx    # or af_sky, af_bella, af_sarah, am_michael, …
+```
+
+Pull the model once on your Ollama server:
+
+```bash
+ollama pull kokoro
+```
 
 If a voice note appears but has no audible audio:
 

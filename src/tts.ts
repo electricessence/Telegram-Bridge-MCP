@@ -16,6 +16,14 @@
  *               TTS_VOICE      (default: alloy — alloy/echo/fable/onyx/nova/shimmer)
  *               TTS_MODEL      (default: tts-1 — use tts-1-hd for higher quality)
  *
+ *   ollama  — Uses a local Ollama instance (e.g. Kokoro) via its OpenAI-compatible
+ *             /v1/audio/speech endpoint.  No API key required.
+ *             Env vars:
+ *               TTS_OLLAMA_HOST  (default: http://ollama.home.lan)
+ *               TTS_MODEL        (default: kokoro)
+ *               TTS_VOICE        (default: af_sky — Kokoro voices: af_sky, af_bella,
+ *                                 af_nicole, af_sarah, am_adam, am_michael, …)
+ *
  * Output:  OGG/Opus container — natively supported by Telegram sendVoice.
  *
  * Usage flow in send_message:
@@ -33,7 +41,7 @@ export const TTS_LIMIT = 4096;
  *  When TTS_PROVIDER is not set, defaults to the free local provider. */
 export function isTtsEnabled(): boolean {
   const p = process.env.TTS_PROVIDER?.toLowerCase();
-  return !p || p === "openai" || p === "local";
+  return !p || p === "openai" || p === "local" || p === "ollama";
 }
 
 /**
@@ -166,6 +174,43 @@ async function synthesizeOpenAiToOgg(text: string): Promise<Buffer> {
 }
 
 // ---------------------------------------------------------------------------
+// Ollama provider (TTS_PROVIDER=ollama)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_OLLAMA_HOST = "http://ollama.home.lan:8787";
+const DEFAULT_OLLAMA_MODEL = "kokoro";
+const DEFAULT_OLLAMA_VOICE = "af_sky";
+
+async function synthesizeOllamaToOgg(text: string): Promise<Buffer> {
+  const host = (process.env.TTS_OLLAMA_HOST ?? DEFAULT_OLLAMA_HOST).replace(/\/$/, "");
+  const model = process.env.TTS_MODEL ?? DEFAULT_OLLAMA_MODEL;
+  const voice = process.env.TTS_VOICE ?? DEFAULT_OLLAMA_VOICE;
+
+  const res = await fetch(`${host}/v1/audio/speech`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      input: text,
+      voice,
+      response_format: "wav",
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(no body)");
+    throw new Error(`Ollama TTS error ${res.status}: ${body}`);
+  }
+
+  const wav = Buffer.from(await res.arrayBuffer());
+  const { default: decode } = await import("audio-decode");
+  const decoded = await decode(wav);
+  const channelData = decoded.getChannelData(0);
+  const { pcmToOggOpus } = await import("./ogg-opus-encoder.js");
+  return pcmToOggOpus(channelData, decoded.sampleRate);
+}
+
+// ---------------------------------------------------------------------------
 // Public synthesis entry point
 // ---------------------------------------------------------------------------
 
@@ -199,6 +244,7 @@ export async function synthesizeToOgg(text: string): Promise<Buffer> {
   const provider = process.env.TTS_PROVIDER?.toLowerCase();
 
   if (provider === "openai") return synthesizeOpenAiToOgg(text);
+  if (provider === "ollama") return synthesizeOllamaToOgg(text);
   // "local" or unset — default to the free local provider
   return synthesizeLocalToOgg(text);
 }
