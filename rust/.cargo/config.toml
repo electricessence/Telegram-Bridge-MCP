@@ -16,24 +16,7 @@
 
 [target.x86_64-pc-windows-gnu]
 # Use MSYS2 mingw64 GCC as the linker (and its associated dlltool/ar).
+# Assumes standard MSYS2 install at C:\msys64. Override locally if needed.
+# See SETUP.md → Windows GNU section for alternative paths.
 linker = "C:\\msys64\\mingw64\\bin\\gcc.exe"
 ar = "C:\\msys64\\mingw64\\bin\\ar.exe"
-
-[env]
-# cmake full path — allows whisper-rs-sys to find cmake without requiring it in system PATH.
-# Only used when building with --features local-whisper.
-CMAKE = { value = "C:\\msys64\\ucrt64\\bin\\cmake.exe", force = false }
-# pkg-config search path — allows audiopus to find MSYS2 ucrt64 libopus.
-PKG_CONFIG_PATH = { value = "C:\\msys64\\ucrt64\\lib\\pkgconfig", force = false }
-# libclang DLL path — required by bindgen (whisper-rs-sys) to generate bindings.
-LIBCLANG_PATH = { value = "C:\\msys64\\ucrt64\\bin", force = false }
-# Force Ninja generator so cmake.rs can drive whisper.cpp on Windows GNU toolchain.
-CMAKE_GENERATOR = { value = "Ninja", force = false }
-# CMake toolchain file — overrides the /utf-8 MSVC flag that cmake-rs injects on
-# Windows targets, which GCC rejects. Using a toolchain file lets us set the
-# compilers and initial flags before cmake-rs appends its own flags, so the
-# resulting CXX flags are pure GCC-compatible.
-CMAKE_TOOLCHAIN_FILE = { value = "D:\\Users\\essence\\Development\\Telegram MCP\\rust\\mingw64-toolchain.cmake", force = false }
-# Explicit C/C++ compilers passed via -D flags (cmake-rs reads these).
-CMAKE_C_COMPILER = { value = "C:\\msys64\\mingw64\\bin\\gcc.exe", force = false }
-CMAKE_CXX_COMPILER = { value = "C:\\msys64\\mingw64\\bin\\g++.exe", force = false }

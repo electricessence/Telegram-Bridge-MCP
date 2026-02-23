@@ -1,1 +1,7 @@
 /target/
+
+# Local Cargo patches (created by scripts/setup-local-whisper.ps1 / .sh)
+/patches/
+
+# Machine-specific Cargo config overrides (copy from .cargo/config.local.toml.example)
+/.cargo/config.local.toml

@@ -59,7 +59,7 @@ local-whisper = ["dep:whisper-rs", "dep:ogg", "dep:audiopus", "dep:num_cpus"]
 [dev-dependencies]
 tokio-test = "0.4"
 
-# Patch whisper-rs-sys to skip MSVC-only /utf-8 flag on *-windows-gnu targets.
-# The upstream build.rs injects /utf-8 unconditionally on windows, which GCC rejects.
+# Patch whisper-rs-sys to skip /utf-8 on *-windows-gnu (GCC rejects that MSVC flag).
+# Uses a fork with the one-line fix; no local vendor copy needed.
 [patch.crates-io]
-whisper-rs-sys = { path = "patches/whisper-rs-sys" }
+whisper-rs-sys = { git = "https://github.com/electricessence/whisper-rs", rev = "21738ba2980acd633bd872e3d5e562770b2a1fe8" }

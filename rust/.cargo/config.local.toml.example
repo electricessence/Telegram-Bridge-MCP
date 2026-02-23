@@ -1,0 +1,35 @@
+# Local Cargo configuration for building with --features local-whisper
+# ──────────────────────────────────────────────────────────────────────
+# This file is NOT committed. Copy it to .cargo/config.toml and merge with
+# the committed config, then fill in paths for your system.
+#
+# This is only required on Windows (GNU toolchain / MSYS2).
+# On macOS/Linux the standard dev tools (cmake, libopus, llvm) are found
+# automatically; no extra config is needed.
+#
+# MSYS2 prerequisites (ucrt64 environment):
+#   pacman -S mingw-w64-ucrt-x86_64-cmake
+#   pacman -S mingw-w64-ucrt-x86_64-opus
+#   pacman -S mingw-w64-ucrt-x86_64-clang
+#   pacman -S mingw-w64-ucrt-x86_64-pkgconf
+#   pacman -S mingw-w64-ucrt-x86_64-ninja
+
+[env]
+# cmake executable (ucrt64 build, found by whisper-rs-sys build script)
+CMAKE = { value = "C:\\msys64\\ucrt64\\bin\\cmake.exe", force = false }
+
+# pkg-config search path so audiopus can find MSYS2 libopus
+PKG_CONFIG_PATH = { value = "C:\\msys64\\ucrt64\\lib\\pkgconfig", force = false }
+
+# libclang DLL directory (needed by bindgen to generate whisper-rs-sys bindings)
+LIBCLANG_PATH = { value = "C:\\msys64\\ucrt64\\bin", force = false }
+
+# Use Ninja generator — more reliable than MSYS Makefiles on Windows GNU
+CMAKE_GENERATOR = { value = "Ninja", force = false }
+
+# Explicit compilers so cmake uses MinGW GCC rather than searching for MSVC
+CMAKE_C_COMPILER = { value = "C:\\msys64\\mingw64\\bin\\gcc.exe", force = false }
+CMAKE_CXX_COMPILER = { value = "C:\\msys64\\mingw64\\bin\\g++.exe", force = false }
+
+# Model path for whisper.cpp local inference (set to your downloaded .bin file)
+# WHISPER_MODEL_PATH = "C:\\path\\to\\ggml-base.bin"
