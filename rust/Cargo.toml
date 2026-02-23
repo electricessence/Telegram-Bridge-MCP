@@ -42,5 +42,24 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# ── Optional: local Whisper transcription ────────────────────────────────────
+# Build with: cargo build --features local-whisper
+# Requires cmake + C++ compiler (MSYS2 ucrt64) and a Whisper .bin model file.
+# Set WHISPER_MODEL_PATH env var to the path of the downloaded model.
+# Model download: https://huggingface.co/ggerganov/whisper.cpp/tree/main
+whisper-rs = { version = "0.15", optional = true }
+ogg = { version = "0.9", optional = true }       # OGG container parsing (pure Rust)
+audiopus = { version = "0.3.0-rc.0", optional = true }  # Opus decode via libopus (MSYS2 ucrt64)
+num_cpus = { version = "1", optional = true }    # thread count for whisper params
+
+[features]
+# Local Whisper transcription (whisper.cpp via CMake). Falls back to OpenAI API without this feature.
+local-whisper = ["dep:whisper-rs", "dep:ogg", "dep:audiopus", "dep:num_cpus"]
+
 [dev-dependencies]
 tokio-test = "0.4"
+
+# Patch whisper-rs-sys to skip MSVC-only /utf-8 flag on *-windows-gnu targets.
+# The upstream build.rs injects /utf-8 unconditionally on windows, which GCC rejects.
+[patch.crates-io]
+whisper-rs-sys = { path = "patches/whisper-rs-sys" }
