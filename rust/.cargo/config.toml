@@ -20,3 +20,4 @@
 # See SETUP.md → Windows GNU section for alternative paths.
 linker = "C:\\msys64\\mingw64\\bin\\gcc.exe"
 ar = "C:\\msys64\\mingw64\\bin\\ar.exe"
+dlltool = "C:\\msys64\\mingw64\\bin\\dlltool.exe"

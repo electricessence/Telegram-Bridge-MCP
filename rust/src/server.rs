@@ -7,7 +7,7 @@ use rmcp::{
     handler::server::tool::schema_for_type,
     model::{
         CallToolRequestParams, CallToolResult, Implementation,
-        ListToolsResult, PaginatedRequestParams, ServerInfo, Tool,
+        ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerInfo, Tool,
     },
     service::RequestContext,
     RoleServer,
@@ -199,6 +199,9 @@ impl ServerHandler for TelegramBridgeServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             server_info: Implementation::from_build_env(),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .build(),
             ..Default::default()
         }
     }
