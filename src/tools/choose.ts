@@ -8,7 +8,7 @@ import { markdownToV2 } from "../markdown.js";
 import { transcribeWithIndicator } from "../transcribe.js";
 import { cancelTyping } from "../typing-state.js";
 import { applyTopicToText } from "../topic-state.js";
-import { pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped } from "./button-helpers.js";
+import { pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped, editWithTimedOut } from "./button-helpers.js";
 
 /**
  * Sends a question with labeled option buttons and blocks until one is pressed.
@@ -105,10 +105,9 @@ export function register(server: McpServer) {
         const match = await pollButtonOrTextOrVoice(chatId, sent.message_id, timeout_seconds);
 
         if (!match) {
-          // Timeout — remove buttons and mark as skipped so the question
-          // doesn't stay in an interactable state with no listener.
+          // Timeout — remove buttons so they can't be clicked with no listener.
           // The agent can call wait_for_message next to capture a free-text reply.
-          await editWithSkipped(chatId, sent.message_id, question);
+          await editWithTimedOut(chatId, sent.message_id, question);
           return toResult({
             timed_out: true,
             message_id: sent.message_id,
