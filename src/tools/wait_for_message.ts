@@ -23,7 +23,7 @@ async function serializeMessage(msg: Message): Promise<Record<string, unknown>> 
     const text = await transcribeWithIndicator(msg.voice.file_id, msg.message_id).catch(
       (e) => `[transcription failed: ${e.message}]`,
     );
-    return { ...base, type: "voice", text, voice: true };
+    return { ...base, type: "voice", text, file_id: msg.voice.file_id, voice: true };
   }
 
   if (msg.document) {

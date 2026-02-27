@@ -55,7 +55,7 @@ export function register(server: McpServer) {
 
             if (msg.voice) {
               const text = await transcribeWithIndicator(msg.voice.file_id, msg.message_id).catch((e: Error) => `[transcription failed: ${e.message}]`);
-              return { type: "message", content_type: "voice", ...base, text, voice: true };
+              return { type: "message", content_type: "voice", ...base, text, file_id: msg.voice.file_id, voice: true };
             }
             if (msg.text) return { type: "message", content_type: "text", ...base, text: msg.text };
             if (msg.document) return { type: "message", content_type: "document", ...base, file_id: msg.document.file_id, file_unique_id: msg.document.file_unique_id, file_name: msg.document.file_name, mime_type: msg.document.mime_type, file_size: msg.document.file_size, caption: msg.caption };

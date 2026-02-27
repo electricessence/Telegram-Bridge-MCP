@@ -20,7 +20,7 @@ import { pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped } from ".
 export function register(server: McpServer) {
   server.tool(
     "choose",
-    "Sends a question with 2–8 labeled option buttons and blocks until the user presses one. Returns { label, value } of the chosen option. Automatically removes the buttons and updates the message to show the chosen option. Use for any single-selection choice.",
+    "Sends a question with 2\u20138 labeled option buttons and blocks until the user presses one. Returns { label, value } of the chosen option. Automatically removes the buttons and updates the message to show the chosen option. If the user sends a text or voice message instead, returns { skipped: true, text_response }. If no input arrives within timeout_seconds, buttons are removed, the message is marked Skipped, and returns { timed_out: true }. Multiple choose calls can be chained for questionnaires. Use for any single-selection choice.",
     {
       question: z.string().describe("The question to display above the buttons"),
       options: z
@@ -42,8 +42,8 @@ export function register(server: McpServer) {
         .int()
         .min(1)
         .max(300)
-        .default(60)
-        .describe("Seconds to wait for a button press before returning timed_out: true"),
+        .default(300)
+        .describe("Seconds to wait before returning timed_out: true and removing buttons (default 300 — buttons stay live for 5 minutes). A text or voice message from the user will immediately return skipped regardless of timeout."),
       columns: z
         .number()
         .int()
@@ -105,7 +105,10 @@ export function register(server: McpServer) {
         const match = await pollButtonOrTextOrVoice(chatId, sent.message_id, timeout_seconds);
 
         if (!match) {
-          // Timeout — keep buttons active (no edit), let user press later
+          // Timeout — remove buttons and mark as skipped so the question
+          // doesn't stay in an interactable state with no listener.
+          // The agent can call wait_for_message next to capture a free-text reply.
+          await editWithSkipped(chatId, sent.message_id, question);
           return toResult({
             timed_out: true,
             message_id: sent.message_id,

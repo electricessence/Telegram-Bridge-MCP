@@ -17,6 +17,7 @@ import { register as registerSendVideo } from "./tools/send_video.js";
 import { register as registerSendAudio } from "./tools/send_audio.js";
 import { register as registerSendVoiceTool } from "./tools/send_voice.js";
 import { register as registerDownloadFile } from "./tools/download_file.js";
+import { register as registerTranscribeVoice } from "./tools/transcribe_voice.js";
 import { register as registerForwardMessage } from "./tools/forward_message.js";
 import { register as registerPinMessage } from "./tools/pin_message.js";
 import { register as registerDeleteMessage } from "./tools/delete_message.js";
@@ -72,6 +73,7 @@ export function createServer(): McpServer {
   registerSendAudio(server);
   registerSendVoiceTool(server);
   registerDownloadFile(server);
+  registerTranscribeVoice(server);
   registerForwardMessage(server);
   registerDeleteMessage(server);
   registerPinMessage(server);

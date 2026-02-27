@@ -96,12 +96,12 @@ describe("choose tool", () => {
     );
   });
 
-  it("does NOT edit message on timeout (keeps buttons active)", async () => {
+  it("edits message on timeout to remove dead buttons", async () => {
     mocks.sendMessage.mockResolvedValue(SENT_MSG);
     mocks.getUpdates.mockResolvedValue([]);
     await call({ question: "Pick", options: OPTIONS, timeout_seconds: 1 });
-    // Buttons stay active — no editMessageText call
-    expect(mocks.editMessageText).not.toHaveBeenCalled();
+    // editMessageText removes the inline keyboard so buttons can't be pressed with no listener
+    expect(mocks.editMessageText).toHaveBeenCalledTimes(1);
   });
 
   it("returns timed_out when no button is pressed", async () => {
@@ -213,7 +213,8 @@ describe("choose tool", () => {
     ]);
     const result = await call({ question: "Pick", options: OPTIONS, timeout_seconds: 1 });
     expect((parseResult(result) as any).timed_out).toBe(true);
-    expect(mocks.editMessageText).not.toHaveBeenCalled();
+    // Timed out — buttons removed
+    expect(mocks.editMessageText).toHaveBeenCalledTimes(1);
   });
 
   it("returns skipped with voice transcription when user sends a voice message", async () => {
