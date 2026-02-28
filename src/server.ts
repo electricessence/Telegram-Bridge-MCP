@@ -20,6 +20,7 @@ import { register as registerDownloadFile } from "./tools/download_file.js";
 import { register as registerTranscribeVoice } from "./tools/transcribe_voice.js";
 import { register as registerForwardMessage } from "./tools/forward_message.js";
 import { register as registerPinMessage } from "./tools/pin_message.js";
+import { register as registerUnpinMessage } from "./tools/unpin_message.js";
 import { register as registerDeleteMessage } from "./tools/delete_message.js";
 import { register as registerSendChatAction } from "./tools/send_chat_action.js";
 import { register as registerShowTyping } from "./tools/show_typing.js";
@@ -77,6 +78,7 @@ export function createServer(): McpServer {
   registerForwardMessage(server);
   registerDeleteMessage(server);
   registerPinMessage(server);
+  registerUnpinMessage(server);
 
   // ── Bot / chat info ──────────────────────────────────────────────────────
   registerGetMe(server);
