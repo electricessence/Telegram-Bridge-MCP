@@ -120,18 +120,18 @@ Paste the contents of `LOOP-PROMPT.md` into your AI assistant's chat. It will co
 | `get_agent_guide` | Loads the behavioral guide — call this at session start |
 | `set_topic` | Sets a default title prepended to all outbound messages as `[Title]` — e.g. `[Refactor Agent]`. Useful when multiple VS Code instances share one Telegram chat so you can tell which agent sent what. Pass empty string to clear. |
 | `notify` | Silent or audible notification with title, body, and severity |
-| `ask` | Sends a question; blocks until you reply with text |
-| `choose` | Sends a question with buttons; blocks until you tap one |
-| `send_confirmation` | Yes/No prompt wired to `wait_for_callback_query` |
+| `ask` | Sends a question; blocks until you reply with text or voice |
+| `choose` | Sends a question with 2–8 labeled buttons; blocks until you tap one or type/speak a reply. Supports per-button color (`success`/`primary`/`danger`). Multiple calls chain naturally for questionnaires. |
+| `send_confirmation` | Yes/No prompt; blocks until confirmed or denied. Button colors are customizable (`yes_style`/`no_style`). |
 | `update_status` | Live in-place checklist — updates as steps complete |
 
 ### Messaging
 
-`send_message` · `edit_message_text` · `forward_message` · `delete_message` · `pin_message` · `send_chat_action` · `show_typing` · `cancel_typing`
+`send_message` · `edit_message_text` · `forward_message` · `delete_message` · `pin_message` · `unpin_message` · `send_chat_action` · `show_typing` · `cancel_typing`
 
 ### Files
 
-`send_document` · `send_photo` · `send_video` · `send_audio` · `send_voice` · `download_file`
+`send_document` · `send_photo` · `send_video` · `send_audio` · `send_voice` · `download_file` · `transcribe_voice`
 
 ### Interaction primitives
 
@@ -172,7 +172,7 @@ See `SETUP.md` for the full security model and threat analysis.
 
 ## Voice Transcription
 
-All message-receiving tools (`wait_for_message`, `ask`, `choose`, `get_updates`) automatically transcribe voice messages using a local [Whisper](https://github.com/openai/whisper) model via `@huggingface/transformers` (ONNX Runtime).
+All message-receiving tools (`wait_for_message`, `ask`, `choose`, `get_updates`) automatically transcribe voice messages using a local [Whisper](https://github.com/openai/whisper) model via `@huggingface/transformers` (ONNX Runtime). Voice responses also include a `file_id` so the agent can call `transcribe_voice` to re-transcribe if needed.
 
 - No external API calls
 - No ffmpeg required
