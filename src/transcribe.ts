@@ -1,17 +1,20 @@
 /**
- * Voice message transcription using @huggingface/transformers (Whisper via ONNX).
+ * Voice message transcription — external Whisper server or local ONNX fallback.
  *
- * Pure JS + ONNX Runtime + WASM audio decoding — zero external dependencies.
- * Model weights are downloaded once on first use and cached locally.
+ * STT_HOST (optional): base URL of an OpenAI-compatible ASR server, e.g.
+ *   http://voice.cortex.lan  →  POST {STT_HOST}/v1/audio/transcriptions
+ *   Audio bytes are forwarded as-is (multipart/form-data). No local decode.
  *
- * WHISPER_MODEL env var selects the model (default: onnx-community/whisper-base).
- * WHISPER_CACHE_DIR env var overrides the model cache location.
+ * When STT_HOST is not set, falls back to the embedded ONNX pipeline:
+ *   WHISPER_MODEL     — HuggingFace model ID (default: onnx-community/whisper-base)
+ *   WHISPER_CACHE_DIR — override model cache directory
  */
 
 import { pipeline, env, type AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
 import { getApi, resolveChat } from "./telegram.js";
 
-const MODEL = process.env.WHISPER_MODEL ?? "onnx-community/whisper-base";
+const LOCAL_MODEL = process.env.WHISPER_MODEL ?? "onnx-community/whisper-base";
+const REMOTE_MODEL = process.env.WHISPER_MODEL ?? "whisper-1";
 const SAMPLE_RATE = 16000;
 
 // Cache model in a predictable local directory, not inside node_modules.
@@ -24,9 +27,27 @@ let _pipelinePromise: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
 
 function getPipeline() {
   if (!_pipelinePromise) {
-    _pipelinePromise = pipeline("automatic-speech-recognition", MODEL) as Promise<AutomaticSpeechRecognitionPipeline>;
+    _pipelinePromise = pipeline("automatic-speech-recognition", LOCAL_MODEL) as Promise<AutomaticSpeechRecognitionPipeline>;
   }
   return _pipelinePromise;
+}
+
+/**
+ * Sends raw audio bytes to an OpenAI-compatible transcription endpoint.
+ * The server receives the bytes as a multipart file upload.
+ */
+async function transcribeRemote(audioBytes: Buffer, filename: string): Promise<string> {
+  const host = process.env.STT_HOST!.replace(/\/$/, "");
+  const url = `${host}/v1/audio/transcriptions`;
+
+  const form = new FormData();
+  form.append("file", new Blob([audioBytes]), filename);
+  form.append("model", REMOTE_MODEL);
+
+  const res = await fetch(url, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`Whisper server error: ${res.status} ${res.statusText}`);
+  const json = await res.json() as { text: string };
+  return json.text.trim();
 }
 
 /**
@@ -58,7 +79,9 @@ async function decodeAudioToFloat32(audioBytes: Buffer): Promise<Float32Array> {
 /**
  * Downloads a Telegram voice message by file_id and transcribes it.
  * Returns the transcribed text (trimmed).
- * No temp files are written — everything is processed in memory.
+ *
+ * If STT_HOST is set, audio bytes are forwarded to the remote server
+ * (no local decode). Otherwise the embedded ONNX pipeline is used.
  */
 export async function transcribeVoice(fileId: string): Promise<string> {
   const token = process.env.BOT_TOKEN;
@@ -74,10 +97,15 @@ export async function transcribeVoice(fileId: string): Promise<string> {
   if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`);
   const audioBytes = Buffer.from(await res.arrayBuffer());
 
-  // 3. Decode audio to Float32 PCM at 16 kHz (pure WASM, no ffmpeg)
+  // 3a. Remote transcription — forward raw bytes, no local decode.
+  if (process.env.STT_HOST) {
+    const filename = fileInfo.file_path.split("/").pop() ?? "audio.ogg";
+    return transcribeRemote(audioBytes, filename);
+  }
+
+  // 3b. Local ONNX fallback — decode audio to Float32 PCM at 16 kHz.
   const audioData = await decodeAudioToFloat32(audioBytes);
 
-  // 4. Transcribe — model is downloaded once and cached.
   // chunk_length_s + stride_length_s enable long-form transcription:
   // Whisper's context window is 30s, so audio longer than that is silently
   // truncated without chunking. stride_length_s overlaps adjacent chunks
