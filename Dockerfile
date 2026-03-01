@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ── Stage 1: production dependencies (native modules compiled here) ───────────
-FROM node:22-slim AS deps
+FROM node:25-slim AS deps
 
 # Build tools needed for native modules (onnxruntime-node, opusscript, sharp)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,7 +15,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
 # ── Stage 2: TypeScript build ─────────────────────────────────────────────────
-FROM node:22-slim AS build
+FROM node:25-slim AS build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ \
@@ -32,7 +32,7 @@ COPY src/ ./src/
 RUN pnpm build
 
 # ── Stage 3: runtime (no build tools, no dev deps, non-root) ─────────────────
-FROM node:22-slim AS runtime
+FROM node:25-slim AS runtime
 
 # Patch all OS packages to eliminate known CVEs
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
