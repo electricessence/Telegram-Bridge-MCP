@@ -9,7 +9,6 @@
  */
 
 import { pipeline, env, type AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
-import { readFile } from "fs/promises";
 import { getApi, resolveChat } from "./telegram.js";
 
 const MODEL = process.env.WHISPER_MODEL ?? "onnx-community/whisper-base";
