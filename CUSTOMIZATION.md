@@ -90,24 +90,29 @@ Open your AI assistant (VS Code Copilot, Claude Desktop, etc.) and paste the con
 ### Example commands
 
 **Edit behaviors:**
+
 - "Add a new reaction convention to BEHAVIOR.md: 🔥 for critical errors"
 - "Update LOOP-PROMPT.md to poll every 60 seconds instead of 300"
 
 **Modify tools:**
+
 - "Add optional `columns: 1 | 2` parameter to the `choose` tool"
 - "Fix the newline escaping bug in `markdownToV2`"
 - "Create a new tool `send_poll` for Telegram polls"
 
 **Run tests and validate:**
+
 - "Run all tests and report failures"
 - "Run tests for `choose.test.ts` only"
 - "Check for TypeScript errors"
 
 **Build and restart:**
+
 - "Rebuild and restart the server"
   - The `restart_server` tool runs `pnpm build`, restarts the MCP, drains stale updates, and resumes the loop
 
 **Documentation:**
+
 - "Add a new section to README explaining voice transcription setup"
 - "Create a FAQ.md with common setup issues"
 
@@ -116,7 +121,7 @@ Open your AI assistant (VS Code Copilot, Claude Desktop, etc.) and paste the con
 ## Key Files for Customization
 
 | File | What it controls |
-|------|------------------|
+| ---- | ---------------- |
 | `BEHAVIOR.md` | Agent personality, tool usage conventions, formatting rules. Also served as the `telegram-bridge-mcp://agent-guide` MCP resource. |
 | `FORMATTING.md` | Markdown/HTML/MarkdownV2 reference for message formatting. Served as `telegram-bridge-mcp://formatting-guide`. |
 | `LOOP-PROMPT.md` | Your session startup script — the instructions you paste to begin a loop session. Customize this to change session behavior. |
@@ -206,9 +211,11 @@ No typing needed. Code from anywhere.
 Give one clear instruction at a time. The assistant will break it into steps if needed.
 
 **Good:**
+
 - "Add a `columns` parameter to the `choose` tool"
 
 **Less clear:**
+
 - "Fix the button layout issues and also update the docs and add tests"
 
 ### Use the `choose` tool for confirmations
@@ -257,6 +264,7 @@ If you're away from your computer, silent notifications let you track progress w
 _"Add a severity parameter to the notify tool, default to info"_
 
 **Assistant:**
+
 - 👀 reaction on your message
 - 🔔 Silent notification: "Editing src/tools/notify.ts — adding severity parameter"
 - Edits the file
@@ -267,6 +275,7 @@ _"Add a severity parameter to the notify tool, default to info"_
 _"Restart the server"_
 
 **Assistant:**
+
 - 🔔 "Restarting server"
 - Runs `pnpm build`
 - Restarts MCP
