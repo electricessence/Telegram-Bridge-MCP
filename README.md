@@ -211,7 +211,7 @@ WHISPER_CACHE_DIR=/path/to/cache            # optional
 Provider is selected automatically from env vars:
 
 | Env var set | Provider |
-|---|---|
+| --- | --- |
 | `TTS_HOST` | Any OpenAI-compatible `/v1/audio/speech` server (Chatterbox, Kokoro, etc.) |
 | `OPENAI_API_KEY` (no `TTS_HOST`) | api.openai.com |
 | Neither | Free local ONNX model (zero config, downloads on first use) |
@@ -250,7 +250,7 @@ pnpm pair           # Re-run pairing wizard
 
 A pre-built image is published to the GitHub Container Registry on every push to `master` and on every version tag:
 
-```
+```txt
 ghcr.io/electricessence/telegram-bridge-mcp:latest
 ghcr.io/electricessence/telegram-bridge-mcp:1.7.9
 ```
@@ -268,7 +268,7 @@ Create a `.env` file with your credentials (see `.env.example`), then configure 
       "args": [
         "run", "--rm", "-i",
         "--env-file", "/absolute/path/to/.env",
-        "-v", "telegram-mcp-cache:/root/.cache",
+        "-v", "telegram-mcp-cache:/home/node/.cache",
         "ghcr.io/electricessence/telegram-bridge-mcp:latest"
       ]
     }
@@ -286,7 +286,7 @@ Create a `.env` file with your credentials (see `.env.example`), then configure 
       "args": [
         "run", "--rm", "-i",
         "--env-file", "/absolute/path/to/.env",
-        "-v", "telegram-mcp-cache:/root/.cache",
+        "-v", "telegram-mcp-cache:/home/node/.cache",
         "ghcr.io/electricessence/telegram-bridge-mcp:latest"
       ]
     }
@@ -294,7 +294,7 @@ Create a `.env` file with your credentials (see `.env.example`), then configure 
 }
 ```
 
-The `-v telegram-mcp-cache:/root/.cache` volume persists downloaded Whisper/TTS model weights across container restarts.
+The `-v telegram-mcp-cache:/home/node/.cache` volume persists downloaded Whisper/TTS model weights across container restarts.
 
 ---
 
