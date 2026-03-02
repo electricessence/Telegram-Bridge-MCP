@@ -5,15 +5,16 @@ import { drainBuffer } from "../update-buffer.js";
 import { sanitizeUpdates } from "../update-sanitizer.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_updates",
-    "Retrieves all pending Telegram updates in bulk. " +
+    {
+      description: "Retrieves all pending Telegram updates in bulk. " +
     "**Only use this tool when you are prepared to store and respond to every update it returns.** " +
     "It provides no `remaining` signal — if you process only the first update and move on, the rest are silently dropped. " +
     "For normal sequential message handling, use `get_update` (singular) instead. " +
     "Appropriate uses: one-time startup drain (discard all), bulk session replay, or explicit debugging.",
-    {
-      limit: z
+      inputSchema: {
+        limit: z
         .number()
         .int()
         .min(1)
@@ -39,6 +40,7 @@ export function register(server: McpServer) {
         .boolean()
         .optional()
         .describe("If true, resets the stored offset to 0 before fetching"),
+      },
     },
     async ({ limit, timeout_seconds, allowed_updates, reset_offset }) => {
       try {

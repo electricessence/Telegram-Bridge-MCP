@@ -16,11 +16,12 @@ const ALLOWED_EMOJI = [
 ] as const;
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "set_reaction",
-    "Sets an emoji reaction on a message. Non-premium bots can set up to 1 reaction per message. Pass an empty array to remove all reactions. Use to acknowledge messages — e.g. 👍 for confirmation, 🫡 for task complete, 👀 for noted.",
     {
-      message_id: z.number().int().describe("ID of the message to react to"),
+      description: "Sets an emoji reaction on a message. Non-premium bots can set up to 1 reaction per message. Pass an empty array to remove all reactions. Use to acknowledge messages — e.g. 👍 for confirmation, 🫡 for task complete, 👀 for noted.",
+      inputSchema: {
+        message_id: z.number().int().describe("ID of the message to react to"),
       emoji: z
         .string()
         .refine(
@@ -33,6 +34,7 @@ export function register(server: McpServer) {
         .boolean()
         .optional()
         .describe("Use big animation (default false)"),
+      },
     },
     async ({ message_id, emoji, is_big }) => {
       const chatId = resolveChat();

@@ -1,9 +1,10 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
+import type { TelegramError } from "../telegram.js";
 import { createMockServer, parseResult, isError } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({
   sendChatAction: vi.fn(),
-  resolveChat: vi.fn(() => "123"),
+  resolveChat: vi.fn((): string | TelegramError => "123"),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -45,7 +46,7 @@ describe("send_chat_action tool", () => {
   });
 
   it("returns error when resolveChat returns non-string", async () => {
-    mocks.resolveChat.mockReturnValueOnce({ code: "CHAT_NOT_CONFIGURED" });
+    mocks.resolveChat.mockReturnValueOnce({ code: "UNAUTHORIZED_CHAT", message: "test" });
     const result = await call({ action: "typing" });
     expect(isError(result)).toBe(true);
   });

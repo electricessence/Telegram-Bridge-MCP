@@ -21,14 +21,16 @@ import { setTopic, getTopic, clearTopic } from "../topic-state.js";
  * Pass an empty string to clear the title and return to untagged messages.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "set_topic",
-    "Sets a default title (e.g. \"Refactor Agent\") that is automatically prepended to every outbound message from this MCP server instance as \"[Title]\". Useful when multiple VS Code windows share the same Telegram chat — each process can label its messages so you know which agent sent what. Scoped to this server process: works best with one active chat per VS Code instance. Pass an empty string to clear.",
     {
-      topic: z
+      description: "Sets a default title (e.g. \"Refactor Agent\") that is automatically prepended to every outbound message from this MCP server instance as \"[Title]\". Useful when multiple VS Code windows share the same Telegram chat — each process can label its messages so you know which agent sent what. Scoped to this server process: works best with one active chat per VS Code instance. Pass an empty string to clear.",
+      inputSchema: {
+        topic: z
         .string()
         .max(32)
         .describe("Short label to prepend to all outbound messages, e.g. \"Refactor Agent\". Pass empty string to clear."),
+      },
     },
     async ({ topic }) => {
       const previous = getTopic();

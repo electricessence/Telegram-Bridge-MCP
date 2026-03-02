@@ -3,11 +3,12 @@ import { z } from "zod";
 import { getApi, toResult, toError } from "../telegram.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "answer_callback_query",
-    "Acknowledges a callback query from an inline button press. Must be called within 30 s of receiving the update. Optionally shows a toast or alert to the user.",
     {
-      callback_query_id: z.string().describe("ID from the callback_query update"),
+      description: "Acknowledges a callback query from an inline button press. Must be called within 30 s of receiving the update. Optionally shows a toast or alert to the user.",
+      inputSchema: {
+        callback_query_id: z.string().describe("ID from the callback_query update"),
       text: z
         .string()
         .optional()
@@ -25,6 +26,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Seconds the result may be cached client-side"),
+      },
     },
     async ({ callback_query_id, text, show_alert, url, cache_time }) => {
       try {

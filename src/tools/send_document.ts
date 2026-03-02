@@ -8,11 +8,12 @@ import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_document",
-    "Sends a file (document) to the Telegram chat. Accepts a local file path, a public HTTPS URL, or a Telegram file_id. Use this to send PDFs, Excel files, ZIPs, text files, or any other file type. For photos/images, use send_photo instead.",
     {
-      document: z
+      description: "Sends a file (document) to the Telegram chat. Accepts a local file path, a public HTTPS URL, or a Telegram file_id. Use this to send PDFs, Excel files, ZIPs, text files, or any other file type. For photos/images, use send_photo instead.",
+      inputSchema: {
+        document: z
         .string()
         .describe(
           "Local absolute file path (e.g. /tmp/report.xlsx), a public HTTPS URL, or a Telegram file_id"
@@ -36,6 +37,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID"),
+      },
     },
     async ({ document, caption, parse_mode, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();

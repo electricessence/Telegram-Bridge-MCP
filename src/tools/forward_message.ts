@@ -5,13 +5,15 @@ import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "forward_message",
-    "Forwards a message from a source chat to the bot's configured chat.",
     {
-      from_chat_id: z.string().describe("Source chat ID or @username"),
+      description: "Forwards a message from a source chat to the bot's configured chat.",
+      inputSchema: {
+        from_chat_id: z.string().describe("Source chat ID or @username"),
       message_id: z.number().int().describe("ID of the message to forward"),
       disable_notification: z.boolean().optional().describe("Forward silently"),
+      },
     },
     async ({ from_chat_id, message_id, disable_notification }) => {
       const chatId = resolveChat();

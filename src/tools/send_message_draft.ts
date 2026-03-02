@@ -41,16 +41,24 @@ export async function sendMessageDraft(params: {
 }
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_message_draft",
-    "Sends a draft (partial/streaming) message to the user via Telegram's sendMessageDraft API (Bot API 9.5). " +
+    {
+      description: "Sends a draft (partial/streaming) message to the user via Telegram's sendMessageDraft API (Bot API 9.5). " +
     "Use the same draft_id across multiple calls to update the visible draft in place — Telegram animates the change. " +
     "Each call replaces the entire draft text, so pass the full current content each time. " +
     "draft_id must be a non-zero integer; use any consistent value (e.g. 1) per draft session. " +
     "Only works in private chats. Default parse_mode is Markdown (auto-converted, safe even for partial/streaming text — unclosed spans are auto-closed). " +
-    "Omit parse_mode for plain text, or use HTML/MarkdownV2 for manual control.",
-    {
-      draft_id: z
+    "Omit parse_mode for plain text, or use HTML/MarkdownV2 for manual control.\n\n" +
+    "⚠ TOKEN COST WARNING: Each call must include the FULL accumulated text (not a delta). " +
+    "Calling this N times with growing text costs O(N²) total tokens — a 500-token response sent " +
+    "token-by-token would consume ~125,000 tokens in tool arguments alone. " +
+    "DO NOT call this in a loop with incremental text. " +
+    "Acceptable uses: one call with a nearly-complete draft before a slow operation, " +
+    "or a small fixed number of milestone updates (e.g. section-by-section). " +
+    "For normal replies, use send_message instead — it has no overhead.",
+      inputSchema: {
+        draft_id: z
         .number()
         .int()
         .min(1)
@@ -67,6 +75,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Target message thread (topic) ID for private chats with forum topics enabled."),
+      },
     },
     async ({ draft_id, text, parse_mode, message_thread_id }) => {
       const chatId = resolveChat();

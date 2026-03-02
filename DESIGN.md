@@ -52,7 +52,8 @@ Tools are grouped by abstraction level.
 | `notify` | Sends a titled, severity-coded notification with optional body. Supports silent delivery. |
 | `ask` | Sends a question and blocks until the user replies with free text. |
 | `choose` | Sends a question with labeled inline keyboard buttons; blocks until a button is pressed. |
-| `send_confirmation` | Sends a Yes/No inline keyboard; returns `message_id` for use with `wait_for_callback_query`. |
+| `send_confirmation` | Sends a Yes/No inline keyboard and blocks until a button is pressed. Returns `{ confirmed: true\|false }`, or `{ timed_out: true }` if the timeout expires without input. |
+| `send_temp_message` | Sends a temporary placeholder (e.g. "Thinking…") that is automatically deleted when the next outbound tool fires, or after the TTL. |
 | `update_status` | Creates or edits a live task checklist message with per-step status indicators. |
 
 ### Interaction primitives
@@ -102,7 +103,8 @@ Tools are grouped by abstraction level.
 
 | Tool | Description |
 | --- | --- |
-| `get_updates` | One-shot poll for pending updates. Manages offset automatically. Returns messages and reactions. |
+| `get_update` | **Default polling tool.** Returns up to `max` updates from the local buffer, fetches from Telegram if needed. Always returns `remaining` — call again if > 0 before blocking. |
+| `get_updates` | Bulk poll for all pending updates. Use only when prepared to iterate and respond to every returned update. No `remaining` signal. |
 
 ### Server management
 
@@ -114,11 +116,13 @@ Tools are grouped by abstraction level.
 
 ## MCP Resources
 
-Three Markdown documents are exposed as MCP resources and via `get_agent_guide`:
+Five Markdown documents are exposed as MCP resources and via `get_agent_guide`:
 
 | URI | File | Description |
 | --- | --- | --- |
 | `telegram-bridge-mcp://agent-guide` | `BEHAVIOR.md` | Behavioral guide: personality, tool conventions, formatting rules |
+| `telegram-bridge-mcp://communication-guide` | `COMMUNICATION.md` | Tool selection, commit/push flow, loop rules, and multi-step task patterns |
+| `telegram-bridge-mcp://quick-reference` | `.github/instructions/telegram-communication.instructions.md` | Hard rules + tool selection table — compact injected rules card |
 | `telegram-bridge-mcp://setup-guide` | `SETUP.md` | Step-by-step setup guide for new users |
 | `telegram-bridge-mcp://formatting-guide` | `FORMATTING.md` | Markdown/MarkdownV2/HTML formatting reference |
 
@@ -160,6 +164,7 @@ telegram-bridge-mcp/
 │   ├── server.ts             # McpServer definition, tool registration, resource registration
 │   ├── telegram.ts           # grammy Api wrapper, security enforcement, offset state,
 │   │                         #   pre-send validators, error classification, pollUntil helper
+│   ├── temp-message.ts       # Pending temp message state (send_temp_message)
 │   ├── transcribe.ts         # Local Whisper voice transcription (HuggingFace ONNX)
 │   ├── tts.ts                # TTS synthesis → OGG/Opus. Provider auto-selected from env:
 │   │                         #   TTS_HOST → any OpenAI-compatible server; OPENAI_API_KEY → OpenAI;
@@ -167,6 +172,8 @@ telegram-bridge-mcp/
 │   ├── ogg-opus-encoder.ts   # Pure TypeScript OGG/Opus encoder (PCM → OGG container)
 │   ├── topic-state.ts        # Per-process topic prefix state (set_topic)
 │   ├── typing-state.ts       # Sustained typing indicator loop (show_typing / cancel_typing)
+│   ├── update-buffer.ts      # In-memory buffer for updates received during long-poll waits
+│   ├── update-sanitizer.ts   # Strips large/binary fields from updates before returning to agent
 │   ├── markdown.ts           # Markdown → MarkdownV2 auto-conversion
 │   ├── setup.ts              # pnpm pair wizard — writes .env from live bot pairing
 │   └── tools/
@@ -180,6 +187,8 @@ telegram-bridge-mcp/
 │       ├── wait_for_callback_query.ts
 │       ├── answer_callback_query.ts
 │       ├── send_message.ts
+│       ├── send_message_draft.ts
+│       ├── send_temp_message.ts
 │       ├── edit_message_text.ts
 │       ├── send_photo.ts
 │       ├── send_video.ts
@@ -200,9 +209,11 @@ telegram-bridge-mcp/
 │       ├── get_me.ts
 │       ├── get_chat.ts
 │       ├── set_reaction.ts
+│       ├── get_update.ts
 │       ├── get_updates.ts
 │       └── restart_server.ts
 ├── BEHAVIOR.md               # Agent behavioral guide (also served as MCP resource)
+├── COMMUNICATION.md          # Communication patterns (also served as MCP resource)
 ├── FORMATTING.md             # Formatting reference (also served as MCP resource)
 ├── SETUP.md                  # Setup guide (also served as MCP resource)
 ├── LOOP-PROMPT.md            # Sample loop prompt for VS Code Copilot agent sessions

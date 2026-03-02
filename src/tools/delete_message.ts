@@ -3,11 +3,13 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "delete_message",
-    "Deletes a message. The bot can delete its own messages anytime, or other users' messages within 48 hours if admin.",
     {
-      message_id: z.number().int().describe("ID of the message to delete"),
+      description: "Deletes a message. The bot can delete its own messages anytime, or other users' messages within 48 hours if admin.",
+      inputSchema: {
+        message_id: z.number().int().describe("ID of the message to delete"),
+      },
     },
     async ({ message_id }) => {
       const chatId = resolveChat();

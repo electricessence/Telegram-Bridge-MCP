@@ -135,13 +135,17 @@ Paste the contents of `LOOP-PROMPT.md` into your AI assistant's chat. It will co
 
 `send_document` · `send_photo` · `send_video` · `send_audio` · `send_voice` · `download_file` · `transcribe_voice`
 
+### Drafts & temp
+
+`send_message_draft` · `send_temp_message`
+
 ### Interaction primitives
 
 `wait_for_message` · `wait_for_callback_query` · `answer_callback_query`
 
 ### Info & utilities
 
-`get_me` · `get_chat` · `set_commands` · `set_reaction` · `get_updates` · `restart_server`
+`get_me` · `get_chat` · `set_commands` · `set_reaction` · `get_update` · `get_updates` · `restart_server`
 
 `set_commands` — registers (or clears) the bot's slash-command menu in the active chat. Pass `[{command, description}, ...]` to show commands in Telegram's autocomplete; pass `[]` to remove the menu.
 
@@ -162,7 +166,7 @@ Pre-built instruction files are included for common agent hosts:
 
 ## Resources
 
-Three guides are available as MCP resources — any MCP client can read them directly:
+Five guides are available as MCP resources — any MCP client can read them directly:
 
 | Resource URI | Contents |
 | --- | --- |
@@ -189,7 +193,7 @@ See `SETUP.md` for the full security model and threat analysis.
 
 ## Voice Transcription
 
-All message-receiving tools (`wait_for_message`, `ask`, `choose`, `get_updates`) automatically transcribe voice messages using a local [Whisper](https://github.com/openai/whisper) model via `@huggingface/transformers` (ONNX Runtime). Voice responses also include a `file_id` so the agent can call `transcribe_voice` to re-transcribe if needed.
+All message-receiving tools (`wait_for_message`, `ask`, `choose`, `get_update`, `get_updates`) automatically transcribe voice messages using a local [Whisper](https://github.com/openai/whisper) model via `@huggingface/transformers` (ONNX Runtime). Voice responses also include a `file_id` so the agent can call `transcribe_voice` to re-transcribe if needed.
 
 - No external API calls
 - No ffmpeg required

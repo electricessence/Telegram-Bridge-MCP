@@ -8,11 +8,12 @@ import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_video",
-    "Sends a video to the Telegram chat. Accepts a local file path, a public HTTPS URL, or a Telegram file_id. Supports optional caption, duration, and dimensions.",
     {
-      video: z
+      description: "Sends a video to the Telegram chat. Accepts a local file path, a public HTTPS URL, or a Telegram file_id. Supports optional caption, duration, and dimensions.",
+      inputSchema: {
+        video: z
         .string()
         .describe("Local absolute file path (e.g. /tmp/clip.mp4), a public HTTPS URL, or a Telegram file_id"),
       caption: z
@@ -47,6 +48,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID"),
+      },
     },
     async ({ video, caption, parse_mode, duration, width, height, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();

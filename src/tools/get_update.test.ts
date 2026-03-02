@@ -24,7 +24,7 @@ vi.mock("../telegram.js", async (importActual) => {
 });
 
 vi.mock("../update-buffer.js", () => ({
-  drainN: (...args: any[]) => bufferMocks.drainN(...args),
+  drainN: (...args: any[]) => bufferMocks.drainN.apply(null, args as Parameters<typeof bufferMocks.drainN>),
   bufferSize: () => bufferMocks.bufferSize(),
   // other exports passthrough (not used by get_update)
   peekBuffer: vi.fn(() => []),

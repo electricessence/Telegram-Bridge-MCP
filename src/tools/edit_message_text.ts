@@ -5,11 +5,12 @@ import { resolveParseMode } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "edit_message_text",
-    "Edits the text of a previously sent message. Supports Markdown auto-conversion (default), MarkdownV2, and HTML. Can optionally update or clear the inline keyboard.",
     {
-      message_id: z.number().int().describe("ID of the message to edit"),
+      description: "Edits the text of a previously sent message. Supports Markdown auto-conversion (default), MarkdownV2, and HTML. Can optionally update or clear the inline keyboard.",
+      inputSchema: {
+        message_id: z.number().int().describe("ID of the message to edit"),
       text: z.string().describe("New text content"),
       parse_mode: z
         .enum(["Markdown", "HTML", "MarkdownV2"])
@@ -31,6 +32,7 @@ export function register(server: McpServer) {
         })
         .optional()
         .describe("New inline keyboard. Pass { inline_keyboard: [] } to remove buttons."),
+      },
     },
     async ({ message_id, text, parse_mode, reply_markup }) => {
       const chatId = resolveChat();

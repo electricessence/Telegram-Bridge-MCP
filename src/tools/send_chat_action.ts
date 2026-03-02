@@ -3,11 +3,12 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_chat_action",
-    'Sends a one-shot chat action indicator (e.g. "typing…") that lasts ~5 s. For sustained typing, use show_typing instead.',
     {
-      action: z
+      description: 'Sends a one-shot chat action indicator (e.g. "typing\u2026") that lasts ~5 s. For sustained typing, use show_typing instead.',
+      inputSchema: {
+        action: z
         .enum([
           "typing",
           "upload_photo",
@@ -23,6 +24,7 @@ export function register(server: McpServer) {
         ])
         .default("typing")
         .describe('Action to broadcast. Defaults to "typing".'),
+      },
     },
     async ({ action }) => {
       const chatId = resolveChat();

@@ -9,21 +9,22 @@ import type { TelegramError } from "../telegram.js";
 export type ToolHandler = (args: Record<string, unknown>) => Promise<unknown>;
 
 export interface MockServer {
-  tool: ReturnType<typeof vi.fn>;
+  registerTool: ReturnType<typeof vi.fn>;
   resource: ReturnType<typeof vi.fn>;
   getHandler(name: string): ToolHandler;
 }
 
 export function createMockServer(): MockServer {
   const handlers: Record<string, ToolHandler> = {};
-  const tool = vi.fn(
-    (_name: string, _desc: string, schema: ZodRawShape, handler: ToolHandler) => {
+  const registerTool = vi.fn(
+    (_name: string, config: { description?: string; inputSchema?: ZodRawShape }, handler: ToolHandler) => {
+      const schema = config.inputSchema ?? {};
       handlers[_name] = (args) => handler(z.object(schema).parse(args));
     }
   );
   const resource = vi.fn();
   return {
-    tool,
+    registerTool,
     resource,
     getHandler(name: string): ToolHandler {
       const h = handlers[name];

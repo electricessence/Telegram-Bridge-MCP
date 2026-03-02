@@ -36,7 +36,7 @@ When starting a new session with this MCP:
 
 After any task completes, drain the buffer before blocking:
 
-```
+```text
 1. Call get_update()               — handle the returned update.
 2. If remaining > 0, repeat step 1 — do not skip to wait_for_message.
 3. When updates=[] and remaining=0, call wait_for_message to block.
@@ -49,6 +49,7 @@ After any task completes, drain the buffer before blocking:
 Only use `get_updates` when you are **prepared to store and respond to every update it returns**. It dumps all pending updates at once with no `remaining` signal — if you handle only the first and move on, the rest are gone.
 
 Acceptable uses:
+
 - Startup drain (step 3 above) — call once, discard everything.
 - Explicit bulk replay where you will iterate and process the full returned array.
 - Targeted debugging when explicitly asked.
@@ -154,18 +155,19 @@ Sends a short placeholder that is **automatically deleted** the moment any outbo
 
 **When to use:** right before a slow operation where the typing indicator isn't enough context.
 
-```
+```ts
 send_temp_message("Analyzing 47 files…")   // user sees this immediately
 // ... do the work ...
 notify("Analysis complete", ...)            // temp message deleted automatically
 ```
 
-```
+```ts
 send_temp_message("Setting up…", ttl_seconds: 10)
 update_status(...)                          // replaces the placeholder
 ```
 
 **Rules:**
+
 - Only one pending temp at a time — a second call replaces the first.
 - Do **not** delete it manually; the next outbound tool handles it.
 - Prefer `update_status` for tasks with 3+ visible steps. Use `send_temp_message` for a quick "I'm on it" with no structured progress to show.

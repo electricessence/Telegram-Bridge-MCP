@@ -5,9 +5,10 @@ import { drainN, bufferSize } from "../update-buffer.js";
 import { sanitizeUpdates } from "../update-sanitizer.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_update",
-    "**Default tool for receiving messages.** Returns up to `max` pending updates (default 1) from the local buffer, " +
+    {
+      description: "**Default tool for receiving messages.** Returns up to `max` pending updates (default 1) from the local buffer, " +
     "then fetches from Telegram if more are needed. " +
     "Always returns `remaining` — the number of updates still buffered after this call. " +
     "Always check `remaining` after each call: if > 0, call again before blocking.\n\n" +
@@ -16,8 +17,8 @@ export function register(server: McpServer) {
     "  2. If `remaining > 0`, call `get_update()` again immediately.\n" +
     "  3. When `updates` is empty and `remaining` is 0, call `wait_for_message` to block for the next incoming message.\n\n" +
     "Use `get_updates` (plural) only if you are prepared to store and respond to every update it returns — it returns all pending updates at once with no `remaining` signal.",
-    {
-      max: z
+      inputSchema: {
+        max: z
         .number()
         .int()
         .min(1)
@@ -28,6 +29,7 @@ export function register(server: McpServer) {
         .array(z.string())
         .optional()
         .describe("Filter by update types, e.g. [\"message\", \"callback_query\"]. Omit to receive all."),
+      },
     },
     async ({ max, allowed_updates }) => {
       try {

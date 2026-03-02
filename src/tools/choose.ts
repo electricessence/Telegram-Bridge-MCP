@@ -19,11 +19,12 @@ import { pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped, editWith
  * Replaces the manual: send_message + wait_for_callback_query + answer_callback_query chain.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "choose",
-    "Sends a question with 2\u20138 labeled option buttons and blocks until the user presses one. Returns { label, value } of the chosen option. Automatically removes the buttons and updates the message to show the chosen option. If the user sends a text or voice message instead, returns { skipped: true, text_response }. If no input arrives within timeout_seconds, buttons are removed, the message is marked Skipped, and returns { timed_out: true }. Multiple choose calls can be chained for questionnaires. Use for any single-selection choice.",
     {
-      question: z.string().describe("The question to display above the buttons"),
+      description: "Sends a question with 2–8 labeled option buttons and blocks until the user presses one. Returns { label, value } of the chosen option. Automatically removes the buttons and updates the message to show the chosen option. If the user sends a text or voice message instead, returns { skipped: true, text_response }. If no input arrives within timeout_seconds, buttons are removed, the message is marked Skipped, and returns { timed_out: true }. Multiple choose calls can be chained for questionnaires. Use for any single-selection choice.",
+      inputSchema: {
+        question: z.string().describe("The question to display above the buttons"),
       options: z
         .array(
           z.object({
@@ -57,6 +58,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID — shows quoted message above the question"),
+      },
     },
     async ({ question, options, timeout_seconds, columns, reply_to_message_id }) => {
       const chatId = resolveChat();

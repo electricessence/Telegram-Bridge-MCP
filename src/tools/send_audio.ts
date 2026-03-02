@@ -8,11 +8,12 @@ import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_audio",
-    "Sends an audio file to the Telegram chat. Accepts a local file path, a public HTTPS URL, or a Telegram file_id. Audio files are shown as playable tracks in Telegram with title and performer metadata. For voice notes (recorded speech in ogg/opus), use send_voice instead.",
     {
-      audio: z
+      description: "Sends an audio file to the Telegram chat. Accepts a local file path, a public HTTPS URL, or a Telegram file_id. Audio files are shown as playable tracks in Telegram with title and performer metadata. For voice notes (recorded speech in ogg/opus), use send_voice instead.",
+      inputSchema: {
+        audio: z
         .string()
         .describe("Local absolute file path (e.g. /tmp/track.mp3), a public HTTPS URL, or a Telegram file_id"),
       caption: z
@@ -45,6 +46,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID"),
+      },
     },
     async ({ audio, caption, parse_mode, duration, performer, title, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();

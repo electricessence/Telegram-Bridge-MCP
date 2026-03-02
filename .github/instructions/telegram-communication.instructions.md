@@ -23,7 +23,7 @@ Full guide: `COMMUNICATION.md` · MCP resource: `telegram-bridge-mcp://communica
 ## Tool Selection
 
 | Situation | Tool |
-|---|---|
+| --- | --- |
 | Statement / preference | React (🫡 👍 👀 ❤) |
 | Yes/No decision | `send_confirmation` |
 | Fixed options | `choose` |

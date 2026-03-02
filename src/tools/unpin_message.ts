@@ -3,15 +3,17 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "unpin_message",
-    "Unpins a message in the chat. If message_id is omitted, unpins the most recently pinned message. Requires the bot to have appropriate admin rights.",
     {
-      message_id: z
+      description: "Unpins a message in the chat. If message_id is omitted, unpins the most recently pinned message. Requires the bot to have appropriate admin rights.",
+      inputSchema: {
+        message_id: z
         .number()
         .int()
         .optional()
         .describe("ID of the message to unpin. Omit to unpin the most recently pinned message."),
+      },
     },
     async ({ message_id }) => {
       const chatId = resolveChat();

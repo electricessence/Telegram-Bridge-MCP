@@ -17,11 +17,12 @@ import { getApi, toResult, toError, resolveChat } from "../telegram.js";
  * Pass an empty commands array to remove the command menu entirely.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "set_commands",
-    'Sets (or clears) the slash-command menu shown in Telegram when the user types "/". Pass an array of {command, description} pairs to register commands — e.g. [{command:"cancel",description:"Stop the current task"}]. Pass an empty array to remove all commands. Commands are scoped to the active chat by default ("chat" scope) so they only appear in this conversation. Use scope "default" to set bot-wide defaults for all private chats.',
     {
-      commands: z
+      description: 'Sets (or clears) the slash-command menu shown in Telegram when the user types "/". Pass an array of {command, description} pairs to register commands — e.g. [{command:"cancel",description:"Stop the current task"}]. Pass an empty array to remove all commands. Commands are scoped to the active chat by default ("chat" scope) so they only appear in this conversation. Use scope "default" to set bot-wide defaults for all private chats.',
+      inputSchema: {
+        commands: z
         .array(
           z.object({
             command: z
@@ -48,6 +49,7 @@ export function register(server: McpServer) {
         .describe(
           '"chat" scopes commands to the active chat only (recommended). "default" sets them globally for all private chats.'
         ),
+      },
     },
     async ({ commands, scope }) => {
       const chatId = resolveChat();

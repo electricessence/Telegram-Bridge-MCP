@@ -57,14 +57,15 @@ MCP resources: `telegram-bridge-mcp://communication-guide` (full) · `telegram-b
 ## Commit → Push Flow
 
 1. `notify` summary (silent) before committing.
-2. Commit.
-3. Edit the notify message to add a `↑ Push` button.
-4. `wait_for_callback_query` — wait for operator tap.
-5. `answer_callback_query` to dismiss spinner.
-6. Send `notify` "Pushing…" (save message_id).
-7. Remove the button from step 3.
-8. Push.
-9. Edit "Pushing…" in-place → "✅ Pushed `sha` → `main`".
+2. Review every `.md` file touched during the session — fix any markdown warnings, broken links, inconsistent heading levels, trailing spaces, or formatting issues, however trivial.
+3. Commit.
+4. Edit the notify message to add a `↑ Push` button.
+5. `wait_for_callback_query` — wait for operator tap.
+6. `answer_callback_query` to dismiss spinner.
+7. Send `notify` "Pushing…" (save message_id).
+8. Remove the button from step 4.
+9. Push.
+10. Edit "Pushing…" in-place → "✅ Pushed `sha` → `main`".
 
 ---
 

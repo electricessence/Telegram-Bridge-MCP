@@ -28,11 +28,12 @@ function isTextFile(fileName: string | undefined, mimeType: string | undefined):
 }
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "download_file",
-    "Downloads a file from Telegram by file_id and saves it to a local temp directory. Returns the local path, file name, MIME type, and file size. For text-based files under 100 KB, also returns the file contents as `text`. Only call this after the user has chosen an action that requires the file — do not download speculatively.",
     {
-      file_id: z
+      description: "Downloads a file from Telegram by file_id and saves it to a local temp directory. Returns the local path, file name, MIME type, and file size. For text-based files under 100 KB, also returns the file contents as `text`. Only call this after the user has chosen an action that requires the file — do not download speculatively.",
+      inputSchema: {
+        file_id: z
         .string()
         .describe("The Telegram file_id returned by wait_for_message or get_updates"),
       file_name: z
@@ -43,6 +44,7 @@ export function register(server: McpServer) {
         .string()
         .optional()
         .describe("MIME type hint from the message, used to determine if text contents should be returned."),
+      },
     },
     async ({ file_id, file_name, mime_type }) => {
       try {

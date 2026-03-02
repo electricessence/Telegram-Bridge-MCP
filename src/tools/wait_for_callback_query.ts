@@ -15,11 +15,12 @@ import { toResult, toError, pollUntil } from "../telegram.js";
  *  - Non-matching updates are still consumed so they don't block the queue.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "wait_for_callback_query",
-    "Blocks (long-poll) until an inline button is pressed, then returns the callback data. Low-level primitive — use only when buttons must remain active across multiple presses (e.g. persistent or broadcast keyboards). For single-use Yes/No use send_confirmation; for single-use N-option use choose.",
     {
-      timeout_seconds: z
+      description: "Blocks (long-poll) until an inline button is pressed, then returns the callback data. Low-level primitive — use only when buttons must remain active across multiple presses (e.g. persistent or broadcast keyboards). For single-use Yes/No use send_confirmation; for single-use N-option use choose.",
+      inputSchema: {
+        timeout_seconds: z
         .number()
         .int()
         .min(1)
@@ -31,6 +32,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Only accept callbacks on this specific message"),
+      },
     },
     async ({ timeout_seconds, message_id }) => {
       try {

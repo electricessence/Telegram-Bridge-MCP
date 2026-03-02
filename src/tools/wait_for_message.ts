@@ -164,11 +164,12 @@ async function serializeMessage(msg: Message): Promise<Record<string, unknown>> 
  * message as `reactions[]` so they are never silently discarded.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "wait_for_message",
-    "Blocks (long-poll) until any message is received (text, voice, document, photo, audio, video, sticker, etc.), then returns structured data. Voice messages are auto-transcribed. Optionally filter by sender user_id. Returns { timed_out: true } on expiry. Unknown message types return a note asking what to do. Non-matching updates (reactions, callback queries, etc.) are buffered and available via get_updates — nothing is ever dropped.",
     {
-      timeout_seconds: z
+      description: "Blocks (long-poll) until any message is received (text, voice, document, photo, audio, video, sticker, etc.), then returns structured data. Voice messages are auto-transcribed. Optionally filter by sender user_id. Returns { timed_out: true } on expiry. Unknown message types return a note asking what to do. Non-matching updates (reactions, callback queries, etc.) are buffered and available via get_updates — nothing is ever dropped.",
+      inputSchema: {
+        timeout_seconds: z
         .number()
         .int()
         .min(1)
@@ -180,6 +181,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Only accept messages from this Telegram user ID"),
+      },
     },
     async ({ timeout_seconds, user_id }) => {
       try {

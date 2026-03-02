@@ -13,11 +13,12 @@ import { applyTopicToText } from "../topic-state.js";
  * chat_id matching so the agent only gets the reply from the same chat.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "ask",
-    "Sends a question to a chat and blocks until the user replies with a text message. Returns the reply text directly. Use for open-ended prompts where a button isn't appropriate.",
     {
-      question: z.string().describe("The question to send"),
+      description: "Sends a question to a chat and blocks until the user replies with a text message. Returns the reply text directly. Use for open-ended prompts where a button isn't appropriate.",
+      inputSchema: {
+        question: z.string().describe("The question to send"),
       timeout_seconds: z
         .number()
         .int()
@@ -30,6 +31,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID — shows quoted message above the question"),
+      },
     },
     async ({ question, timeout_seconds, reply_to_message_id }) => {
       const chatId = resolveChat();

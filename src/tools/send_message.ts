@@ -8,11 +8,12 @@ import { applyTopicToText } from "../topic-state.js";
 import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_message",
-    "Sends a text message to a Telegram chat. Default parse_mode is Markdown — write standard Markdown (*bold*, _italic_, `code`, **bold**, [links](url)) and it is auto-converted so no manual escaping is needed. Use MarkdownV2 for full control, or HTML for punctuation-heavy content. Messages longer than 4096 characters are automatically split and sent as sequential parts. When TTS is configured (TTS_HOST or OPENAI_API_KEY env var), setting voice:true sends the message as a spoken voice note instead; formatting is stripped to plain text before synthesis.",
     {
-      text: z.string().describe("Message text. Automatically split into multiple messages if longer than 4096 characters."),
+      description: "Sends a text message to a Telegram chat. Default parse_mode is Markdown — write standard Markdown (*bold*, _italic_, `code`, **bold**, [links](url)) and it is auto-converted so no manual escaping is needed. Use MarkdownV2 for full control, or HTML for punctuation-heavy content. Messages longer than 4096 characters are automatically split and sent as sequential parts. When TTS is configured (TTS_HOST or OPENAI_API_KEY env var), setting voice:true sends the message as a spoken voice note instead; formatting is stripped to plain text before synthesis.",
+      inputSchema: {
+        text: z.string().describe("Message text. Automatically split into multiple messages if longer than 4096 characters."),
       parse_mode: z
         .enum(["Markdown", "HTML", "MarkdownV2"])
         .default("Markdown")
@@ -34,6 +35,7 @@ export function register(server: McpServer) {
           "Requires TTS_HOST or OPENAI_API_KEY to be configured. " +
           "Formatting is stripped to plain text before synthesis — no markdown in audio."
         ),
+      },
     },
     async ({ text, parse_mode, disable_notification, reply_to_message_id, voice }) => {
       const chatId = resolveChat();

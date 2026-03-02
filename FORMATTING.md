@@ -2,11 +2,11 @@
 
 Three formatting modes are available. Choose based on your content:
 
-|Mode|Best for|
-|---|---|
-|**Markdown** (default)|Standard Markdown auto-converted — zero escaping needed.|
-|**MarkdownV2**|Full Telegram V2 control; you handle all escaping manually.|
-|**HTML**|Punctuation-heavy content or advanced layout features.|
+| Mode | Best for |
+| --- | --- |
+| **Markdown** (default) | Standard Markdown auto-converted — zero escaping needed. |
+| **MarkdownV2** | Full Telegram V2 control; you handle all escaping manually. |
+| **HTML** | Punctuation-heavy content or advanced layout features. |
 
 ---
 
@@ -18,14 +18,14 @@ automatically — no manual escaping required.
 
 ### Supported syntax
 
-|Syntax|Result|
-|---|---|
-|`*bold*` or `**bold**`|**Bold**|
-|`_italic_`|_Italic_|
-|`__underline__`|Underline|
-|`` `code` ``|Inline code|
-|`[text](url)`|Hyperlink|
-|`# Heading`|Bold heading|
+| Syntax | Result |
+| --- | --- |
+| `*bold*` or `**bold**` | **Bold** |
+| `_italic_` | _Italic_ |
+| `__underline__` | Underline |
+| `` `code` `` | Inline code |
+| `[text](url)` | Hyperlink |
+| `# Heading` | Bold heading |
 
 Plain text is passed through with all MarkdownV2 special characters
 escaped automatically — periods, dashes, exclamation marks, parens, etc.
@@ -62,19 +62,19 @@ Pass `parse_mode: "HTML"`.
 Best for content with heavy punctuation.
 Only `&`, `<`, `>` need escaping.
 
-|Tag|Effect|
-|---|---|
-|`<b>text</b>`|**Bold**|
-|`<i>text</i>`|_Italic_|
-|`<u>text</u>`|Underline|
-|`<s>text</s>`|Strikethrough|
-|`<code>text</code>`|Inline monospace|
-|`<pre>text</pre>`|Monospace block|
-|`<pre><code class="language-python">...</code></pre>`|Syntax-highlighted block|
-|`<a href="URL">text</a>`|Hyperlink|
-|`<tg-spoiler>text</tg-spoiler>`|Hidden spoiler text|
-|`<blockquote>text</blockquote>`|Block quote|
-|`<blockquote expandable>text</blockquote>`|Collapsible block quote|
+| Tag | Effect |
+| --- | --- |
+| `<b>text</b>` | **Bold** |
+| `<i>text</i>` | _Italic_ |
+| `<u>text</u>` | Underline |
+| `<s>text</s>` | Strikethrough |
+| `<code>text</code>` | Inline monospace |
+| `<pre>text</pre>` | Monospace block |
+| `<pre><code class="language-python">...</code></pre>` | Syntax-highlighted block |
+| `<a href="URL">text</a>` | Hyperlink |
+| `<tg-spoiler>text</tg-spoiler>` | Hidden spoiler text |
+| `<blockquote>text</blockquote>` | Block quote |
+| `<blockquote expandable>text</blockquote>` | Collapsible block quote |
 
 ---
 

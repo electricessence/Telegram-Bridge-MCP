@@ -6,11 +6,12 @@ import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_voice",
-    "Sends a voice note to the Telegram chat. The file should be in OGG format encoded with OPUS codec — Telegram will display it as an inline voice message with waveform and playback controls. Accepts a local file path, a public HTTPS URL, or a Telegram file_id.",
     {
-      voice: z
+      description: "Sends a voice note to the Telegram chat. The file should be in OGG format encoded with OPUS codec — Telegram will display it as an inline voice message with waveform and playback controls. Accepts a local file path, a public HTTPS URL, or a Telegram file_id.",
+      inputSchema: {
+        voice: z
         .string()
         .describe("Local absolute file path (e.g. /tmp/voice.ogg), a public HTTPS URL, or a Telegram file_id"),
       caption: z
@@ -35,6 +36,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID"),
+      },
     },
     async ({ voice, caption, parse_mode, duration, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();

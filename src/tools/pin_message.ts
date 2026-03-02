@@ -3,15 +3,17 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "pin_message",
-    "Pins a message in a chat. Requires the bot to have appropriate admin rights.",
     {
-      message_id: z.number().int().describe("ID of the message to pin"),
+      description: "Pins a message in a chat. Requires the bot to have appropriate admin rights.",
+      inputSchema: {
+        message_id: z.number().int().describe("ID of the message to pin"),
       disable_notification: z
         .boolean()
         .optional()
         .describe("Pin without notifying members"),
+      },
     },
     async ({ message_id, disable_notification }) => {
       const chatId = resolveChat();

@@ -18,11 +18,12 @@ const SEVERITY_PREFIX: Record<string, string> = {
  * agent doesn't need to think about HTML or emoji conventions.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "notify",
-    "Sends a formatted notification message to a chat. Handles severity styling (info/success/warning/error) automatically with emoji prefixes and bold titles. The most common agent tool — use for build results, progress updates, and status changes. Default parse_mode is Markdown — write standard Markdown in the body and it is auto-converted, no escaping needed.",
     {
-      title: z.string().describe("Short bold heading, e.g. \"Build Failed\""),
+      description: "Sends a formatted notification message to a chat. Handles severity styling (info/success/warning/error) automatically with emoji prefixes and bold titles. The most common agent tool — use for build results, progress updates, and status changes. Default parse_mode is Markdown — write standard Markdown in the body and it is auto-converted, no escaping needed.",
+      inputSchema: {
+        title: z.string().describe("Short bold heading, e.g. \"Build Failed\""),
       body: z.string().optional().describe("Optional detail paragraph"),
       severity: z
         .enum(["info", "success", "warning", "error"])
@@ -41,6 +42,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID — shows quoted message above the notification"),
+      },
     },
     async ({ title, body, severity, parse_mode, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();

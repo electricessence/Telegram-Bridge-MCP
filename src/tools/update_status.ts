@@ -34,11 +34,12 @@ function renderStatus(
  * status as work progresses.
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "update_status",
-    "Creates or updates a live task checklist message in Telegram. First call (no message_id) sends the message and returns its ID. Subsequent calls edit it in-place with the latest step statuses. Use throughout a multi-step agent task to give the user real-time progress.",
     {
-      title: z.string().describe("Bold heading for the status block, e.g. \"Refactoring: src/auth.ts\""),
+      description: "Creates or updates a live task checklist message in Telegram. First call (no message_id) sends the message and returns its ID. Subsequent calls edit it in-place with the latest step statuses. Use throughout a multi-step agent task to give the user real-time progress.",
+      inputSchema: {
+        title: z.string().describe("Bold heading for the status block, e.g. \"Refactoring: src/auth.ts\""),
       steps: z
         .array(
           z.object({
@@ -56,6 +57,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("ID of the message to edit. Omit on the first call; pass the returned message_id on subsequent calls."),
+      },
     },
     async ({ title, steps, message_id }) => {
       const chatId = resolveChat();

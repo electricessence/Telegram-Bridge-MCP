@@ -1,8 +1,9 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { TelegramError } from "./telegram.js";
 
 const mocks = vi.hoisted(() => ({
   sendChatAction: vi.fn(),
-  resolveChat: vi.fn(() => "123"),
+  resolveChat: vi.fn((): string | TelegramError => "123"),
 }));
 
 vi.mock("./telegram.js", async (importActual) => {
@@ -45,7 +46,7 @@ describe("typing-state", () => {
 
   describe("showTyping", () => {
     it("returns false if resolveChat returns non-string", async () => {
-      mocks.resolveChat.mockReturnValueOnce({ code: "CHAT_NOT_CONFIGURED" });
+      mocks.resolveChat.mockReturnValueOnce({ code: "UNAUTHORIZED_CHAT", message: "test" });
       const result = await showTyping(5);
       expect(result).toBe(false);
       expect(isTypingActive()).toBe(false);

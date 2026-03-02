@@ -6,11 +6,12 @@ import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_photo",
-    "Sends a photo to a chat by public URL or Telegram file_id. Supports captions and inline keyboards.",
     {
-      photo: z
+      description: "Sends a photo to a chat by public URL or Telegram file_id. Supports captions and inline keyboards.",
+      inputSchema: {
+        photo: z
         .string()
         .describe("Public HTTPS URL of the image, or a Telegram file_id"),
       caption: z.string().optional().describe("Optional caption (up to 1024 chars)"),
@@ -27,6 +28,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID — shows quoted message above the photo"),
+      },
     },
     async ({ photo, caption, parse_mode, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();

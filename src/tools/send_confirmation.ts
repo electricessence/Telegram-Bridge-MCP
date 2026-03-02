@@ -21,13 +21,14 @@ import { pollButtonPress, ackAndEditSelection, editWithTimedOut } from "./button
  * interactive across multiple presses (e.g. broadcast / persistent keyboards).
  */
 export function register(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "send_confirmation",
-    "Sends a Yes/No confirmation message and blocks until the user presses a button. Automatically removes buttons and updates the message to show the chosen option. Returns { confirmed: true|false }.",
     {
-      text: z
-        .string()
-        .describe("The question or request requiring confirmation"),
+      description: "Sends a Yes/No confirmation message and blocks until the user presses a button. Automatically removes buttons and updates the message to show the chosen option. Returns { confirmed: true|false }, or { timed_out: true } if the timeout expires without input.",
+      inputSchema: {
+        text: z
+          .string()
+          .describe("The question or request requiring confirmation"),
       yes_text: z
         .string()
         .default("🟢 Yes")
@@ -64,6 +65,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Reply to this message ID — shows quoted message above the confirmation"),
+      },
     },
     async ({ text, yes_text, no_text, yes_data, no_data, yes_style, no_style, timeout_seconds, reply_to_message_id }) => {
       const chatId = resolveChat();
