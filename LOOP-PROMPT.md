@@ -1,4 +1,4 @@
-# Loop Prompt
+# Telegram Loop Prompt
 
 Start a persistent Telegram chat loop using the available Telegram Bridge MCP tools.
 
