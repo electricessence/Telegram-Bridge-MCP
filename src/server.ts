@@ -41,6 +41,10 @@ import { register as registerGetAgentGuide } from "./tools/get_agent_guide.js";
 import { register as registerSendConfirmation } from "./tools/send_confirmation.js";
 import { register as registerSetTopic } from "./tools/set_topic.js";
 import { register as registerSendTempMessage } from "./tools/send_temp_message.js";
+import { register as registerStartSessionRecording } from "./tools/start_session_recording.js";
+import { register as registerCancelSessionRecording } from "./tools/cancel_session_recording.js";
+import { register as registerGetSessionUpdates } from "./tools/get_session_updates.js";
+import { register as registerDumpSessionRecord } from "./tools/dump_session_record.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -96,6 +100,12 @@ export function createServer(): McpServer {
   // ── Polling ──────────────────────────────────────────────────────────────
   registerGetUpdate(server);
   registerGetUpdates(server);
+
+  // ── Session recording ───────────────────────────────────────────
+  registerStartSessionRecording(server);
+  registerCancelSessionRecording(server);
+  registerGetSessionUpdates(server);
+  registerDumpSessionRecord(server);
 
   // ── Resources ────────────────────────────────────────────────────────────
   const agentGuideContent = readFileSync(

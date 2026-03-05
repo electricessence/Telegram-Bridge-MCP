@@ -2,6 +2,7 @@ import { Api, GrammyError, HttpError } from "grammy";
 import type { Update } from "grammy/types";
 import { readFileSync, existsSync } from "fs";
 import { enqueueUpdates, dequeueMatch } from "./update-buffer.js";
+import { recordUpdate } from "./session-recording.js";
 
 // ---------------------------------------------------------------------------
 // Telegram limits (for pre-validation before hitting the API)
@@ -283,6 +284,7 @@ export function getOffset(): number {
 export function advanceOffset(updates: Update[]): void {
   if (updates.length > 0) {
     _offset = Math.max(...updates.map((u) => u.update_id)) + 1;
+    for (const u of updates) recordUpdate(u);
   }
 }
 

@@ -399,6 +399,31 @@ Always acknowledge receipt. Even for stickers or types you can't process, confir
 
 ---
 
+## Tool usage: session recording
+
+Session recording is opt-in, in-memory, and agent-controlled. Use it when you need to review, summarize, or export updates from the current session.
+
+**The four tools:**
+
+| Tool | Purpose |
+| --- | --- |
+| `start_session_recording(max_updates?)` | Begin capturing updates. Resets any existing buffer. Default 50 updates, max 500. |
+| `get_session_updates(messages?, oldest_first?)` | Retrieve buffered updates as structured objects. Newest-first by default. |
+| `dump_session_record(clean?, stop?)` | Export entire buffer as a formatted text log. `clean=true` clears buffer; `stop=true` also stops recording. |
+| `cancel_session_recording()` | Stop recording and **discard** the buffer. Call `dump_session_record` or `get_session_updates` first if you need the data. |
+
+**Key rules:**
+
+- Recording is **off by default** — call `start_session_recording` to opt in.
+- `cancel_session_recording` discards the buffer. Always export first if the data matters.
+- `dump_session_record(stop: true)` is the idiomatic end-of-session call — it exports, stops, and clears in one step.
+- The buffer is in-memory only. It does not persist across server restarts.
+- The buffer is a ring — oldest entries are evicted when `max_updates` is reached.
+
+See `SESSION-RECORDING.md` for full documentation and workflow examples.
+
+---
+
 ## Restart flow
 
 After calling `restart_server` (or the server restarts for any reason):
