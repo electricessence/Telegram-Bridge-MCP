@@ -9,10 +9,8 @@ Start a persistent Telegram chat loop using the available Telegram Bridge MCP to
 3. Call `get_update` in a loop until `remaining == 0` — drain stale messages one at a time.
 4. Send a **silent** `notify` that you're online and ready.
 5. Ask the operator whether they'd like the session recorded:
-   ```
-   choose("Record this session?", ["Yes", "No"])
-   ```
-   If **Yes**: read `SESSION-RECORDING.md` for full guidance on recording tools and workflows.
+   `send_confirmation("🧠 Enable temporary recall?", yes_text: "🔴 Record", no_text: "⬛ Skip")`
+   If **Yes**: call `start_session_recording(100)`, then read `SESSION-RECORDING.md` for full guidance on recording tools and workflows.
 
 ## Key Capabilities
 
