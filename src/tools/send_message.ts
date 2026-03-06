@@ -11,7 +11,7 @@ export function register(server: McpServer) {
   server.registerTool(
     "send_message",
     {
-      description: "Sends a text message to a Telegram chat. Default parse_mode is Markdown — write standard Markdown (*bold*, _italic_, `code`, **bold**, [links](url)) and it is auto-converted so no manual escaping is needed. Use MarkdownV2 for full control, or HTML for punctuation-heavy content. Messages longer than 4096 characters are automatically split and sent as sequential parts. When TTS is configured (TTS_HOST or OPENAI_API_KEY env var), setting voice:true sends the message as a spoken voice note instead; formatting is stripped to plain text before synthesis.",
+      description: "Sends a text message to a Telegram chat. Default parse_mode is Markdown — write standard Markdown (*bold*, _italic_, `code`, **bold**, [links](url)) and it is auto-converted so no manual escaping is needed. Use MarkdownV2 for full control, or HTML for punctuation-heavy content. Messages longer than 4096 characters are automatically split and sent as sequential parts. When TTS is configured (TTS_HOST or OPENAI_API_KEY env var), setting voice:true synthesizes the text to speech and sends it as a voice note — use this to speak a response aloud. To send an existing audio file, use send_voice instead.",
       inputSchema: {
         text: z.string().describe("Message text. Automatically split into multiple messages if longer than 4096 characters."),
       parse_mode: z

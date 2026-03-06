@@ -9,7 +9,7 @@ export function register(server: McpServer) {
   server.registerTool(
     "send_voice",
     {
-      description: "Sends a voice note to the Telegram chat. The file should be in OGG format encoded with OPUS codec — Telegram will display it as an inline voice message with waveform and playback controls. Accepts a local file path, a public HTTPS URL, or a Telegram file_id.",
+      description: "Sends an existing audio file as a voice note — use this when you already have an OGG/Opus file (local path, public URL, or Telegram file_id). To synthesize and speak text as a voice note, use send_message with voice:true instead.",
       inputSchema: {
         voice: z
         .string()

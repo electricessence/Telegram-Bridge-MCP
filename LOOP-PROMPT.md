@@ -14,7 +14,7 @@ Start a persistent Telegram chat loop using the available Telegram Bridge MCP to
 
 ## Key Capabilities
 
-- **Voice messages** — Send responses as spoken audio via `send_message` with `voice: true`. Operators can listen while driving or multitasking.
+- **Voice responses** — Speak replies aloud via `send_message` with `voice: true` (requires TTS). Operators can listen while driving or multitasking. To send an existing audio file, use `send_voice` instead.
 - **Interactive buttons** — Use `send_confirmation` or `choose` for human-friendly Yes/No decisions and multi-option menus. Humans prefer clicking buttons over typing.
 - **Temporary Messages** — Use `send_temp_message` to indicate "Thinking...", "Investigating...", or "On it!". Humans like to know what's going on.
 - **Reactions** — Use `set_reaction` to help reflect acknowledgment or activity.

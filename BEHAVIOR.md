@@ -269,6 +269,15 @@ All message-receiving tools (`wait_for_message`, `ask`, `choose`, `get_updates`,
 
 Transcription is transparent — returned as `text` with `voice: true` in the result.
 
+### Sending voice: `send_message` vs `send_voice`
+
+| Tool | When to use |
+| --- | --- |
+| `send_message(voice: true)` | **Speak a text response via TTS.** The text is synthesized to speech and sent as a voice note. Requires `TTS_HOST` or `OPENAI_API_KEY`. Use this to reply in audio. |
+| `send_voice(voice: <file>)` | **Send an existing audio file.** Accepts a local OGG/Opus file path, public URL, or Telegram `file_id`. Use this when you already have audio to deliver. |
+
+Never call `send_voice` to speak text — it only accepts pre-existing audio files.
+
 ### TTS delivery error: "user restricted receiving of voice note messages"
 
 If `send_message` (or `send_voice`) returns:
