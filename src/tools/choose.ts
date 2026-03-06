@@ -10,6 +10,7 @@ import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 import { applyTopicToText } from "../topic-state.js";
 import { pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped, editWithTimedOut } from "./button-helpers.js";
+import { recordBotMessage } from "../session-recording.js";
 
 /**
  * Sends a question with labeled option buttons and blocks until one is pressed.
@@ -105,6 +106,7 @@ export function register(server: McpServer) {
           reply_markup: { inline_keyboard: rows },
           reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
         });
+        recordBotMessage({ content_type: "text", text: question, message_id: sent.message_id });
 
         const match = await pollButtonOrTextOrVoice(chatId, sent.message_id, timeout_seconds);
 

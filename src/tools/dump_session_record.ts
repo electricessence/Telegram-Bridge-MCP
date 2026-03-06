@@ -2,14 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { toError } from "../telegram.js";
 import {
-  getRecordedUpdates,
+  getSessionEntries,
   isRecording,
   recordedCount,
   getMaxUpdates,
   clearRecording,
   stopRecording,
 } from "../session-recording.js";
-import { sanitizeUpdates } from "../update-sanitizer.js";
+import { sanitizeSessionEntries } from "../update-sanitizer.js";
 
 function formatLog(
   updates: Record<string, unknown>[],
@@ -33,13 +33,28 @@ function formatLog(
   } else {
     updates.forEach((u, i) => {
       const idx = i + 1;
+      const from = String(u.from ?? "user");
+      const fromLabel = from === "bot" ? "[BOT]" : "[USER]";
+
+      // ── Bot-sent entry ──────────────────────────────────────────────────
+      if (from === "bot") {
+        const contentType = String(u.content_type ?? "unknown");
+        const msgId = u.message_id != null ? `msg_id: ${u.message_id}` : "";
+        lines.push(`[${idx}] ${fromLabel} ${contentType} | ${msgId}`);
+        if (u.text) lines.push(String(u.text));
+        if (u.caption) lines.push(`Caption: ${u.caption}`);
+        lines.push("");
+        return;
+      }
+
+      // ── User-sent entry ─────────────────────────────────────────────────
       const type = String(u.type ?? "unknown");
 
       if (type === "message") {
         const contentType = String(u.content_type ?? "unknown");
         const msgId = u.message_id != null ? `msg_id: ${u.message_id}` : "";
         const replyTo = u.reply_to_message_id != null ? ` (reply to: ${u.reply_to_message_id})` : "";
-        lines.push(`[${idx}] message · ${contentType} | ${msgId}${replyTo}`);
+        lines.push(`[${idx}] ${fromLabel} message · ${contentType} | ${msgId}${replyTo}`);
 
         if (u.text)  lines.push(String(u.text));
         if (u.caption) lines.push(`Caption: ${u.caption}`);
@@ -51,18 +66,18 @@ function formatLog(
           lines.push(`[unknown content, keys: ${(u.content_keys as string[]).join(", ")}]`);
       } else if (type === "callback_query") {
         const msgId = u.message_id != null ? `msg_id: ${u.message_id}` : "";
-        lines.push(`[${idx}] callback_query | ${msgId}`);
+        lines.push(`[${idx}] ${fromLabel} callback_query | ${msgId}`);
         if (u.data) lines.push(`data: ${u.data}`);
       } else if (type === "message_reaction") {
         const msgId = u.message_id != null ? `msg_id: ${u.message_id}` : "";
-        lines.push(`[${idx}] message_reaction | ${msgId}`);
+        lines.push(`[${idx}] ${fromLabel} message_reaction | ${msgId}`);
         const added = Array.isArray(u.emoji_added) && u.emoji_added.length
           ? u.emoji_added.join(" ") : "(none)";
         const removed = Array.isArray(u.emoji_removed) && u.emoji_removed.length
           ? u.emoji_removed.join(" ") : "(none)";
         lines.push(`Added: ${added}  Removed: ${removed}`);
       } else {
-        lines.push(`[${idx}] ${type}`);
+        lines.push(`[${idx}] ${fromLabel} ${type}`);
       }
 
       lines.push("");
@@ -100,8 +115,8 @@ export function register(server: McpServer) {
     },
     async ({ clean, stop }) => {
       try {
-        const all = getRecordedUpdates(); // oldest → newest
-        const sanitized = await sanitizeUpdates(all);
+        const all = getSessionEntries(); // oldest → newest
+        const sanitized = await sanitizeSessionEntries(all);
         const recording = isRecording();
         const total = recordedCount();
         const maxUpdates = getMaxUpdates();

@@ -2,14 +2,31 @@
  * Opt-in session recording.
  * Recording is off by default — the agent must explicitly call
  * start_session_recording() to enable it.
- * While active, every update that passes through advanceOffset() is captured.
+ * While active, every inbound update and every bot-sent message is captured.
  */
 
 import type { Update } from "grammy/types";
 
+export interface UserEntry {
+  direction: "user";
+  update: Update;
+}
+
+export interface BotEntry {
+  direction: "bot";
+  timestamp: string;
+  message_id?: number;
+  message_ids?: number[];
+  content_type: string;
+  text?: string;
+  caption?: string;
+}
+
+export type SessionEntry = UserEntry | BotEntry;
+
 let _active = false;
 let _maxUpdates = 50;
-let _buffer: Update[] = [];
+let _buffer: SessionEntry[] = [];
 
 export function startRecording(maxUpdates: number = 50): void {
   _active = true;
@@ -25,15 +42,30 @@ export function isRecording(): boolean {
   return _active;
 }
 
-/** Called by advanceOffset() — no-op when recording is off. */
+/** Called by advanceOffset() — records an inbound user update. */
 export function recordUpdate(update: Update): void {
   if (!_active) return;
   if (_buffer.length >= _maxUpdates) _buffer.shift();
-  _buffer.push(update);
+  _buffer.push({ direction: "user", update });
 }
 
-export function getRecordedUpdates(): Update[] {
+/** Called by send tools — records an outbound bot message. */
+export function recordBotMessage(entry: Omit<BotEntry, "direction" | "timestamp">): void {
+  if (!_active) return;
+  if (_buffer.length >= _maxUpdates) _buffer.shift();
+  _buffer.push({ direction: "bot", timestamp: new Date().toISOString(), ...entry });
+}
+
+/** Returns all session entries (user + bot) in capture order (oldest first). */
+export function getSessionEntries(): SessionEntry[] {
   return [..._buffer];
+}
+
+/** @deprecated Use getSessionEntries() for the full conversation. Kept for backward compat. */
+export function getRecordedUpdates(): Update[] {
+  return _buffer
+    .filter((e): e is UserEntry => e.direction === "user")
+    .map((e) => e.update);
 }
 
 export function recordedCount(): number {

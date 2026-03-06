@@ -4,6 +4,7 @@ import { toResult, toError, validateCaption, resolveChat, sendVoiceDirect } from
 import { resolveParseMode } from "../markdown.js";
 import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
+import { recordBotMessage } from "../session-recording.js";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -62,6 +63,7 @@ export function register(server: McpServer) {
           reply_to_message_id,
         });
         cancelTyping();
+        recordBotMessage({ content_type: "voice", caption, message_id: msg.message_id });
         return toResult({
           message_id: msg.message_id,
           file_id: (msg.voice as any)?.file_id,

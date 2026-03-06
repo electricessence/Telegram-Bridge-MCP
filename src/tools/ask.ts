@@ -6,6 +6,7 @@ import { transcribeWithIndicator } from "../transcribe.js";
 import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 import { applyTopicToText } from "../topic-state.js";
+import { recordBotMessage } from "../session-recording.js";
 
 /**
  * Sends a question and blocks until the user types a reply.
@@ -47,6 +48,7 @@ export function register(server: McpServer) {
           parse_mode: "MarkdownV2",
           reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
         });
+        recordBotMessage({ content_type: "text", text: question, message_id: sent.message_id });
 
         // Poll with 1 s ticks for the reply (text or voice).
         // Only match messages sent AFTER our question (message_id > sent.message_id)

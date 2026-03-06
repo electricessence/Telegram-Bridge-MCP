@@ -4,6 +4,7 @@ import { getApi, toResult, toError, validateCaption, resolveChat, callApi } from
 import { resolveParseMode } from "../markdown.js";
 import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
+import { recordBotMessage } from "../session-recording.js";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -48,6 +49,7 @@ export function register(server: McpServer) {
           reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
         }));
         cancelTyping();
+        recordBotMessage({ content_type: "photo", caption, message_id: msg.message_id });
         return toResult({
           message_id: msg.message_id,
           caption: msg.caption,

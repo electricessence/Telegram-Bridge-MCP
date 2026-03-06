@@ -1,9 +1,10 @@
 /**
  * Converts raw Telegram Update objects into structured, agent-readable objects.
- * Shared by get_update and get_updates.
+ * Shared by get_update, get_updates, and session recording tools.
  */
 
 import type { Update } from "grammy/types";
+import type { SessionEntry, BotEntry } from "./session-recording.js";
 import { transcribeWithIndicator } from "./transcribe.js";
 
 export async function sanitizeUpdate(u: Update): Promise<Record<string, unknown>> {
@@ -67,4 +68,18 @@ export async function sanitizeUpdate(u: Update): Promise<Record<string, unknown>
 
 export async function sanitizeUpdates(updates: Update[]): Promise<Record<string, unknown>[]> {
   return Promise.all(updates.map(sanitizeUpdate));
+}
+
+/** Sanitizes a single SessionEntry (user or bot) into a displayable record. */
+export async function sanitizeSessionEntry(entry: SessionEntry): Promise<Record<string, unknown>> {
+  if (entry.direction === "user") {
+    const sanitized = await sanitizeUpdate(entry.update);
+    return { from: "user", ...sanitized };
+  }
+  const { direction, ...rest } = entry as BotEntry;
+  return { from: "bot", ...rest };
+}
+
+export async function sanitizeSessionEntries(entries: SessionEntry[]): Promise<Record<string, unknown>[]> {
+  return Promise.all(entries.map(sanitizeSessionEntry));
 }

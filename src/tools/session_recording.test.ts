@@ -6,6 +6,7 @@ const recMocks = vi.hoisted(() => ({
   stopRecording: vi.fn(),
   isRecording: vi.fn(() => false),
   recordedCount: vi.fn(() => 0),
+  getSessionEntries: vi.fn(() => [] as any[]),
   getRecordedUpdates: vi.fn(() => [] as any[]),
   clearRecording: vi.fn(),
   getMaxUpdates: vi.fn(() => 50),
@@ -116,12 +117,13 @@ describe("get_session_updates tool", () => {
     update_id: id,
     message: { message_id: id, text, chat: { id: 42 } },
   });
+  const makeEntry = (id: number, text: string) => ({ direction: "user" as const, update: makeUpdate(id, text) });
 
   beforeEach(() => {
     vi.clearAllMocks();
     recMocks.isRecording.mockReturnValue(true);
     recMocks.recordedCount.mockReturnValue(0);
-    recMocks.getRecordedUpdates.mockReturnValue([]);
+    recMocks.getSessionEntries.mockReturnValue([]);
     const server = createMockServer();
     registerGet(server as any);
     call = server.getHandler("get_session_updates");
@@ -137,8 +139,8 @@ describe("get_session_updates tool", () => {
   });
 
   it("returns newest-first by default", async () => {
-    const updates = [makeUpdate(1, "first"), makeUpdate(2, "second"), makeUpdate(3, "third")];
-    recMocks.getRecordedUpdates.mockReturnValue(updates);
+    const entries = [makeEntry(1, "first"), makeEntry(2, "second"), makeEntry(3, "third")];
+    recMocks.getSessionEntries.mockReturnValue(entries);
     recMocks.recordedCount.mockReturnValue(3);
 
     const result = await call({});
@@ -149,8 +151,8 @@ describe("get_session_updates tool", () => {
   });
 
   it("returns oldest-first when oldest_first=true", async () => {
-    const updates = [makeUpdate(1, "first"), makeUpdate(2, "second"), makeUpdate(3, "third")];
-    recMocks.getRecordedUpdates.mockReturnValue(updates);
+    const entries = [makeEntry(1, "first"), makeEntry(2, "second"), makeEntry(3, "third")];
+    recMocks.getSessionEntries.mockReturnValue(entries);
 
     const result = await call({ oldest_first: true });
     const data = parseResult(result) as any;
@@ -159,8 +161,8 @@ describe("get_session_updates tool", () => {
   });
 
   it("respects messages param", async () => {
-    const updates = [makeUpdate(1, "a"), makeUpdate(2, "b"), makeUpdate(3, "c"), makeUpdate(4, "d")];
-    recMocks.getRecordedUpdates.mockReturnValue(updates);
+    const entries = [makeEntry(1, "a"), makeEntry(2, "b"), makeEntry(3, "c"), makeEntry(4, "d")];
+    recMocks.getSessionEntries.mockReturnValue(entries);
     recMocks.recordedCount.mockReturnValue(4);
 
     const result = await call({ messages: 2 });
@@ -172,7 +174,7 @@ describe("get_session_updates tool", () => {
   });
 
   it("sanitizes updates (text → content_type=text)", async () => {
-    recMocks.getRecordedUpdates.mockReturnValue([makeUpdate(10, "hello")]);
+    recMocks.getSessionEntries.mockReturnValue([makeEntry(10, "hello")]);
     recMocks.recordedCount.mockReturnValue(1);
 
     const result = await call({});
@@ -182,8 +184,8 @@ describe("get_session_updates tool", () => {
   });
 
   it("reports total_captured separately from returned", async () => {
-    const updates = [makeUpdate(1, "a"), makeUpdate(2, "b"), makeUpdate(3, "c")];
-    recMocks.getRecordedUpdates.mockReturnValue(updates);
+    const entries = [makeEntry(1, "a"), makeEntry(2, "b"), makeEntry(3, "c")];
+    recMocks.getSessionEntries.mockReturnValue(entries);
     recMocks.recordedCount.mockReturnValue(3);
 
     const result = await call({ messages: 1 });
@@ -201,16 +203,16 @@ describe("dump_session_record tool", () => {
   const getText = (result: unknown) =>
     (result as { content: { text: string }[] }).content[0].text;
 
-  const makeUpdate = (id: number, text: string) => ({
-    update_id: id,
-    message: { message_id: id, text, chat: { id: 42 } },
+  const makeEntry = (id: number, text: string) => ({
+    direction: "user" as const,
+    update: { update_id: id, message: { message_id: id, text, chat: { id: 42 } } },
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
     recMocks.isRecording.mockReturnValue(false);
     recMocks.recordedCount.mockReturnValue(0);
-    recMocks.getRecordedUpdates.mockReturnValue([]);
+    recMocks.getSessionEntries.mockReturnValue([]);
     recMocks.getMaxUpdates.mockReturnValue(50);
     const server = createMockServer();
     registerDump(server as any);
@@ -236,7 +238,7 @@ describe("dump_session_record tool", () => {
   });
 
   it("formats text messages in the log", async () => {
-    recMocks.getRecordedUpdates.mockReturnValue([makeUpdate(7, "Hello world")]);
+    recMocks.getSessionEntries.mockReturnValue([makeEntry(7, "Hello world")]);
     recMocks.recordedCount.mockReturnValue(1);
     const result = await call({ clean: false });
     const text = getText(result);
@@ -249,6 +251,80 @@ describe("dump_session_record tool", () => {
     const result = await call({ clean: false });
     const text = getText(result);
     expect(text).toContain("(no updates captured)");
+  });
+
+  it("labels user messages with [USER]", async () => {
+    recMocks.getSessionEntries.mockReturnValue([makeEntry(3, "Hey bot!")]);
+    recMocks.recordedCount.mockReturnValue(1);
+    const text = getText(await call({}));
+    expect(text).toContain("[USER]");
+    expect(text).toContain("Hey bot!");
+  });
+
+  it("labels bot messages with [BOT]", async () => {
+    const botEntry = {
+      direction: "bot" as const,
+      timestamp: "2026-03-06T00:00:00.000Z",
+      content_type: "text",
+      text: "Hello from the bot!",
+      message_id: 99,
+    };
+    recMocks.getSessionEntries.mockReturnValue([botEntry]);
+    recMocks.recordedCount.mockReturnValue(1);
+    const text = getText(await call({}));
+    expect(text).toContain("[BOT]");
+    expect(text).toContain("Hello from the bot!");
+    expect(text).toContain("msg_id: 99");
+  });
+
+  it("interleaves [USER] and [BOT] entries in order", async () => {
+    const entries = [
+      {
+        direction: "user" as const,
+        update: { update_id: 1, message: { message_id: 1, text: "What time is it?", chat: { id: 42 } } },
+      },
+      {
+        direction: "bot" as const,
+        timestamp: "2026-03-06T00:00:01.000Z",
+        content_type: "text",
+        text: "It is noon.",
+        message_id: 2,
+      },
+      {
+        direction: "user" as const,
+        update: { update_id: 3, message: { message_id: 3, text: "Thanks!", chat: { id: 42 } } },
+      },
+    ];
+    recMocks.getSessionEntries.mockReturnValue(entries);
+    recMocks.recordedCount.mockReturnValue(3);
+    const text = getText(await call({}));
+
+    // All three entries appear
+    expect(text).toContain("What time is it?");
+    expect(text).toContain("It is noon.");
+    expect(text).toContain("Thanks!");
+
+    // Order: [USER] before [BOT] before [USER]
+    const userIdx1 = text.indexOf("[1] [USER]");
+    const botIdx   = text.indexOf("[2] [BOT]");
+    const userIdx2 = text.indexOf("[3] [USER]");
+    expect(userIdx1).toBeLessThan(botIdx);
+    expect(botIdx).toBeLessThan(userIdx2);
+  });
+
+  it("bot voice entry shows content_type voice", async () => {
+    const botEntry = {
+      direction: "bot" as const,
+      timestamp: "2026-03-06T00:00:02.000Z",
+      content_type: "voice",
+      text: "Spoken reply text",
+      message_id: 5,
+    };
+    recMocks.getSessionEntries.mockReturnValue([botEntry]);
+    recMocks.recordedCount.mockReturnValue(1);
+    const text = getText(await call({}));
+    expect(text).toContain("[BOT] voice");
+    expect(text).toContain("Spoken reply text");
   });
 
   it("calls clearRecording when clean=true", async () => {

@@ -5,6 +5,7 @@ import { markdownToV2, escapeV2, escapeHtml } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 import { applyTopicToTitle } from "../topic-state.js";
+import { recordBotMessage } from "../session-recording.js";
 
 const SEVERITY_PREFIX: Record<string, string> = {
   info: "ℹ️",
@@ -72,6 +73,7 @@ export function register(server: McpServer) {
           disable_notification,
           reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
         });
+        recordBotMessage({ content_type: "text", text: `${title}${body ? "\n" + body : ""}`, message_id: msg.message_id });
         return toResult({ message_id: msg.message_id });
       } catch (err) {
         return toError(err);

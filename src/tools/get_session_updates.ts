@@ -1,8 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { toResult, toError } from "../telegram.js";
-import { getRecordedUpdates, isRecording, recordedCount } from "../session-recording.js";
-import { sanitizeUpdates } from "../update-sanitizer.js";
+import { getSessionEntries, isRecording, recordedCount } from "../session-recording.js";
+import { sanitizeSessionEntries } from "../update-sanitizer.js";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -28,10 +28,10 @@ export function register(server: McpServer) {
     },
     async ({ messages, oldest_first }) => {
       try {
-        const all = getRecordedUpdates(); // oldest → newest
+        const all = getSessionEntries(); // oldest → newest
         const ordered = oldest_first ? all : [...all].reverse();
         const slice = messages ? ordered.slice(0, messages) : ordered;
-        const sanitized = await sanitizeUpdates(slice);
+        const sanitized = await sanitizeSessionEntries(slice);
         return toResult({
           recording: isRecording(),
           total_captured: recordedCount(),

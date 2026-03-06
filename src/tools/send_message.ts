@@ -6,6 +6,7 @@ import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 import { applyTopicToText } from "../topic-state.js";
 import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
+import { recordBotMessage } from "../session-recording.js";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -68,8 +69,10 @@ export function register(server: McpServer) {
           }
           cancelTyping();
           if (message_ids.length === 1) {
+            recordBotMessage({ content_type: "voice", text: plainText, message_id: message_ids[0] });
             return toResult({ message_id: message_ids[0], voice: true });
           }
+          recordBotMessage({ content_type: "voice", text: plainText, message_ids });
           return toResult({ message_ids, chunks: message_ids.length, split: true, voice: true });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -118,8 +121,10 @@ export function register(server: McpServer) {
         }
 
         if (message_ids.length === 1) {
+          recordBotMessage({ content_type: "text", text, message_id: message_ids[0] });
           return toResult({ message_id: message_ids[0] });
         }
+        recordBotMessage({ content_type: "text", text, message_ids });
         return toResult({ message_ids, chunks: message_ids.length, split: true });
       } catch (err) {
         return toError(err);

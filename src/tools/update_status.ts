@@ -5,6 +5,7 @@ import { escapeHtml } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 import { applyTopicToTitle } from "../topic-state.js";
+import { recordBotMessage } from "../session-recording.js";
 
 const STATUS_ICON: Record<string, string> = {
   pending:  "⬜",
@@ -82,6 +83,7 @@ export function register(server: McpServer) {
           const msg = await getApi().sendMessage(chatId, text, {
             parse_mode: "HTML",
           });
+          recordBotMessage({ content_type: "text", text: title, message_id: msg.message_id });
           return toResult({
             message_id: msg.message_id,
             hint: "Pass this message_id to future update_status calls to edit in-place.",

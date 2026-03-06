@@ -6,6 +6,7 @@ import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 import { applyTopicToText } from "../topic-state.js";
 import { pollButtonPress, ackAndEditSelection, editWithTimedOut } from "./button-helpers.js";
+import { recordBotMessage } from "../session-recording.js";
 
 /**
  * Convenience tool for agent→human Yes/No confirmation flows.
@@ -86,6 +87,7 @@ export function register(server: McpServer) {
             ]],
           },
         });
+        recordBotMessage({ content_type: "text", text, message_id: sent.message_id });
 
         const cq = await pollButtonPress(chatId, sent.message_id, timeout_seconds);
 
