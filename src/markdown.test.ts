@@ -107,11 +107,20 @@ describe("markdownToV2", () => {
     expect(out).not.toMatch(/\\"/);
   });
 
-  it("preserves backslashes inside fenced code blocks (not collapsed by MCP normalization)", () => {
-    // Backslashes inside code blocks must not be touched by the \\ → \ normalization
-    const input = "```\nC:\\\\Users\\\\name\n```";
+  it("MarkdownV2-escapes backslashes inside fenced code block body", () => {
+    // A single \ in code content must become \\\ for MarkdownV2
+    const input = "```\na = x\\y\n```"; // body has: a = x\y
     const out = markdownToV2(input);
-    expect(out).toContain("C:\\\\Users\\\\name");
+    expect(out).toContain("x\\\\y"); // a = x\\y (escaped)
+  });
+
+  it("does not MCP-normalize inside fenced code blocks", () => {
+    // \\n inside a code block stays as the two literal chars backslash+n, not a real newline
+    // After MarkdownV2 escaping, \ → \\\ so \\n → \\\\n
+    const input = "```\nprintf(\"hello\\nworld\");\n```"; // body: printf("hello\nworld");
+    const out = markdownToV2(input);
+    expect(out).not.toMatch(/hello\nworld/); // no real newline introduced
+    expect(out).toContain("hello\\\\nworld");  // \ escaped to \\\\
   });
 });
 

@@ -49,14 +49,14 @@ export function markdownToV2(input: string, partial = true): string {
   const codeBlocks: string[] = [];
   let text = input.replace(/```([^\n`]*)\n([\s\S]*?)```/g, (_m, lang, body) => {
     const idx = codeBlocks.length;
-    codeBlocks.push("```" + lang + "\n" + body + "```");
+    codeBlocks.push("```" + lang + "\n" + body.replace(/[\\`]/g, "\\$&") + "```");
     return `\x00CB${idx}\x00`;
   });
   // In partial mode, also capture unclosed fenced code blocks (no closing ```)
   if (partial) {
     text = text.replace(/```([^\n`]*)\n([\s\S]*)$/, (_m, lang, body) => {
       const idx = codeBlocks.length;
-      codeBlocks.push("```" + lang + "\n" + body + "```");
+      codeBlocks.push("```" + lang + "\n" + body.replace(/[\\`]/g, "\\$&") + "```");
       return `\x00CB${idx}\x00`;
     });
   }
