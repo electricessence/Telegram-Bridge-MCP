@@ -21,8 +21,8 @@ importers:
         specifier: ^17.3.1
         version: 17.3.1
       grammy:
-        specifier: ^1.40.1
-        version: 1.40.1
+        specifier: ^1.41.1
+        version: 1.41.1
       opusscript:
         specifier: ^0.1.1
         version: 0.1.1
@@ -264,8 +264,8 @@ packages:
     resolution: {integrity: sha512-iH1B076HoAshH1mLpHMgwdGeTs0CYwL0SPMkGuSebZrwBp16v415e9NZXg2jtrqPVQjf6IANe2Vtlr5KswtcZQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@grammyjs/types@3.24.0':
-    resolution: {integrity: sha512-qQIEs4lN5WqUdr4aT8MeU6UFpMbGYAvcvYSW1A4OO1PABGJQHz/KLON6qvpf+5RxaNDQBxiY2k2otIhg/AG7RQ==}
+  '@grammyjs/types@3.25.0':
+    resolution: {integrity: sha512-iN9i5p+8ZOu9OMxWNcguojQfz4K/PDyMPOnL7PPCON+SoA/F8OKMH3uR7CVUkYfdNe0GCz8QOzAWrnqusQYFOg==}
 
   '@hono/node-server@1.19.9':
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
@@ -1096,8 +1096,8 @@ packages:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
 
-  grammy@1.40.1:
-    resolution: {integrity: sha512-bTe8SWXD8/Sdt2LGAAAsFGhuxI9RG8zL2gGk3V42A/RxriPqBQqwMGoNSldNK1qIFD2EaVuq7NQM8+ZAmNgHLw==}
+  grammy@1.41.1:
+    resolution: {integrity: sha512-wcHAQ1e7svL3fJMpDchcQVcWUmywhuepOOjHUHmMmWAwUJEIyK5ea5sbSjZd+Gy1aMpZeP8VYJa+4tP+j1YptQ==}
     engines: {node: ^12.20.0 || >=14.13.1}
 
   guid-typescript@1.0.9:
@@ -1836,7 +1836,7 @@ snapshots:
       '@eslint/core': 1.1.1
       levn: 0.4.1
 
-  '@grammyjs/types@3.24.0': {}
+  '@grammyjs/types@3.25.0': {}
 
   '@hono/node-server@1.19.9(hono@4.12.3)':
     dependencies:
@@ -2681,9 +2681,9 @@ snapshots:
 
   gopd@1.2.0: {}
 
-  grammy@1.40.1:
+  grammy@1.41.1:
     dependencies:
-      '@grammyjs/types': 3.24.0
+      '@grammyjs/types': 3.25.0
       abort-controller: 3.0.0
       debug: 4.4.3
       node-fetch: 2.7.0
