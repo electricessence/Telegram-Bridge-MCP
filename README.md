@@ -4,6 +4,10 @@
 
 ![Telegram Bridge MCP](logo.png)
 
+[![Tests](https://img.shields.io/badge/tests-400%20passing-brightgreen)](https://github.com/electricessence/Telegram-Bridge-MCP/actions)
+[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com/electricessence/Telegram-Bridge-MCP/blob/main/coverage/index.html)
+[![npm version](https://img.shields.io/npm/v/telegram-bridge-mcp)](https://www.npmjs.com/package/telegram-bridge-mcp)
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server that bridges AI assistants to a Telegram bot — enabling two-way messaging, interactive confirmations, live status updates, and automatic voice transcription.
 
 Works with any MCP-compatible AI host: VS Code Copilot, Claude Desktop, and others.

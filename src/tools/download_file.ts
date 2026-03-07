@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
-import { join, extname } from "path";
+import { join, extname, basename } from "path";
 import { z } from "zod";
 import { getApi, toResult, toError } from "../telegram.js";
 import { cancelTyping, showTyping } from "../typing-state.js";
@@ -68,15 +68,15 @@ export function register(server: McpServer) {
         }
         const bytes = Buffer.from(await res.arrayBuffer());
 
-        // 3. Determine local file name
-        // Use provided file_name, fall back to the last segment of the Telegram path
-        const resolvedName = file_name ?? fileInfo.file_path.split("/").pop() ?? "file";
+        // 3. Determine local file name (sanitized to prevent path traversal)
+        const rawName = file_name ?? fileInfo.file_path.split("/").pop() ?? "file";
+        const resolvedName = basename(rawName).replace(/^\.+/, "") || "file";
 
-        // 4. Save to temp directory
+        // 4. Save to temp directory with restricted permissions
         const dir = join(tmpdir(), "telegram-bridge-mcp");
         await mkdir(dir, { recursive: true });
         const localPath = join(dir, resolvedName);
-        await writeFile(localPath, bytes);
+        await writeFile(localPath, bytes, { mode: 0o600 });
 
         // 5. Return text content for small text files
         const fileSize = bytes.byteLength;

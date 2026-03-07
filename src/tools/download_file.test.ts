@@ -4,13 +4,17 @@ import { createMockServer, parseResult, isError } from "./test-utils.js";
 // ---------------------------------------------------------------------------
 // Hoisted mocks - must be at top
 // ---------------------------------------------------------------------------
+const FAKE_TMPDIR = vi.hoisted(() => "/tmp/fake");
+
 const mocks = vi.hoisted(() => ({
   getFile: vi.fn(),
   writeFile: vi.fn(),
   mkdir: vi.fn(),
 }));
 
-const FAKE_TMPDIR = "/tmp/fake";
+vi.mock("os", () => ({
+  tmpdir: () => FAKE_TMPDIR,
+}));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
@@ -22,24 +26,23 @@ vi.mock("fs/promises", () => ({
   mkdir: mocks.mkdir,
 }));
 
-vi.mock("os", () => ({
-  tmpdir: () => FAKE_TMPDIR,
-}));
-
 // Mock global fetch
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
 
 import { register } from "./download_file.js";
+import { resetSecurityConfig } from "../telegram.js";
 
 describe("download_file tool", () => {
   let call: (args: Record<string, unknown>) => Promise<unknown>;
 
-  const tokenBefore = process.env.BOT_TOKEN;
+  const envBefore = { BOT_TOKEN: process.env.BOT_TOKEN, ALLOWED_USER_ID: process.env.ALLOWED_USER_ID };
 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.BOT_TOKEN = "testtoken123";
+    process.env.ALLOWED_USER_ID = "12345";
+    resetSecurityConfig();
     mocks.mkdir.mockResolvedValue(undefined);
     mocks.writeFile.mockResolvedValue(undefined);
 
@@ -49,7 +52,9 @@ describe("download_file tool", () => {
   });
 
   afterEach(() => {
-    process.env.BOT_TOKEN = tokenBefore;
+    process.env.BOT_TOKEN = envBefore.BOT_TOKEN;
+    process.env.ALLOWED_USER_ID = envBefore.ALLOWED_USER_ID;
+    resetSecurityConfig();
   });
 
   // -------------------------------------------------------------------------
