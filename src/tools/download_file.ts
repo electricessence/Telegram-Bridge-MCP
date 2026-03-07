@@ -68,9 +68,10 @@ export function register(server: McpServer) {
         }
         const bytes = Buffer.from(await res.arrayBuffer());
 
-        // 3. Determine local file name (sanitized to prevent path traversal)
+        // 3. Determine local file name (sanitized to prevent path traversal; timestamp prefix prevents collisions)
         const rawName = file_name ?? fileInfo.file_path.split("/").pop() ?? "file";
-        const resolvedName = basename(rawName).replace(/^\.+/, "") || "file";
+        const displayName = basename(rawName).replace(/^\.+/, "") || "file";
+        const resolvedName = `${Date.now()}_${displayName}`;
 
         // 4. Save to temp directory with restricted permissions
         const dir = join(tmpdir(), "telegram-bridge-mcp");
@@ -88,7 +89,7 @@ export function register(server: McpServer) {
         cancelTyping();
         return toResult({
           local_path: localPath,
-          file_name: resolvedName,
+          file_name: displayName,
           mime_type: mime_type ?? null,
           file_size: fileSize,
           ...(text !== undefined ? { text } : {}),

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Type-check before every commit — no emit, just validation.
+pnpm typecheck

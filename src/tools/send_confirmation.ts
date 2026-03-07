@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError, resolveChat, validateText } from "../telegram.js";
+import { getApi, toResult, toError, resolveChat, validateText, validateCallbackData } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
 import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
@@ -73,6 +73,10 @@ export function register(server: McpServer) {
       if (typeof chatId !== "string") return toError(chatId);
       const textErr = validateText(text);
       if (textErr) return toError(textErr);
+      const yesDataErr = validateCallbackData(yes_data);
+      if (yesDataErr) return toError(yesDataErr);
+      const noDataErr = validateCallbackData(no_data);
+      if (noDataErr) return toError(noDataErr);
 
       try {
         cancelTyping();

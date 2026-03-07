@@ -6,8 +6,8 @@ import { tmpdir } from "os";
 import { enqueueUpdates, dequeueMatch } from "./update-buffer.js";
 import { recordUpdate } from "./session-recording.js";
 
-/** Directory where downloaded files are stored — only local paths under this dir are allowed for sendVoice. */
-const SAFE_FILE_DIR = resolve(tmpdir(), "telegram-bridge-mcp");
+/** Directory where downloaded files are stored — only local paths under this dir are allowed for file uploads. */
+export const SAFE_FILE_DIR = resolve(tmpdir(), "telegram-bridge-mcp");
 
 // ---------------------------------------------------------------------------
 // Telegram limits (for pre-validation before hitting the API)
@@ -235,13 +235,21 @@ export function filterAllowedUpdates(updates: Update[]): Update[] {
   if (!userId && !chatId) return updates;
 
   return updates.filter((u) => {
-    const senderId = u.message?.from?.id ?? u.callback_query?.from?.id;
+    const senderId =
+      u.message?.from?.id ??
+      u.callback_query?.from?.id ??
+      u.message_reaction?.user?.id ??
+      u.my_chat_member?.from?.id;
     const updateChatId =
       u.message?.chat?.id != null
         ? String(u.message.chat.id)
         : u.callback_query?.message?.chat.id != null
           ? String(u.callback_query.message.chat.id)
-          : null;
+          : u.message_reaction?.chat?.id != null
+            ? String(u.message_reaction.chat.id)
+            : u.my_chat_member?.chat?.id != null
+              ? String(u.my_chat_member.chat.id)
+              : null;
 
     if (userId && (!senderId || senderId !== userId)) return false;
     if (chatId && (!updateChatId || updateChatId !== chatId)) return false;
@@ -385,7 +393,7 @@ export async function sendVoiceDirect(
   form.append("chat_id", chatId);
 
   if (voice instanceof Buffer) {
-    form.append("voice", new Blob([voice], { type: "audio/ogg" }), "voice.ogg");
+    form.append("voice", new Blob([new Uint8Array(voice)], { type: "audio/ogg" }), "voice.ogg");
   } else if (typeof voice === "string" && !voice.startsWith("http") && existsSync(voice)) {
     // Only allow reading local files from the safe temp directory to prevent arbitrary file exfiltration
     const resolved = resolve(voice);

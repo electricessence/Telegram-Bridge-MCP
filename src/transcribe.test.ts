@@ -114,7 +114,7 @@ describe("transcribe.ts", () => {
         { ok: true, arrayBuffer: FAKE_AUDIO },
         { ok: false, body: "server error" },
       ]);
-      await expect(transcribeVoice("x")).rejects.toThrow("Whisper server error");
+      await expect(transcribeVoice("x")).rejects.toThrow("Whisper server returned 500");
     });
 
     it("throws if Telegram download fails", async () => {

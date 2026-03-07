@@ -172,7 +172,8 @@ async function synthesizeHttpToOgg(text: string, host: string, apiKey: string | 
 
   if (!res.ok) {
     const body = await res.text().catch(() => "(no body)");
-    throw new Error(`TTS API error ${res.status}: ${body}`);
+    process.stderr.write(`[tts] server error ${res.status}: ${body}\n`);
+    throw new Error(`TTS server returned ${res.status}. Check server logs for details.`);
   }
 
   const audio = Buffer.from(await res.arrayBuffer());

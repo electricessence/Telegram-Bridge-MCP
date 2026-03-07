@@ -1,7 +1,12 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
+import { tmpdir } from "os";
+import { join } from "path";
 import { createMockServer, parseResult, isError, errorCode } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({ sendDocument: vi.fn() }));
+
+// Path that is under SAFE_FILE_DIR — required by the path guard
+const SAFE_TEST_PATH = join(tmpdir(), "telegram-bridge-mcp", "test.pdf");
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
@@ -10,7 +15,8 @@ vi.mock("../telegram.js", async (importActual) => {
 
 vi.mock("fs", async (importActual) => {
   const actual = await importActual<typeof import("fs")>();
-  return { ...actual, existsSync: (p: string) => p === "/tmp/test.pdf" };
+  // Return true for SAFE_TEST_PATH (allowed) and for the traversal-test path (exists but blocked)
+  return { ...actual, existsSync: (p: string) => p === SAFE_TEST_PATH || p === "/tmp/test.pdf" };
 });
 
 vi.mock("grammy", async (importActual) => {
@@ -54,10 +60,16 @@ describe("send_document tool", () => {
       message_id: 11,
       document: { file_id: "local123", file_name: "test.pdf", mime_type: "application/pdf", file_size: 5000 },
     });
-    const result = await call({ document: "/tmp/test.pdf" });
+    const result = await call({ document: SAFE_TEST_PATH });
     expect(isError(result)).toBe(false);
     const [, docArg] = mocks.sendDocument.mock.calls[0];
-    expect(docArg).toHaveProperty("path", "/tmp/test.pdf");
+    expect(docArg).toHaveProperty("path", SAFE_TEST_PATH);
+  });
+
+  it("rejects local file paths outside SAFE_FILE_DIR", async () => {
+    const result = await call({ document: "/tmp/test.pdf" });
+    expect(isError(result)).toBe(true);
+    expect(errorCode(result)).toBe("UNKNOWN");
   });
 
   it("sends by file_id when not a path or URL", async () => {

@@ -185,7 +185,16 @@ export function markdownToV2(input: string, partial = true): string {
     }
 
     // Italic  _text_  (single underscore)
+    // Guard: if preceded by a word char (letter/digit/_), the underscore is part
+    // of an identifier (e.g. STT_HOST, my_var) — escape it instead of treating
+    // it as an italic marker.  This prevents cross-word pairing like
+    // "TTS_HOST … STT_HOST" from accidentally rending as italic text.
     if (text[i] === "_" && text[i + 1] !== "_" && text[i + 1] !== " " && text[i + 1] !== "\n") {
+      if (i > 0 && /\w/.test(text[i - 1])) {
+        out.push("\\_");
+        i++;
+        continue;
+      }
       const nextNl = text.indexOf("\n", i + 1);
       const limit = nextNl === -1 ? text.length : nextNl;
       const end = text.indexOf("_", i + 1);

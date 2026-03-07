@@ -25,6 +25,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "pair": "node dist/setup.js",

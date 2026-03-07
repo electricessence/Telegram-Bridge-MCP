@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [Unreleased]
 
+### Fixed
+- **Identifier underscores no longer rendered as italic**: underscores bounded by word characters (e.g. `STT_HOST`, `my_var`) are now escaped in `markdownToV2` instead of triggering italic formatting — prevents cross-word pairing like `TTS_HOST … STT_HOST` from accidentally italicising the text between them
+
+### Security
+- **Path traversal in `send_document`, `send_audio`, `send_video`**: local file reads now restricted to `SAFE_FILE_DIR` (`$TMPDIR/telegram-bridge-mcp`); paths outside are rejected
+- **Rejected plain HTTP URLs in media send tools**: `send_document`, `send_audio`, `send_video` now reject `http://` URLs — HTTPS required to prevent interception in transit
+- **Filename collision in `download_file`**: saved filenames now include a `Date.now()_` prefix to prevent silent overwrites; returned `file_name` field remains the original name
+- **CSPRNG for pairing code**: `setup.ts` now uses `crypto.randomInt()` instead of `Math.random()` for pairing code generation
+- **BOT_TOKEN redacted in setup output**: `pnpm pair` no longer prints the full token to the terminal — only the first 8 chars are shown
+- **TTS/STT error bodies no longer forwarded to LLM**: raw server error responses from TTS/STT providers are now logged to stderr only; a generic message is returned to the agent
+- **`filterAllowedUpdates` covers `message_reaction` and `my_chat_member`**: these update types now have sender/chat ID extracted and filtered against `ALLOWED_USER_ID`/`ALLOWED_CHAT_ID`
+- **`send_confirmation` validates callback data length**: `yes_data` and `no_data` are now validated against the 64-byte Telegram limit before sending
+- **Supply chain / behavior guide integrity note**: documented in `SECURITY-MODEL.md` that `BEHAVIOR.md` is loaded verbatim into agent context; tampered content would inject instructions
+- **HTTPS startup warning for TTS/STT hosts**: server now emits a `[warn]` to stderr at startup if `TTS_HOST` or `STT_HOST` is set but does not use `https://`
+
 ---
 
 ## [1.16.0] — 2026-03-07

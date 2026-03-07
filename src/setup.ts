@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { randomInt } from "crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH = resolve(__dirname, "..", ".env");
@@ -30,7 +31,7 @@ function randomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }
@@ -195,7 +196,7 @@ async function main() {
         console.log(dim(`          "command": "node",`));
         console.log(dim(`          "args": ["${resolve(__dirname, "..", "dist", "index.js").replace(/\\/g, "\\\\")}"],`));
         console.log(dim(`          "env": {`));
-        console.log(dim(`            "BOT_TOKEN": "${token}",`));
+        console.log(dim(`            "BOT_TOKEN": "${token.slice(0, 8)}…<redacted>",`));
         console.log(dim(`            "ALLOWED_USER_ID": "${userId}",`));
         console.log(dim(`            "ALLOWED_CHAT_ID": "${chatId}"`));
         console.log(dim(`          }`));

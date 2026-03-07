@@ -1,8 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InputFile } from "grammy";
 import { existsSync } from "fs";
+import { resolve, relative, isAbsolute } from "path";
 import { z } from "zod";
-import { getApi, toResult, toError, validateCaption, resolveChat, callApi } from "../telegram.js";
+import { getApi, toResult, toError, validateCaption, resolveChat, callApi, SAFE_FILE_DIR } from "../telegram.js";
 import { resolveParseMode } from "../markdown.js";
 import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
@@ -65,10 +66,18 @@ export function register(server: McpServer) {
         : { text: undefined, parse_mode: undefined };
 
       let videoSource: string | InputFile;
-      if (video.startsWith("http://") || video.startsWith("https://")) {
+      if (video.startsWith("http://")) {
+        return toError({ code: "UNKNOWN" as const, message: "Plain HTTP URLs are not accepted — use HTTPS to prevent interception in transit." });
+      } else if (video.startsWith("https://")) {
         videoSource = video;
       } else if (existsSync(video)) {
-        videoSource = new InputFile(video);
+        // Local file path — must be under SAFE_FILE_DIR
+        const resolvedPath = resolve(video);
+        const rel = relative(SAFE_FILE_DIR, resolvedPath);
+        if (rel.startsWith("..") || isAbsolute(rel)) {
+          return toError({ code: "UNKNOWN" as const, message: `Local file access is restricted to ${SAFE_FILE_DIR}. Use download_file to stage files first.` });
+        }
+        videoSource = new InputFile(resolvedPath);
       } else {
         videoSource = video; // Assume Telegram file_id
       }

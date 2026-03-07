@@ -41,11 +41,15 @@ async function transcribeRemote(audioBytes: Buffer, filename: string): Promise<s
   const url = `${host}/v1/audio/transcriptions`;
 
   const form = new FormData();
-  form.append("file", new Blob([audioBytes]), filename);
+  form.append("file", new Blob([new Uint8Array(audioBytes)]), filename);
   form.append("model", REMOTE_MODEL);
 
   const res = await fetch(url, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`Whisper server error: ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(no body)");
+    process.stderr.write(`[stt] server error ${res.status}: ${body}\n`);
+    throw new Error(`Whisper server returned ${res.status}. Check server logs for details.`);
+  }
   const json = await res.json() as { text: string };
   return json.text.trim();
 }
