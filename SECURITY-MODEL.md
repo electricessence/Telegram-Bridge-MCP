@@ -85,6 +85,7 @@ Treat file tools as privileged operations and gate them accordingly in your MCP 
 `get_agent_guide` serves the contents of `BEHAVIOR.md` directly into the agent's context on every session start. If `BEHAVIOR.md` is modified (e.g., by a compromised dependency, CI step, or local access), an attacker could inject instructions into every agent session without the user noticing any change in tool output.
 
 Mitigations:
+
 - Keep the repository under version control and review `BEHAVIOR.md` in code review.
 - Sign or checksum `BEHAVIOR.md` in security-critical deployments.
 - Treat `BEHAVIOR.md` modifications as security-relevant changes.
