@@ -1,7 +1,7 @@
 import { Api, GrammyError, HttpError } from "grammy";
 import type { Update } from "grammy/types";
 import { readFileSync, existsSync } from "fs";
-import { resolve } from "path";
+import path, { resolve } from "path";
 import { tmpdir } from "os";
 import { enqueueUpdates, dequeueMatch } from "./update-buffer.js";
 import { recordUpdate } from "./session-recording.js";
@@ -237,14 +237,14 @@ export function filterAllowedUpdates(updates: Update[]): Update[] {
   return updates.filter((u) => {
     const senderId = u.message?.from?.id ?? u.callback_query?.from?.id;
     const updateChatId =
-      u.message?.chat.id != null
+      u.message?.chat?.id != null
         ? String(u.message.chat.id)
         : u.callback_query?.message?.chat.id != null
           ? String(u.callback_query.message.chat.id)
           : null;
 
-    if (userId && (senderId === undefined || senderId !== userId)) return false;
-    if (chatId && updateChatId !== null && updateChatId !== chatId) return false;
+    if (userId && (!senderId || senderId !== userId)) return false;
+    if (chatId && (!updateChatId || updateChatId !== chatId)) return false;
     return true;
   });
 }
@@ -389,7 +389,8 @@ export async function sendVoiceDirect(
   } else if (typeof voice === "string" && !voice.startsWith("http") && existsSync(voice)) {
     // Only allow reading local files from the safe temp directory to prevent arbitrary file exfiltration
     const resolved = resolve(voice);
-    if (!resolved.startsWith(SAFE_FILE_DIR)) {
+    const safeRelative = path.relative(SAFE_FILE_DIR, resolved);
+    if (safeRelative.startsWith("..") || path.isAbsolute(safeRelative)) {
       throw new Error(`Local file read restricted to ${SAFE_FILE_DIR}. Refusing to read: ${resolved}`);
     }
     const data = readFileSync(resolved);

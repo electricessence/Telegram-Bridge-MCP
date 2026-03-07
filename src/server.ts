@@ -21,7 +21,6 @@ import { register as registerSendVoiceTool } from "./tools/send_voice.js";
 import { register as registerSendTextAsVoice } from "./tools/speak.js";
 import { register as registerDownloadFile } from "./tools/download_file.js";
 import { register as registerTranscribeVoice } from "./tools/transcribe_voice.js";
-import { register as registerForwardMessage } from "./tools/forward_message.js";
 import { register as registerPinMessage } from "./tools/pin_message.js";
 import { register as registerUnpinMessage } from "./tools/unpin_message.js";
 import { register as registerDeleteMessage } from "./tools/delete_message.js";
@@ -52,7 +51,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "telegram-bridge-mcp",
-    version: "1.15.1",
+    version: "1.16.0",
   });
 
   // ── High-level agent tools (use these 99% of the time) ─────────────────
@@ -86,7 +85,6 @@ export function createServer(): McpServer {
   registerSendTextAsVoice(server);
   registerDownloadFile(server);
   registerTranscribeVoice(server);
-  registerForwardMessage(server);
   registerDeleteMessage(server);
   registerPinMessage(server);
   registerUnpinMessage(server);

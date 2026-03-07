@@ -64,7 +64,6 @@ describe("download_file tool", () => {
     const pdfBytes = Buffer.from([0x25, 0x50, 0x44, 0x46]); // %PDF
     fetchMock.mockResolvedValue({
       ok: true,
-      headers: new Headers({ "content-length": String(pdfBytes.byteLength) }),
       arrayBuffer: () => Promise.resolve(pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)),
     });
 
@@ -90,7 +89,6 @@ describe("download_file tool", () => {
     const jpgBytes = Buffer.from([0xff, 0xd8]);
     fetchMock.mockResolvedValue({
       ok: true,
-      headers: new Headers({ "content-length": String(jpgBytes.byteLength) }),
       arrayBuffer: () => Promise.resolve(jpgBytes.buffer.slice(jpgBytes.byteOffset, jpgBytes.byteOffset + jpgBytes.byteLength)),
     });
 
@@ -106,7 +104,6 @@ describe("download_file tool", () => {
     const txtBuf = Buffer.from(content, "utf-8");
     fetchMock.mockResolvedValue({
       ok: true,
-      headers: new Headers({ "content-length": String(txtBuf.byteLength) }),
       arrayBuffer: () => Promise.resolve(txtBuf.buffer.slice(txtBuf.byteOffset, txtBuf.byteOffset + txtBuf.byteLength)),
     });
 
@@ -122,7 +119,6 @@ describe("download_file tool", () => {
     const csvBuf = Buffer.from(content, "utf-8");
     fetchMock.mockResolvedValue({
       ok: true,
-      headers: new Headers({ "content-length": String(csvBuf.byteLength) }),
       arrayBuffer: () => Promise.resolve(csvBuf.buffer.slice(csvBuf.byteOffset, csvBuf.byteOffset + csvBuf.byteLength)),
     });
 
@@ -138,7 +134,6 @@ describe("download_file tool", () => {
     const bigBuf = Buffer.from(bigContent, "utf-8");
     fetchMock.mockResolvedValue({
       ok: true,
-      headers: new Headers({ "content-length": String(bigBuf.byteLength) }),
       arrayBuffer: () => Promise.resolve(bigBuf.buffer.slice(bigBuf.byteOffset, bigBuf.byteOffset + bigBuf.byteLength)),
     });
 

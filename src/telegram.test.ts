@@ -1,5 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { GrammyError } from "grammy";
+import { tmpdir } from "os";
+import { resolve, join } from "path";
+import { writeFileSync, mkdirSync, rmSync } from "fs";
 import {
   validateText,
   validateCaption,
@@ -8,6 +11,16 @@ import {
   toError,
   splitMessage,
   callApi,
+  filterAllowedUpdates,
+  validateTargetChat,
+  resetSecurityConfig,
+  unauthorizedSenderError,
+  unauthorizedChatError,
+  resolveChat,
+  getOffset,
+  advanceOffset,
+  resetOffset,
+  sendVoiceDirect,
   LIMITS,
 } from "./telegram.js";
 
@@ -307,5 +320,283 @@ describe("callApi", () => {
     // Called once initially + 2 retries = 3 total
     expect(fn).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// filterAllowedUpdates
+// ---------------------------------------------------------------------------
+
+describe("filterAllowedUpdates", () => {
+  beforeEach(() => {
+    delete process.env.ALLOWED_USER_ID;
+    delete process.env.ALLOWED_CHAT_ID;
+    resetSecurityConfig();
+  });
+
+  afterEach(() => {
+    delete process.env.ALLOWED_USER_ID;
+    delete process.env.ALLOWED_CHAT_ID;
+    resetSecurityConfig();
+  });
+
+  function makeMessageUpdate(userId: number, chatId: number): any {
+    return { message: { from: { id: userId }, chat: { id: chatId } } };
+  }
+
+  function makeCallbackUpdate(userId: number, chatId: number): any {
+    return { callback_query: { from: { id: userId }, message: { chat: { id: chatId } } } };
+  }
+
+  it("passes all updates through when no filters are configured", () => {
+    const updates = [makeMessageUpdate(1, 100), makeMessageUpdate(2, 200)];
+    expect(filterAllowedUpdates(updates)).toHaveLength(2);
+  });
+
+  it("filters by userId: keeps matching sender", () => {
+    process.env.ALLOWED_USER_ID = "42";
+    resetSecurityConfig();
+    const updates = [makeMessageUpdate(42, 100), makeMessageUpdate(99, 100)];
+    const result = filterAllowedUpdates(updates);
+    expect(result).toHaveLength(1);
+    expect(result[0].message?.from?.id).toBe(42);
+  });
+
+  it("filters by userId: drops update with no sender (senderId undefined)", () => {
+    process.env.ALLOWED_USER_ID = "42";
+    resetSecurityConfig();
+    const noSender: any = { message: { chat: { id: 100 } } }; // from is absent
+    expect(filterAllowedUpdates([noSender])).toHaveLength(0);
+  });
+
+  it("filters by chatId: keeps matching chat", () => {
+    process.env.ALLOWED_CHAT_ID = "100";
+    resetSecurityConfig();
+    const updates = [makeMessageUpdate(1, 100), makeMessageUpdate(1, 999)];
+    const result = filterAllowedUpdates(updates);
+    expect(result).toHaveLength(1);
+    expect(result[0].message?.chat?.id).toBe(100);
+  });
+
+  it("filters by chatId: drops update with null chatId (closes null-bypass gap)", () => {
+    process.env.ALLOWED_CHAT_ID = "100";
+    resetSecurityConfig();
+    // Update has no chat info at all — updateChatId resolves to null
+    const noChatMsg: any = { message: { from: { id: 1 } } }; // chat property absent
+    expect(filterAllowedUpdates([noChatMsg])).toHaveLength(0);
+  });
+
+  it("applies both userId and chatId filters together", () => {
+    process.env.ALLOWED_USER_ID = "42";
+    process.env.ALLOWED_CHAT_ID = "100";
+    resetSecurityConfig();
+    const pass = makeMessageUpdate(42, 100);
+    const wrongUser = makeMessageUpdate(99, 100);
+    const wrongChat = makeMessageUpdate(42, 999);
+    const result = filterAllowedUpdates([pass, wrongUser, wrongChat]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe(pass);
+  });
+
+  it("handles callback_query updates with userId filter", () => {
+    process.env.ALLOWED_USER_ID = "7";
+    resetSecurityConfig();
+    const match = makeCallbackUpdate(7, 50);
+    const mismatch = makeCallbackUpdate(8, 50);
+    const result = filterAllowedUpdates([match, mismatch]);
+    expect(result).toHaveLength(1);
+    expect(result[0].callback_query?.from?.id).toBe(7);
+  });
+
+  it("handles callback_query updates with chatId filter", () => {
+    process.env.ALLOWED_CHAT_ID = "50";
+    resetSecurityConfig();
+    const match = makeCallbackUpdate(7, 50);
+    const mismatch = makeCallbackUpdate(7, 99);
+    expect(filterAllowedUpdates([match, mismatch])).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// validateTargetChat
+// ---------------------------------------------------------------------------
+
+describe("validateTargetChat", () => {
+  beforeEach(() => {
+    delete process.env.ALLOWED_CHAT_ID;
+    resetSecurityConfig();
+  });
+
+  afterEach(() => {
+    delete process.env.ALLOWED_CHAT_ID;
+    resetSecurityConfig();
+  });
+
+  it("returns null when no ALLOWED_CHAT_ID is configured", () => {
+    expect(validateTargetChat("any-chat")).toBeNull();
+  });
+
+  it("returns null when chatId matches the configured ALLOWED_CHAT_ID", () => {
+    process.env.ALLOWED_CHAT_ID = "12345";
+    resetSecurityConfig();
+    expect(validateTargetChat("12345")).toBeNull();
+  });
+
+  it("returns UNAUTHORIZED_CHAT error when chatId differs from ALLOWED_CHAT_ID", () => {
+    process.env.ALLOWED_CHAT_ID = "12345";
+    resetSecurityConfig();
+    const err = validateTargetChat("99999");
+    expect(err?.code).toBe("UNAUTHORIZED_CHAT");
+    expect(err?.message).toContain("99999");
+  });
+
+  it("trims whitespace when comparing chatIds", () => {
+    process.env.ALLOWED_CHAT_ID = "  12345  ";
+    resetSecurityConfig();
+    expect(validateTargetChat("12345")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// unauthorizedSenderError / unauthorizedChatError
+// ---------------------------------------------------------------------------
+
+describe("unauthorizedSenderError", () => {
+  it("includes the sender id in the message", () => {
+    const err = unauthorizedSenderError(42);
+    expect(err.code).toBe("UNAUTHORIZED_SENDER");
+    expect(err.message).toContain("42");
+  });
+
+  it("falls back to 'unknown' when fromId is undefined", () => {
+    const err = unauthorizedSenderError(undefined);
+    expect(err.message).toContain("unknown");
+  });
+});
+
+describe("unauthorizedChatError", () => {
+  it("includes the chat id in the message", () => {
+    const err = unauthorizedChatError("999");
+    expect(err.code).toBe("UNAUTHORIZED_CHAT");
+    expect(err.message).toContain("999");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveChat
+// ---------------------------------------------------------------------------
+
+describe("resolveChat", () => {
+  beforeEach(() => {
+    delete process.env.ALLOWED_CHAT_ID;
+    resetSecurityConfig();
+  });
+
+  afterEach(() => {
+    delete process.env.ALLOWED_CHAT_ID;
+    resetSecurityConfig();
+  });
+
+  it("returns UNAUTHORIZED_CHAT error when ALLOWED_CHAT_ID is not set", () => {
+    const result = resolveChat();
+    expect(typeof result).toBe("object");
+    expect((result as any).code).toBe("UNAUTHORIZED_CHAT");
+  });
+
+  it("returns the configured chatId when ALLOWED_CHAT_ID is set", () => {
+    process.env.ALLOWED_CHAT_ID = "12345";
+    resetSecurityConfig();
+    expect(resolveChat()).toBe("12345");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getOffset / advanceOffset / resetOffset
+// ---------------------------------------------------------------------------
+
+describe("offset management", () => {
+  beforeEach(() => resetOffset());
+  afterEach(() => resetOffset());
+
+  it("getOffset returns 0 initially", () => {
+    expect(getOffset()).toBe(0);
+  });
+
+  it("advanceOffset sets offset to max update_id + 1", () => {
+    advanceOffset([{ update_id: 5 } as any, { update_id: 3 } as any]);
+    expect(getOffset()).toBe(6);
+  });
+
+  it("advanceOffset is a no-op for empty array", () => {
+    advanceOffset([]);
+    expect(getOffset()).toBe(0);
+  });
+
+  it("resetOffset resets to 0", () => {
+    advanceOffset([{ update_id: 10 } as any]);
+    resetOffset();
+    expect(getOffset()).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sendVoiceDirect — path restriction
+// ---------------------------------------------------------------------------
+
+describe("sendVoiceDirect path restriction", () => {
+  const SAFE_DIR = resolve(tmpdir(), "telegram-bridge-mcp");
+  const safeFile = join(SAFE_DIR, "test-voice.ogg");
+
+  beforeEach(() => {
+    mkdirSync(SAFE_DIR, { recursive: true });
+    writeFileSync(safeFile, Buffer.from([0x4f, 0x67, 0x67, 0x53])); // OggS header
+  });
+
+  afterEach(() => {
+    rmSync(safeFile, { force: true });
+  });
+
+  it("throws when voice path escapes the safe directory via ../", async () => {
+    process.env.BOT_TOKEN = "bot_test_token";
+    const escapePath = join(SAFE_DIR, "..", "escaped.ogg");
+    // create the target file so existsSync passes — the path check must fire
+    const parentDir = resolve(tmpdir());
+    const escapedTarget = join(parentDir, "escaped.ogg");
+    writeFileSync(escapedTarget, Buffer.from([0]));
+    try {
+      await expect(
+        sendVoiceDirect("123", escapedTarget)
+      ).rejects.toThrow(/Local file read restricted/);
+    } finally {
+      rmSync(escapedTarget, { force: true });
+      delete process.env.BOT_TOKEN;
+    }
+  });
+
+  it("throws when voice path is a sibling directory with same prefix", async () => {
+    // e.g. 'telegram-bridge-mcp2' should not be allowed
+    process.env.BOT_TOKEN = "bot_test_token";
+    const siblingDir = resolve(tmpdir(), "telegram-bridge-mcp2");
+    mkdirSync(siblingDir, { recursive: true });
+    const siblingFile = join(siblingDir, "voice.ogg");
+    writeFileSync(siblingFile, Buffer.from([0]));
+    try {
+      await expect(
+        sendVoiceDirect("123", siblingFile)
+      ).rejects.toThrow(/Local file read restricted/);
+    } finally {
+      rmSync(siblingFile, { force: true });
+      rmSync(siblingDir, { recursive: true, force: true });
+      delete process.env.BOT_TOKEN;
+    }
+  });
+
+  it("reads the file without throwing when path is inside SAFE_FILE_DIR", async () => {
+    // No BOT_TOKEN set — will throw after the path check passes.
+    // We just need to confirm the error is about BOT_TOKEN, not path restriction.
+    delete process.env.BOT_TOKEN;
+    await expect(
+      sendVoiceDirect("123", safeFile)
+    ).rejects.toThrow(/BOT_TOKEN/);
   });
 });

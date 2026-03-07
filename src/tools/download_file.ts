@@ -17,7 +17,6 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const MAX_TEXT_BYTES = 100 * 1024; // 100 KB
-const MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024; // 20 MB (Telegram Bot API limit)
 
 function isTextFile(fileName: string | undefined, mimeType: string | undefined): boolean {
   if (mimeType && TEXT_MIME_PREFIXES.some((p) => mimeType.startsWith(p))) return true;
@@ -67,14 +66,7 @@ export function register(server: McpServer) {
         if (!res.ok) {
           return toError({ code: "UNKNOWN" as const, message: `Download failed: ${res.status} ${res.statusText}` });
         }
-        const contentLength = parseInt(res.headers.get("content-length") ?? "0", 10);
-        if (contentLength > MAX_DOWNLOAD_BYTES) {
-          return toError({ code: "UNKNOWN" as const, message: `File too large (${contentLength} bytes, limit ${MAX_DOWNLOAD_BYTES}). Aborting download.` });
-        }
         const bytes = Buffer.from(await res.arrayBuffer());
-        if (bytes.byteLength > MAX_DOWNLOAD_BYTES) {
-          return toError({ code: "UNKNOWN" as const, message: `File too large (${bytes.byteLength} bytes, limit ${MAX_DOWNLOAD_BYTES}). Aborting.` });
-        }
 
         // 3. Determine local file name (sanitized to prevent path traversal)
         const rawName = file_name ?? fileInfo.file_path.split("/").pop() ?? "file";
