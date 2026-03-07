@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [Unreleased]
 
+### Added
+
+- **CI workflow** — new `.github/workflows/ci.yml` runs tests and uploads coverage to Codecov on every push/PR to `master`
+- **Codecov integration** — coverage badge is now live and tied to the actual CI run
+- **Cosign image signing** — every Docker image is signed with keyless Cosign (GitHub OIDC) in the publish workflow
+- **SBOM attestation** — `sbom: true` in `docker/build-push-action`; inspect via `docker buildx imagetools inspect --format '{{json .SBOM}}'`
+- **Full build provenance** — `provenance: mode=max`; inspect via `docker buildx imagetools inspect --format '{{json .Provenance}}'`
+- **SHA-pinned GitHub Actions** — all actions in both workflows now reference exact commit SHAs to prevent supply-chain substitution attacks
+- **Dependabot `github-actions` ecosystem** — weekly PRs to keep action pins current
+- **Image verification docs** — `## Docker` section in README documents `cosign verify`, SBOM inspect, and provenance inspect commands
+
+### Changed
+
+- README badges replaced with live dynamic badges (CI status, Docker publish status, Codecov coverage, npm version, GHCR link, MIT license)
+- `publish.yml` permissions expanded with `id-token: write` and `attestations: write`
+
 ## [2.0.0] — 2026-03-07
 
 ### Fixed
