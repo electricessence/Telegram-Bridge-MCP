@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
-import { join, extname } from "path";
+import { join, extname, basename } from "path";
 import { z } from "zod";
 import { getApi, toResult, toError } from "../telegram.js";
 import { cancelTyping, showTyping } from "../typing-state.js";
@@ -17,6 +17,7 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const MAX_TEXT_BYTES = 100 * 1024; // 100 KB
+const MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024; // 20 MB (Telegram Bot API limit)
 
 function isTextFile(fileName: string | undefined, mimeType: string | undefined): boolean {
   if (mimeType && TEXT_MIME_PREFIXES.some((p) => mimeType.startsWith(p))) return true;
@@ -66,17 +67,24 @@ export function register(server: McpServer) {
         if (!res.ok) {
           return toError({ code: "UNKNOWN" as const, message: `Download failed: ${res.status} ${res.statusText}` });
         }
+        const contentLength = parseInt(res.headers.get("content-length") ?? "0", 10);
+        if (contentLength > MAX_DOWNLOAD_BYTES) {
+          return toError({ code: "UNKNOWN" as const, message: `File too large (${contentLength} bytes, limit ${MAX_DOWNLOAD_BYTES}). Aborting download.` });
+        }
         const bytes = Buffer.from(await res.arrayBuffer());
+        if (bytes.byteLength > MAX_DOWNLOAD_BYTES) {
+          return toError({ code: "UNKNOWN" as const, message: `File too large (${bytes.byteLength} bytes, limit ${MAX_DOWNLOAD_BYTES}). Aborting.` });
+        }
 
-        // 3. Determine local file name
-        // Use provided file_name, fall back to the last segment of the Telegram path
-        const resolvedName = file_name ?? fileInfo.file_path.split("/").pop() ?? "file";
+        // 3. Determine local file name (sanitized to prevent path traversal)
+        const rawName = file_name ?? fileInfo.file_path.split("/").pop() ?? "file";
+        const resolvedName = basename(rawName).replace(/^\.+/, "") || "file";
 
-        // 4. Save to temp directory
+        // 4. Save to temp directory with restricted permissions
         const dir = join(tmpdir(), "telegram-bridge-mcp");
         await mkdir(dir, { recursive: true });
         const localPath = join(dir, resolvedName);
-        await writeFile(localPath, bytes);
+        await writeFile(localPath, bytes, { mode: 0o600 });
 
         // 5. Return text content for small text files
         const fileSize = bytes.byteLength;

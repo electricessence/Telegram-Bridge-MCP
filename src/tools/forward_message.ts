@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError, resolveChat } from "../telegram.js";
+import { getApi, toResult, toError, resolveChat, validateTargetChat } from "../telegram.js";
 import { cancelTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
 
@@ -18,6 +18,11 @@ export function register(server: McpServer) {
     async ({ from_chat_id, message_id, disable_notification }) => {
       const chatId = resolveChat();
       if (typeof chatId !== "string") return toError(chatId);
+
+      // Restrict source chat to the allowed chat to prevent cross-chat exfiltration
+      const sourceErr = validateTargetChat(from_chat_id);
+      if (sourceErr) return toError(sourceErr);
+
       cancelTyping();
       await clearPendingTemp();
       try {

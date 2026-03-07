@@ -1,8 +1,13 @@
 import { Api, GrammyError, HttpError } from "grammy";
 import type { Update } from "grammy/types";
 import { readFileSync, existsSync } from "fs";
+import { resolve } from "path";
+import { tmpdir } from "os";
 import { enqueueUpdates, dequeueMatch } from "./update-buffer.js";
 import { recordUpdate } from "./session-recording.js";
+
+/** Directory where downloaded files are stored — only local paths under this dir are allowed for sendVoice. */
+const SAFE_FILE_DIR = resolve(tmpdir(), "telegram-bridge-mcp");
 
 // ---------------------------------------------------------------------------
 // Telegram limits (for pre-validation before hitting the API)
@@ -179,11 +184,20 @@ export function getSecurityConfig(): SecurityConfig {
   const chatId = rawChat ?? null;
 
   if (!userId) {
-    console.warn(
-      "[telegram-bridge-mcp] WARNING: ALLOWED_USER_ID is not set. " +
-        "Any Telegram user who messages the bot can inject updates. " +
-        "Set ALLOWED_USER_ID to your numeric Telegram user ID."
-    );
+    if (process.env.ALLOW_ALL_USERS === "true") {
+      console.warn(
+        "[telegram-bridge-mcp] WARNING: ALLOWED_USER_ID is not set and ALLOW_ALL_USERS=true. " +
+          "Any Telegram user who messages the bot can inject updates."
+      );
+    } else {
+      console.error(
+        "[telegram-bridge-mcp] FATAL: ALLOWED_USER_ID is not set. " +
+          "Any Telegram user who messages the bot can inject updates. " +
+          "Set ALLOWED_USER_ID to your numeric Telegram user ID, " +
+          "or set ALLOW_ALL_USERS=true to explicitly bypass this check."
+      );
+      process.exit(1);
+    }
   }
 
   _securityConfig = { userId, chatId };
@@ -229,7 +243,7 @@ export function filterAllowedUpdates(updates: Update[]): Update[] {
           ? String(u.callback_query.message.chat.id)
           : null;
 
-    if (userId && senderId !== undefined && senderId !== userId) return false;
+    if (userId && (senderId === undefined || senderId !== userId)) return false;
     if (chatId && updateChatId !== null && updateChatId !== chatId) return false;
     return true;
   });
@@ -373,7 +387,12 @@ export async function sendVoiceDirect(
   if (voice instanceof Buffer) {
     form.append("voice", new Blob([voice], { type: "audio/ogg" }), "voice.ogg");
   } else if (typeof voice === "string" && !voice.startsWith("http") && existsSync(voice)) {
-    const data = readFileSync(voice);
+    // Only allow reading local files from the safe temp directory to prevent arbitrary file exfiltration
+    const resolved = resolve(voice);
+    if (!resolved.startsWith(SAFE_FILE_DIR)) {
+      throw new Error(`Local file read restricted to ${SAFE_FILE_DIR}. Refusing to read: ${resolved}`);
+    }
+    const data = readFileSync(resolved);
     form.append("voice", new Blob([data], { type: "audio/ogg" }), "voice.ogg");
   } else {
     // URL or Telegram file_id
