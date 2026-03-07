@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({ setMessageReaction: vi.fn() }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, resolveChat: () => "42" };
+  return { ...actual, getApi: () => mocks, resolveChat: () => 42 };
 });
 
 import { register } from "./set_reaction.js";
@@ -30,7 +30,7 @@ describe("set_reaction tool", () => {
     expect(data.message_id).toBe(100);
     expect(data.emoji).toBe("👍");
     expect(mocks.setMessageReaction).toHaveBeenCalledWith(
-      "42",
+      42,
       100,
       [{ type: "emoji", emoji: "👍" }],
       { is_big: undefined },
@@ -43,7 +43,7 @@ describe("set_reaction tool", () => {
     const data = parseResult(result) as any;
     expect(data.ok).toBe(true);
     expect(data.emoji).toBeNull();
-    expect(mocks.setMessageReaction).toHaveBeenCalledWith("42", 55, [], { is_big: undefined });
+    expect(mocks.setMessageReaction).toHaveBeenCalledWith(42, 55, [], { is_big: undefined });
   });
 
   it("forwards is_big flag to API", async () => {
@@ -59,7 +59,7 @@ describe("set_reaction tool", () => {
     expect(data.ok).toBe(true);
     expect(data.emoji).toBe("🚀");
     expect(mocks.setMessageReaction).toHaveBeenCalledWith(
-      "42",
+      42,
       100,
       [{ type: "emoji", emoji: "🚀" }],
       { is_big: undefined },

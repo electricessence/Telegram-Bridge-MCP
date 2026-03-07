@@ -21,6 +21,7 @@
  */
 
 const V2_SPECIAL = /[_*[\]()~`>#+\-=|{}.!\\]/g;
+const V2_SPECIAL_CHAR = /[_*[\]()~`>#+\-=|{}.!\\]/;
 
 export function escapeV2(s: string): string {
   return s.replace(V2_SPECIAL, "\\$&");
@@ -236,8 +237,7 @@ export function markdownToV2(input: string, partial = true): string {
 
     // Plain character — escape if it is a MarkdownV2 special char
     const ch = text[i];
-    out.push(V2_SPECIAL.test(ch) ? "\\" + ch : ch);
-    V2_SPECIAL.lastIndex = 0; // reset stateful regex after .test()
+    out.push(V2_SPECIAL_CHAR.test(ch) ? "\\" + ch : ch);
     i++;
   }
 

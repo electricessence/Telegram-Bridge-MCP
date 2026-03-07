@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Update } from "grammy/types";
 import { z } from "zod";
 import { getApi, getOffset, advanceOffset, filterAllowedUpdates, toResult, toError, DEFAULT_ALLOWED_UPDATES } from "../telegram.js";
 import { drainN, bufferSize } from "../update-buffer.js";
@@ -36,7 +37,7 @@ export function register(server: McpServer) {
         // Step 1: take up to `max` from the local buffer first
         const buffered = filterAllowedUpdates(drainN(max));
 
-        let fresh: Awaited<ReturnType<typeof filterAllowedUpdates>> = [];
+        let fresh: Update[] = [];
         if (buffered.length < max) {
           // Step 2: fetch from Telegram to fill up to max
           const fetched = await getApi().getUpdates({
@@ -53,7 +54,10 @@ export function register(server: McpServer) {
         const remaining = bufferSize(); // items still waiting after this drain
 
         if (batch.length === 0) {
-          return toResult({ updates: [], remaining, hint: remaining > 0 ? "More updates buffered — call get_update again." : "Buffer empty — call wait_for_message to block for the next message." });
+          const hint = remaining > 0
+            ? "More updates buffered — call get_update again."
+            : "Buffer empty — call wait_for_message to block for the next message.";
+          return toResult({ updates: [], remaining, hint });
         }
 
         const sanitized = await sanitizeUpdates(batch);

@@ -9,7 +9,7 @@ export function register(server: McpServer) {
     },
     async () => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       try {
         const chat = await getApi().getChat(chatId);
         const c = chat as unknown as Record<string, unknown>;

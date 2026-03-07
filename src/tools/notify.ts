@@ -47,7 +47,7 @@ export function register(server: McpServer) {
     },
     async ({ title, body, severity, parse_mode, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       try {
         const prefix = SEVERITY_PREFIX[severity];
         const useV2 = parse_mode === "Markdown" || parse_mode === "MarkdownV2";

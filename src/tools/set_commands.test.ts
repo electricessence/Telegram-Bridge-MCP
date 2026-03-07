@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({ setMyCommands: vi.fn() }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, resolveChat: () => "42" };
+  return { ...actual, getApi: () => mocks, resolveChat: () => 42 };
 });
 
 import { register } from "./set_commands.js";
@@ -36,7 +36,7 @@ describe("set_commands tool", () => {
     expect(data.scope).toBe("chat");
     expect(data.cleared).toBe(false);
     expect(mocks.setMyCommands).toHaveBeenCalledWith(SAMPLE_COMMANDS, {
-      scope: { type: "chat", chat_id: "42" },
+      scope: { type: "chat", chat_id: 42 },
     });
   });
 
@@ -44,7 +44,7 @@ describe("set_commands tool", () => {
     const result = await call({ commands: SAMPLE_COMMANDS, scope: "chat" });
     expect(isError(result)).toBe(false);
     expect(mocks.setMyCommands).toHaveBeenCalledWith(SAMPLE_COMMANDS, {
-      scope: { type: "chat", chat_id: "42" },
+      scope: { type: "chat", chat_id: 42 },
     });
   });
 
@@ -67,7 +67,7 @@ describe("set_commands tool", () => {
     expect(data.cleared).toBe(true);
     expect(data.commands).toBeNull();
     expect(mocks.setMyCommands).toHaveBeenCalledWith([], {
-      scope: { type: "chat", chat_id: "42" },
+      scope: { type: "chat", chat_id: 42 },
     });
   });
 

@@ -40,7 +40,7 @@ export function register(server: McpServer) {
     },
     async ({ text, parse_mode, disable_notification, reply_to_message_id, voice }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       await clearPendingTemp();
 
       // ── Voice (TTS) mode ────────────────────────────────────────────────

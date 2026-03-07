@@ -92,7 +92,7 @@ export function register(server: McpServer) {
     },
     async ({ message_id, emoji, is_big }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       try {
         // Resolve alias to emoji if provided
         const resolved = emoji ? resolveEmoji(emoji) : "";

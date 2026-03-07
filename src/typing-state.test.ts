@@ -3,7 +3,7 @@ import type { TelegramError } from "./telegram.js";
 
 const mocks = vi.hoisted(() => ({
   sendChatAction: vi.fn(),
-  resolveChat: vi.fn((): string | TelegramError => "123"),
+  resolveChat: vi.fn((): number | TelegramError => 123),
 }));
 
 vi.mock("./telegram.js", async (importActual) => {
@@ -45,7 +45,7 @@ describe("typing-state", () => {
   });
 
   describe("showTyping", () => {
-    it("returns false if resolveChat returns non-string", async () => {
+    it("returns false if resolveChat returns non-number", async () => {
       mocks.resolveChat.mockReturnValueOnce({ code: "UNAUTHORIZED_CHAT", message: "test" });
       const result = await showTyping(5);
       expect(result).toBe(false);
@@ -78,7 +78,7 @@ describe("typing-state", () => {
     it("calls sendChatAction with provided action", async () => {
       mocks.sendChatAction.mockResolvedValue(undefined);
       await showTyping(5, "record_voice");
-      expect(mocks.sendChatAction).toHaveBeenCalledWith("123", "record_voice");
+      expect(mocks.sendChatAction).toHaveBeenCalledWith(123, "record_voice");
       cancelTyping();
     });
 

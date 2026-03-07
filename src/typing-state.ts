@@ -12,23 +12,35 @@
 
 import { getApi, resolveChat } from "./telegram.js";
 
+export type TypingAction =
+  | "typing"
+  | "record_voice"
+  | "upload_voice"
+  | "upload_photo"
+  | "upload_document"
+  | "upload_video";
+
 let _timer: ReturnType<typeof setInterval> | null = null;
 let _safety: ReturnType<typeof setTimeout> | null = null;
 let _deadline = 0;
 
 const INTERVAL_MS = 4_000; // Telegram indicator expires in ~5 s; 4 s keeps it seamless
 
+function unrefTimer(t: ReturnType<typeof setInterval> | ReturnType<typeof setTimeout>): void {
+  if (typeof t === "object" && "unref" in t) t.unref();
+}
+
 /**
  * Cancel the typing indicator immediately (no Telegram call needed — it just expires).
  * Returns true if an active indicator was cancelled, false if nothing was running.
  */
 export function cancelTyping(): boolean {
-  const wasActive = _timer !== null;
-  if (_timer !== null) {
+  const wasActive = !!_timer;
+  if (_timer) {
     clearInterval(_timer);
     _timer = null;
   }
-  if (_safety !== null) {
+  if (_safety) {
     clearTimeout(_safety);
     _safety = null;
   }
@@ -46,17 +58,17 @@ export function cancelTyping(): boolean {
 /**
  * Returns true if the indicator was newly started, false if an existing one was just extended.
  */
-export async function showTyping(timeoutSeconds: number, action: "typing" | "record_voice" | "upload_voice" | "upload_photo" | "upload_document" | "upload_video" = "typing"): Promise<boolean> {
+export async function showTyping(timeoutSeconds: number, action: TypingAction = "typing"): Promise<boolean> {
   const timeoutMs = timeoutSeconds * 1000;
   const newDeadline = Date.now() + timeoutMs;
 
-  if (_timer !== null) {
+  if (_timer) {
     // Already running — just extend the deadline
     _deadline = Math.max(_deadline, newDeadline);
     // Reset the safety timeout too
-    if (_safety !== null) clearTimeout(_safety);
+    if (_safety) clearTimeout(_safety);
     _safety = setTimeout(() => cancelTyping(), Math.max(0, _deadline - Date.now()));
-    if (typeof _safety === "object" && "unref" in _safety) _safety.unref();
+    if (_safety) unrefTimer(_safety);
     return false; // extended, not newly started
   }
 
@@ -64,7 +76,7 @@ export async function showTyping(timeoutSeconds: number, action: "typing" | "rec
   _deadline = newDeadline;
 
   const chatId = resolveChat();
-  if (typeof chatId !== "string") return false; // misconfigured — silently skip
+  if (typeof chatId !== "number") return false; // misconfigured — silently skip
 
   // Send immediately so there's no visible delay
   try {
@@ -86,16 +98,16 @@ export async function showTyping(timeoutSeconds: number, action: "typing" | "rec
     }
   }, INTERVAL_MS);
 
-  if (typeof _timer === "object" && "unref" in _timer) _timer.unref();
+  unrefTimer(_timer);
 
   // Safety: always stop at deadline even if tick math is off
   _safety = setTimeout(() => cancelTyping(), timeoutMs);
-  if (typeof _safety === "object" && "unref" in _safety) _safety.unref();
+  unrefTimer(_safety);
 
   return true; // newly started
 }
 
 /** True when the typing indicator is currently active. For testing only. */
 export function isTypingActive(): boolean {
-  return _timer !== null;
+  return !!_timer;
 }

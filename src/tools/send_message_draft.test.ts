@@ -3,7 +3,7 @@ import { createMockServer, parseResult, isError, errorCode } from "./test-utils.
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, resolveChat: () => "49154463" };
+  return { ...actual, resolveChat: () => 49154463 };
 });
 
 import { register } from "./send_message_draft.js";

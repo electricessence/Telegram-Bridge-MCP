@@ -28,7 +28,7 @@ export function register(server: McpServer) {
     },
     async ({ action }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       try {
         await getApi().sendChatAction(chatId, action);
         return toResult({ ok: true });

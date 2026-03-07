@@ -63,7 +63,7 @@ export function register(server: McpServer) {
     },
     async ({ question, options, timeout_seconds, columns, reply_to_message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       const textErr = validateText(question);
       if (textErr) return toError(textErr);
 
@@ -132,7 +132,8 @@ export function register(server: McpServer) {
         }
 
         if (match.kind === "voice") {
-          const text = await transcribeWithIndicator(match.fileId, match.message_id).catch((e) => `[transcription failed: ${e.message}]`);
+          const text = await transcribeWithIndicator(match.fileId, match.message_id)
+            .catch((e) => `[transcription failed: ${e.message}]`);
           await editWithSkipped(chatId, sent.message_id, question);
           return toResult({
             skipped: true,
@@ -147,7 +148,7 @@ export function register(server: McpServer) {
         // Button was pressed
         const chosen = options.find((o) => o.value === match.cq.data);
         const chosenLabel = chosen?.label ?? match.cq.data ?? "";
-        await ackAndEditSelection(chatId, sent.message_id, question, chosenLabel, match.cq.id!);
+        await ackAndEditSelection(chatId, sent.message_id, question, chosenLabel, match.cq.id);
 
         return toResult({
           timed_out: false,

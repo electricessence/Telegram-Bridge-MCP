@@ -4,7 +4,7 @@ import { createMockServer, parseResult, isError } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({
   sendChatAction: vi.fn(),
-  resolveChat: vi.fn((): string | TelegramError => "123"),
+  resolveChat: vi.fn((): number | TelegramError => 123),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -30,22 +30,22 @@ describe("send_chat_action tool", () => {
     expect(isError(result)).toBe(false);
     const data = parseResult(result) as any;
     expect(data.ok).toBe(true);
-    expect(mocks.sendChatAction).toHaveBeenCalledWith("123", "typing");
+    expect(mocks.sendChatAction).toHaveBeenCalledWith(123, "typing");
   });
 
   it("sends record_voice action", async () => {
     mocks.sendChatAction.mockResolvedValue(undefined);
     await call({ action: "record_voice" });
-    expect(mocks.sendChatAction).toHaveBeenCalledWith("123", "record_voice");
+    expect(mocks.sendChatAction).toHaveBeenCalledWith(123, "record_voice");
   });
 
   it("sends upload_document action", async () => {
     mocks.sendChatAction.mockResolvedValue(undefined);
     await call({ action: "upload_document" });
-    expect(mocks.sendChatAction).toHaveBeenCalledWith("123", "upload_document");
+    expect(mocks.sendChatAction).toHaveBeenCalledWith(123, "upload_document");
   });
 
-  it("returns error when resolveChat returns non-string", async () => {
+  it("returns error when resolveChat returns non-number", async () => {
     mocks.resolveChat.mockReturnValueOnce({ code: "UNAUTHORIZED_CHAT", message: "test" });
     const result = await call({ action: "typing" });
     expect(isError(result)).toBe(true);

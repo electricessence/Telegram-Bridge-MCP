@@ -13,7 +13,7 @@ vi.mock("../telegram.js", async (importActual) => {
     getApi: () => mocks,
     getOffset: () => 0,
     advanceOffset: vi.fn(),
-    resolveChat: () => "42",
+    resolveChat: () => 42,
     pollUntil: async (matcher: any, _timeout: number) => {
       const updates = await mocks.getUpdates();
       const result = matcher(updates);

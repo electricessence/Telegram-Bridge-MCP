@@ -26,7 +26,7 @@ export function register(server: McpServer) {
     },
     async ({ text, ttl_seconds }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
 
       const textErr = validateText(text);
       if (textErr) return toError(textErr);

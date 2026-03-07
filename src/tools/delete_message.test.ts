@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ deleteMessage: vi.fn() }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, resolveChat: () => "42" };
+  return { ...actual, getApi: () => mocks, resolveChat: () => 42 };
 });
 
 import { register } from "./delete_message.js";
@@ -30,7 +30,7 @@ describe("delete_message tool", () => {
   it("passes chat_id and message_id to API", async () => {
     mocks.deleteMessage.mockResolvedValue(true);
     await call({ message_id: 99 });
-    expect(mocks.deleteMessage).toHaveBeenCalledWith("42", 99);
+    expect(mocks.deleteMessage).toHaveBeenCalledWith(42, 99);
   });
 
   it("returns MESSAGE_CANT_BE_DELETED for old or unauthorised messages", async () => {

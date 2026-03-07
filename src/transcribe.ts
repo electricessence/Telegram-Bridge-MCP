@@ -11,7 +11,12 @@
  */
 
 import { pipeline, env, type AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
-import { getApi, resolveChat } from "./telegram.js";
+import { getApi, resolveChat, trySetMessageReaction, type ReactionEmoji } from "./telegram.js";
+
+const RE_TRAILING_SLASHES = /\/+$/;
+
+const REACT_TRANSCRIBING = "\u270D" as ReactionEmoji;  // ✍  Writing Hand
+const REACT_DONE         = "\uD83E\uDEE1" as ReactionEmoji; // 🫡  Saluting Face
 
 const LOCAL_MODEL = process.env.WHISPER_MODEL ?? "onnx-community/whisper-base";
 const REMOTE_MODEL = process.env.WHISPER_MODEL ?? "whisper-1";
@@ -23,21 +28,20 @@ if (process.env.WHISPER_CACHE_DIR) {
 }
 
 // Singleton pipeline — model is loaded once and reused across calls.
-let _pipelinePromise: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
+const ASR_TASK = "automatic-speech-recognition";
+type ASRPipeline = AutomaticSpeechRecognitionPipeline;
+let _pipelinePromise: Promise<ASRPipeline> | null = null;
 
-function getPipeline() {
-  if (!_pipelinePromise) {
-    _pipelinePromise = pipeline("automatic-speech-recognition", LOCAL_MODEL) as Promise<AutomaticSpeechRecognitionPipeline>;
-  }
-  return _pipelinePromise;
+function getPipeline(): Promise<ASRPipeline> {
+  return _pipelinePromise ??= pipeline(ASR_TASK, LOCAL_MODEL) as Promise<ASRPipeline>;
 }
 
 /**
  * Sends raw audio bytes to an OpenAI-compatible transcription endpoint.
  * The server receives the bytes as a multipart file upload.
  */
-async function transcribeRemote(audioBytes: Buffer, filename: string): Promise<string> {
-  const host = process.env.STT_HOST!.replace(/\/$/, "");
+async function transcribeRemote(audioBytes: Buffer, filename: string, host: string): Promise<string> {
+  host = host.replace(RE_TRAILING_SLASHES, "");
   const url = `${host}/v1/audio/transcriptions`;
 
   const form = new FormData();
@@ -104,7 +108,7 @@ export async function transcribeVoice(fileId: string): Promise<string> {
   // 3a. Remote transcription — forward raw bytes, no local decode.
   if (process.env.STT_HOST) {
     const filename = fileInfo.file_path.split("/").pop() ?? "audio.ogg";
-    return transcribeRemote(audioBytes, filename);
+    return transcribeRemote(audioBytes, filename, process.env.STT_HOST);
   }
 
   // 3b. Local ONNX fallback — decode audio to Float32 PCM at 16 kHz.
@@ -129,20 +133,15 @@ export async function transcribeVoice(fileId: string): Promise<string> {
  */
 export async function transcribeWithIndicator(fileId: string, messageId?: number): Promise<string> {
   const chatId = resolveChat();
+  const reactId = typeof chatId === "number" ? chatId : undefined;
 
-  // React with 📝 to signal transcription in progress (best-effort)
-  if (typeof chatId === "string" && messageId !== undefined) {
-    getApi().setMessageReaction(chatId, messageId, [{ type: "emoji", emoji: "✍" }])
-      .catch(() => {/* non-fatal */});
-  }
+  if (reactId !== undefined && messageId !== undefined)
+    trySetMessageReaction(reactId, messageId, REACT_TRANSCRIBING);
 
   try {
     return await transcribeVoice(fileId);
   } finally {
-    // Swap reaction to 🫡 when done (best-effort)
-    if (typeof chatId === "string" && messageId !== undefined) {
-      getApi().setMessageReaction(chatId, messageId, [{ type: "emoji", emoji: "🫡" }])
-        .catch(() => {/* non-fatal */});
-    }
+    if (reactId !== undefined && messageId !== undefined)
+      trySetMessageReaction(reactId, messageId, REACT_DONE);
   }
 }

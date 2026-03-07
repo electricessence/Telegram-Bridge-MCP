@@ -3,7 +3,8 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 const mocks = vi.hoisted(() => ({
   getFile: vi.fn(),
   setMessageReaction: vi.fn(),
-  resolveChat: vi.fn(() => "123"),
+  trySetMessageReaction: vi.fn((_chatId: number, _messageId: number, _emoji: string) => Promise.resolve(true)),
+  resolveChat: vi.fn(() => 123),
 }));
 
 vi.mock("./telegram.js", async (importActual) => {
@@ -12,6 +13,7 @@ vi.mock("./telegram.js", async (importActual) => {
     ...actual,
     getApi: () => mocks,
     resolveChat: mocks.resolveChat,
+    trySetMessageReaction: mocks.trySetMessageReaction,
   };
 });
 
@@ -156,7 +158,7 @@ describe("transcribe.ts", () => {
   describe("transcribeWithIndicator", () => {
     beforeEach(() => {
       process.env.STT_HOST = "http://your-whisper-server";
-      mocks.setMessageReaction.mockResolvedValue(undefined);
+      mocks.trySetMessageReaction.mockResolvedValue(true);
       mockFetch([
         { ok: true, arrayBuffer: FAKE_AUDIO },
         { ok: true, body: { text: "transcribed" } },
@@ -170,31 +172,23 @@ describe("transcribe.ts", () => {
 
     it("sets ✍ reaction before transcribing", async () => {
       await transcribeWithIndicator("fid", 99);
-      expect(mocks.setMessageReaction).toHaveBeenCalledWith(
-        "123",
-        99,
-        [{ type: "emoji", emoji: "✍" }],
-      );
+      expect(mocks.trySetMessageReaction).toHaveBeenCalledWith(123, 99, "✍");
     });
 
     it("sets 🫡 reaction after transcribing", async () => {
       await transcribeWithIndicator("fid", 99);
-      expect(mocks.setMessageReaction).toHaveBeenCalledWith(
-        "123",
-        99,
-        [{ type: "emoji", emoji: "🫡" }],
-      );
+      expect(mocks.trySetMessageReaction).toHaveBeenCalledWith(123, 99, "🫡");
     });
 
-    it("still transcribes if reactions throw", async () => {
-      mocks.setMessageReaction.mockRejectedValue(new Error("no perms"));
+    it("still transcribes if reactions return false", async () => {
+      mocks.trySetMessageReaction.mockResolvedValue(false);
       const result = await transcribeWithIndicator("fid", 1);
       expect(result).toBe("transcribed");
     });
 
     it("skips reactions when messageId is not provided", async () => {
       await transcribeWithIndicator("fid");
-      expect(mocks.setMessageReaction).not.toHaveBeenCalled();
+      expect(mocks.trySetMessageReaction).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,9 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { InputFile } from "grammy";
-import { existsSync } from "fs";
-import { resolve, relative, isAbsolute } from "path";
 import { z } from "zod";
-import { getApi, toResult, toError, validateCaption, resolveChat, callApi, SAFE_FILE_DIR } from "../telegram.js";
+import { getApi, toResult, toError, validateCaption, resolveChat, callApi, resolveMediaSource } from "../telegram.js";
 import { resolveParseMode } from "../markdown.js";
 import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
@@ -43,7 +40,7 @@ export function register(server: McpServer) {
     },
     async ({ document, caption, parse_mode, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
 
       if (caption) {
         const capErr = validateCaption(caption);
@@ -55,24 +52,9 @@ export function register(server: McpServer) {
         : { text: undefined, parse_mode: undefined };
 
       // Resolve the document source: local path, URL, or file_id
-      let docSource: string | InputFile;
-      if (document.startsWith("http://")) {
-        return toError({ code: "UNKNOWN" as const, message: "Plain HTTP URLs are not accepted — use HTTPS to prevent interception in transit." });
-      } else if (document.startsWith("https://")) {
-        // URL — pass directly
-        docSource = document;
-      } else if (existsSync(document)) {
-        // Local file path — must be under SAFE_FILE_DIR
-        const resolvedPath = resolve(document);
-        const rel = relative(SAFE_FILE_DIR, resolvedPath);
-        if (rel.startsWith("..") || isAbsolute(rel)) {
-          return toError({ code: "UNKNOWN" as const, message: `Local file access is restricted to ${SAFE_FILE_DIR}. Use download_file to stage files first.` });
-        }
-        docSource = new InputFile(resolvedPath);
-      } else {
-        // Assume Telegram file_id
-        docSource = document;
-      }
+      const docResult = resolveMediaSource(document);
+      if ("code" in docResult) return toError(docResult);
+      const docSource = docResult.source;
 
       await clearPendingTemp();
       try {

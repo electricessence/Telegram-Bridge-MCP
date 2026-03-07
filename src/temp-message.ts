@@ -16,7 +16,7 @@
 import { getApi } from "./telegram.js";
 
 interface PendingTemp {
-  chatId: string;
+  chatId: number;
   messageId: number;
   timer: ReturnType<typeof setTimeout>;
 }
@@ -27,7 +27,7 @@ let _pending: PendingTemp | null = null;
  * Register a message as the current pending temp.
  * If a previous temp message exists it is deleted first.
  */
-export function setPendingTemp(chatId: string, messageId: number, ttlSeconds = 30): void {
+export function setPendingTemp(chatId: number, messageId: number, ttlSeconds = 30): void {
   // Replace any existing pending message
   if (_pending) {
     const prev = _pending;
@@ -61,10 +61,10 @@ export async function clearPendingTemp(): Promise<void> {
 
 /** Returns true if a temp message is currently registered. */
 export function hasPendingTemp(): boolean {
-  return _pending !== null;
+  return !!_pending;
 }
 
-async function _delete(chatId: string, messageId: number): Promise<void> {
+async function _delete(chatId: number, messageId: number): Promise<void> {
   try {
     await getApi().deleteMessage(chatId, messageId);
   } catch {

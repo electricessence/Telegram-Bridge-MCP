@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ sendVoiceDirect: vi.fn() }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, sendVoiceDirect: mocks.sendVoiceDirect, resolveChat: () => "1" };
+  return { ...actual, sendVoiceDirect: mocks.sendVoiceDirect, resolveChat: () => 1 };
 });
 
 import { register } from "./send_voice.js";

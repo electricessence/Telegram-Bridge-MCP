@@ -20,7 +20,7 @@ vi.mock("../telegram.js", async (importActual) => {
     getApi: () => mocks,
     getOffset: () => 0,
     advanceOffset: vi.fn(),
-    resolveChat: () => "42",
+    resolveChat: () => 42,
     pollUntil: async (matcher: any, _timeout: number) => {
       const updates = await mocks.getUpdates();
       const result = matcher(updates);
@@ -86,7 +86,7 @@ describe("choose tool", () => {
     mocks.getUpdates.mockResolvedValue([makeCallbackUpdate("opt_a")]);
     await call({ question: "Pick one", options: OPTIONS });
     expect(mocks.editMessageText).toHaveBeenCalledWith(
-      "42",
+      42,
       7,
       expect.stringContaining("Option A"),
       expect.objectContaining({
@@ -195,7 +195,7 @@ describe("choose tool", () => {
     expect(data.text_message_id).toBe(20);
     // Buttons should be removed and message edited to show "Skipped"
     expect(mocks.editMessageText).toHaveBeenCalledWith(
-      "42",
+      42,
       7,
       expect.stringContaining("Skipped"),
       expect.objectContaining({
@@ -230,7 +230,7 @@ describe("choose tool", () => {
     expect(data.voice).toBe(true);
     expect(data.text_response).toBe("transcribed text");
     expect(mocks.editMessageText).toHaveBeenCalledWith(
-      "42", 7,
+      42, 7,
       expect.stringContaining("Skipped"),
       expect.objectContaining({ reply_markup: { inline_keyboard: [] } }),
     );

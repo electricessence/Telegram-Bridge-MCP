@@ -35,6 +35,38 @@
 
 import { pipeline, env } from "@huggingface/transformers";
 
+// ---------------------------------------------------------------------------
+// Regex constants for stripForTts — extracted to module level for reuse
+// ---------------------------------------------------------------------------
+const RE_ESCAPE_NEWLINE   = /\\n/g;
+const RE_ESCAPE_QUOTE     = /\\"/g;
+const RE_ESCAPE_BACKSLASH = /\\\\/g;
+const RE_FENCED_CODE      = /```[\w]*\n?([\s\S]*?)```/g;
+const RE_INLINE_CODE      = /`([^`]+)`/g;
+const RE_BOLD_DOUBLE      = /\*\*(.+?)\*\*/gs;
+const RE_BOLD_SINGLE      = /\*(.+?)\*/gs;
+const RE_UNDERLINE        = /__(.+?)__/gs;
+const RE_ITALIC           = /_(.+?)_/gs;
+const RE_STRIKE_DOUBLE    = /~~(.+?)~~/gs;
+const RE_STRIKE_SINGLE    = /~(.+?)~/gs;
+const RE_LINK             = /\[([^\]]+)\]\([^)]+\)/g;
+const RE_HEADING          = /^#{1,6}\s+/gm;
+const RE_BLOCKQUOTE       = /^>\s*/gm;
+const RE_HTML_B           = /<b[^>]*>(.*?)<\/b>/gis;
+const RE_HTML_STRONG      = /<strong[^>]*>(.*?)<\/strong>/gis;
+const RE_HTML_I           = /<i[^>]*>(.*?)<\/i>/gis;
+const RE_HTML_EM          = /<em[^>]*>(.*?)<\/em>/gis;
+const RE_HTML_U           = /<u[^>]*>(.*?)<\/u>/gis;
+const RE_HTML_INS         = /<ins[^>]*>(.*?)<\/ins>/gis;
+const RE_HTML_S           = /<s[^>]*>(.*?)<\/s>/gis;
+const RE_HTML_DEL         = /<del[^>]*>(.*?)<\/del>/gis;
+const RE_HTML_CODE        = /<code[^>]*>(.*?)<\/code>/gis;
+const RE_HTML_PRE         = /<pre[^>]*>(.*?)<\/pre>/gis;
+const RE_HTML_A           = /<a[^>]*>(.*?)<\/a>/gis;
+const RE_HTML_ANY         = /<[^>]+>/g;
+const RE_MV2_UNESCAPE     = /\\([_*[\]()~`>#+=|{}.!-])/g;
+const RE_TRAILING_SLASH   = /\/+$/;
+
 /** Maximum characters accepted per TTS request (matches Telegram text limit). */
 export const TTS_LIMIT = 4096;
 
@@ -60,45 +92,45 @@ export function stripForTts(text: string): string {
   return (
     text
       // Normalize MCP transport escape sequences before any other processing
-      .replace(/\\n/g, "\n")
-      .replace(/\\"/g, '"')
-      .replace(/\\\\/g, "\\")
+      .replace(RE_ESCAPE_NEWLINE, "\n")
+      .replace(RE_ESCAPE_QUOTE, '"')
+      .replace(RE_ESCAPE_BACKSLASH, "\\")
       // Fenced code blocks — keep inner content, strip fence lines
-      .replace(/```[\w]*\n?([\s\S]*?)```/g, "$1")
+      .replace(RE_FENCED_CODE, "$1")
       // Inline code — remove backtick delimiters
-      .replace(/`([^`]+)`/g, "$1")
+      .replace(RE_INLINE_CODE, "$1")
       // Bold (**text** and *text*)
-      .replace(/\*\*(.+?)\*\*/gs, "$1")
-      .replace(/\*(.+?)\*/gs, "$1")
+      .replace(RE_BOLD_DOUBLE, "$1")
+      .replace(RE_BOLD_SINGLE, "$1")
       // Underline (__text__) before italic (_text_)
-      .replace(/__(.+?)__/gs, "$1")
+      .replace(RE_UNDERLINE, "$1")
       // Italic / MarkdownV2 italic
-      .replace(/_(.+?)_/gs, "$1")
+      .replace(RE_ITALIC, "$1")
       // Strikethrough (~~text~~ and MarkdownV2 ~text~)
-      .replace(/~~(.+?)~~/gs, "$1")
-      .replace(/~(.+?)~/gs, "$1")
+      .replace(RE_STRIKE_DOUBLE, "$1")
+      .replace(RE_STRIKE_SINGLE, "$1")
       // Links — keep display text, discard URL
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(RE_LINK, "$1")
       // Headings — strip leading # markers
-      .replace(/^#{1,6}\s+/gm, "")
+      .replace(RE_HEADING, "")
       // Blockquotes — strip leading > marker
-      .replace(/^>\s*/gm, "")
+      .replace(RE_BLOCKQUOTE, "")
       // HTML: inline tags — unwrap to content
-      .replace(/<b[^>]*>(.*?)<\/b>/gis, "$1")
-      .replace(/<strong[^>]*>(.*?)<\/strong>/gis, "$1")
-      .replace(/<i[^>]*>(.*?)<\/i>/gis, "$1")
-      .replace(/<em[^>]*>(.*?)<\/em>/gis, "$1")
-      .replace(/<u[^>]*>(.*?)<\/u>/gis, "$1")
-      .replace(/<ins[^>]*>(.*?)<\/ins>/gis, "$1")
-      .replace(/<s[^>]*>(.*?)<\/s>/gis, "$1")
-      .replace(/<del[^>]*>(.*?)<\/del>/gis, "$1")
-      .replace(/<code[^>]*>(.*?)<\/code>/gis, "$1")
-      .replace(/<pre[^>]*>(.*?)<\/pre>/gis, "$1")
-      .replace(/<a[^>]*>(.*?)<\/a>/gis, "$1")
+      .replace(RE_HTML_B, "$1")
+      .replace(RE_HTML_STRONG, "$1")
+      .replace(RE_HTML_I, "$1")
+      .replace(RE_HTML_EM, "$1")
+      .replace(RE_HTML_U, "$1")
+      .replace(RE_HTML_INS, "$1")
+      .replace(RE_HTML_S, "$1")
+      .replace(RE_HTML_DEL, "$1")
+      .replace(RE_HTML_CODE, "$1")
+      .replace(RE_HTML_PRE, "$1")
+      .replace(RE_HTML_A, "$1")
       // Strip any remaining HTML tags
-      .replace(/<[^>]+>/g, "")
+      .replace(RE_HTML_ANY, "")
       // MarkdownV2 escaped special chars — unescape
-      .replace(/\\([_*[\]()~`>#+=|{}.!-])/g, "$1")
+      .replace(RE_MV2_UNESCAPE, "$1")
       .trim()
   );
 }
@@ -118,15 +150,13 @@ export function _resetLocalPipeline(): void {
 }
 
 function getLocalPipeline() {
-  if (!_localPipeline) {
-    const model = process.env.TTS_MODEL_LOCAL ?? DEFAULT_LOCAL_MODEL;
-    if (process.env.TTS_CACHE_DIR) {
-      env.cacheDir = process.env.TTS_CACHE_DIR;
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _localPipeline = pipeline("text-to-speech", model) as any;
+  if (_localPipeline) return _localPipeline;
+  const model = process.env.TTS_MODEL_LOCAL ?? DEFAULT_LOCAL_MODEL;
+  if (process.env.TTS_CACHE_DIR) {
+    env.cacheDir = process.env.TTS_CACHE_DIR;
   }
-  return _localPipeline!;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (_localPipeline = pipeline("text-to-speech", model) as any);
 }
 
 async function synthesizeLocalToOgg(text: string): Promise<Buffer> {
@@ -171,8 +201,8 @@ async function synthesizeHttpToOgg(text: string, host: string, apiKey: string | 
   });
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "(no body)");
-    process.stderr.write(`[tts] server error ${res.status}: ${body}\n`);
+    const errorBody = await res.text().catch(() => "(no body)");
+    process.stderr.write(`[tts] server error ${res.status}: ${errorBody}\n`);
     throw new Error(`TTS server returned ${res.status}. Check server logs for details.`);
   }
 
@@ -220,7 +250,7 @@ function validateTtsInput(text: string): void {
 export async function synthesizeToOgg(text: string): Promise<Buffer> {
   validateTtsInput(text);
 
-  const ttsHost = process.env.TTS_HOST?.replace(/\/$/, "");
+  const ttsHost = process.env.TTS_HOST?.replace(RE_TRAILING_SLASH, "");
   if (ttsHost) return synthesizeHttpToOgg(text, ttsHost, process.env.OPENAI_API_KEY ?? null);
 
   const apiKey = process.env.OPENAI_API_KEY;

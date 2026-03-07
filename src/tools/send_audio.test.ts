@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ sendAudio: vi.fn() }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, resolveChat: () => "1" };
+  return { ...actual, getApi: () => mocks, resolveChat: () => 1 };
 });
 
 import { register } from "./send_audio.js";

@@ -10,7 +10,7 @@ const ttsMocks = vi.hoisted(() => ({
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, sendVoiceDirect: mocks.sendVoiceDirect, resolveChat: () => "123" };
+  return { ...actual, getApi: () => mocks, sendVoiceDirect: mocks.sendVoiceDirect, resolveChat: () => 123 };
 });
 
 vi.mock("../tts.js", () => ({

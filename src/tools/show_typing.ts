@@ -27,7 +27,7 @@ export function register(server: McpServer) {
     },
     async ({ timeout_seconds }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       const started = await showTyping(timeout_seconds);
       return toResult({ ok: true, timeout_seconds, started });
     }

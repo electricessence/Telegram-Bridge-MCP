@@ -17,7 +17,7 @@ export function register(server: McpServer) {
     },
     async ({ message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       try {
         const ok = await getApi().unpinChatMessage(chatId, message_id);
         return toResult({ ok });

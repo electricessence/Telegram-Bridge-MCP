@@ -27,7 +27,7 @@ export type ButtonOrTextResult =
  * Used by send_confirmation (button-only response expected).
  */
 export async function pollButtonPress(
-  chatId: string,
+  chatId: number,
   messageId: number,
   timeoutSeconds: number,
 ): Promise<NonNullable<Update["callback_query"]> | null> {
@@ -37,7 +37,7 @@ export async function pollButtonPress(
         (u) =>
           u.callback_query &&
           u.callback_query.message?.message_id === messageId &&
-          String(u.callback_query.message?.chat.id) === chatId,
+          u.callback_query.message?.chat.id === chatId,
       );
       return cq?.callback_query;
     },
@@ -52,7 +52,7 @@ export async function pollButtonPress(
  * may type or speak instead of pressing a button.
  */
 export async function pollButtonOrTextOrVoice(
-  chatId: string,
+  chatId: number,
   messageId: number,
   timeoutSeconds: number,
 ): Promise<ButtonOrTextResult | null> {
@@ -62,16 +62,26 @@ export async function pollButtonOrTextOrVoice(
         (u) =>
           u.callback_query &&
           u.callback_query.message?.message_id === messageId &&
-          String(u.callback_query.message?.chat.id) === chatId,
+          u.callback_query.message?.chat.id === chatId,
       );
       if (cq?.callback_query) return { kind: "button", cq: cq.callback_query };
 
       // Only match messages sent AFTER the question (stale-message guard)
       const tm = updates.find((u) => u.message?.text && u.message.message_id > messageId);
-      if (tm?.message) return { kind: "text", message_id: tm.message.message_id, text: tm.message.text!, reply_to_message_id: tm.message.reply_to_message?.message_id };
+      if (tm?.message?.text) return {
+        kind: "text",
+        message_id: tm.message.message_id,
+        text: tm.message.text,
+        reply_to_message_id: tm.message.reply_to_message?.message_id,
+      };
 
       const vm = updates.find((u) => u.message?.voice && u.message.message_id > messageId);
-      if (vm?.message?.voice) return { kind: "voice", message_id: vm.message.message_id, fileId: vm.message.voice.file_id, reply_to_message_id: vm.message.reply_to_message?.message_id };
+      if (vm?.message?.voice) return {
+        kind: "voice",
+        message_id: vm.message.message_id,
+        fileId: vm.message.voice.file_id,
+        reply_to_message_id: vm.message.reply_to_message?.message_id,
+      };
 
       return undefined;
     },
@@ -84,22 +94,14 @@ export async function pollButtonOrTextOrVoice(
 // Post-press helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Acknowledges a callback_query (removes the Telegram spinner) and edits the
- * host message to show ▸ chosenLabel with all buttons removed.
- */
-export async function ackAndEditSelection(
-  chatId: string,
+async function appendSuffixAndEdit(
+  chatId: number,
   messageId: number,
-  originalText: string,
-  chosenLabel: string,
-  callbackQueryId: string | undefined,
+  text: string,
+  suffix: string,
 ): Promise<void> {
-  if (callbackQueryId) {
-    await getApi().answerCallbackQuery(callbackQueryId).catch(() => {/* non-fatal */});
-  }
   await getApi()
-    .editMessageText(chatId, messageId, markdownToV2(`${originalText}\n\n▸ *${chosenLabel}*`), {
+    .editMessageText(chatId, messageId, markdownToV2(`${text}\n\n${suffix}`), {
       parse_mode: "MarkdownV2",
       reply_markup: { inline_keyboard: [] },
     })
@@ -107,20 +109,34 @@ export async function ackAndEditSelection(
 }
 
 /**
+ * Acknowledges a callback_query (removes the Telegram spinner) and edits the
+ * host message to show ▸ chosenLabel with all buttons removed.
+ */
+export async function ackAndEditSelection(
+  chatId: number,
+  messageId: number,
+  originalText: string,
+  chosenLabel: string,
+  callbackQueryId: string | undefined,
+): Promise<void> {
+  if (callbackQueryId) {
+    await getApi()
+      .answerCallbackQuery(callbackQueryId)
+      .catch(() => {/* non-fatal */});
+  }
+  await appendSuffixAndEdit(chatId, messageId, originalText, `▸ *${chosenLabel}*`);
+}
+
+/**
  * Edits the host message to show ⏱ Timed out with all buttons removed.
  * Used by send_confirmation when no button was pressed within the timeout.
  */
 export async function editWithTimedOut(
-  chatId: string,
+  chatId: number,
   messageId: number,
   originalText: string,
 ): Promise<void> {
-  await getApi()
-    .editMessageText(chatId, messageId, markdownToV2(`${originalText}\n\n⏱ _Timed out_`), {
-      parse_mode: "MarkdownV2",
-      reply_markup: { inline_keyboard: [] },
-    })
-    .catch((e) => { console.error("[button-helpers] editWithTimedOut failed:", e); });
+  await appendSuffixAndEdit(chatId, messageId, originalText, "⏱ _Timed out_");
 }
 
 /**
@@ -128,14 +144,9 @@ export async function editWithTimedOut(
  * Used by choose when the user typed/spoke instead of pressing a button.
  */
 export async function editWithSkipped(
-  chatId: string,
+  chatId: number,
   messageId: number,
   originalText: string,
 ): Promise<void> {
-  await getApi()
-    .editMessageText(chatId, messageId, markdownToV2(`${originalText}\n\n⏭ _Skipped_`), {
-      parse_mode: "MarkdownV2",
-      reply_markup: { inline_keyboard: [] },
-    })
-    .catch((e) => { console.error("[button-helpers] editWithSkipped failed:", e); });
+  await appendSuffixAndEdit(chatId, messageId, originalText, "⏭ _Skipped_");
 }

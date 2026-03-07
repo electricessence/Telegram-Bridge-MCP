@@ -42,18 +42,21 @@ export function isRecording(): boolean {
   return _active;
 }
 
+function pushEntry(entry: SessionEntry): void {
+  if (_buffer.length >= _maxUpdates) _buffer.shift();
+  _buffer.push(entry);
+}
+
 /** Called by advanceOffset() — records an inbound user update. */
 export function recordUpdate(update: Update): void {
   if (!_active) return;
-  if (_buffer.length >= _maxUpdates) _buffer.shift();
-  _buffer.push({ direction: "user", update });
+  pushEntry({ direction: "user", update });
 }
 
 /** Called by send tools — records an outbound bot message. */
 export function recordBotMessage(entry: Omit<BotEntry, "direction" | "timestamp">): void {
   if (!_active) return;
-  if (_buffer.length >= _maxUpdates) _buffer.shift();
-  _buffer.push({ direction: "bot", timestamp: new Date().toISOString(), ...entry });
+  pushEntry({ direction: "bot", timestamp: new Date().toISOString(), ...entry });
 }
 
 /** Returns all session entries (user + bot) in capture order (oldest first). */

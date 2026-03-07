@@ -1,9 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { InputFile } from "grammy";
-import { existsSync } from "fs";
-import { resolve, relative, isAbsolute } from "path";
 import { z } from "zod";
-import { getApi, toResult, toError, validateCaption, resolveChat, callApi, SAFE_FILE_DIR } from "../telegram.js";
+import { getApi, toResult, toError, validateCaption, resolveChat, callApi, resolveMediaSource } from "../telegram.js";
 import { resolveParseMode } from "../markdown.js";
 import { cancelTyping, showTyping } from "../typing-state.js";
 import { clearPendingTemp } from "../temp-message.js";
@@ -52,7 +49,7 @@ export function register(server: McpServer) {
     },
     async ({ audio, caption, parse_mode, duration, performer, title, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
 
       if (caption) {
         const capErr = validateCaption(caption);
@@ -63,22 +60,9 @@ export function register(server: McpServer) {
         ? resolveParseMode(caption, parse_mode)
         : { text: undefined, parse_mode: undefined };
 
-      let audioSource: string | InputFile;
-      if (audio.startsWith("http://")) {
-        return toError({ code: "UNKNOWN" as const, message: "Plain HTTP URLs are not accepted — use HTTPS to prevent interception in transit." });
-      } else if (audio.startsWith("https://")) {
-        audioSource = audio;
-      } else if (existsSync(audio)) {
-        // Local file path — must be under SAFE_FILE_DIR
-        const resolvedPath = resolve(audio);
-        const rel = relative(SAFE_FILE_DIR, resolvedPath);
-        if (rel.startsWith("..") || isAbsolute(rel)) {
-          return toError({ code: "UNKNOWN" as const, message: `Local file access is restricted to ${SAFE_FILE_DIR}. Use download_file to stage files first.` });
-        }
-        audioSource = new InputFile(resolvedPath);
-      } else {
-        audioSource = audio; // Assume Telegram file_id
-      }
+      const audioResult = resolveMediaSource(audio);
+      if ("code" in audioResult) return toError(audioResult);
+      const audioSource = audioResult.source;
 
       await clearPendingTemp();
       try {

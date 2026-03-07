@@ -33,7 +33,7 @@ export function register(server: McpServer) {
     },
     async ({ photo, caption, parse_mode, disable_notification, reply_to_message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       if (caption) {
         const capErr = validateCaption(caption);
         if (capErr) return toError(capErr);

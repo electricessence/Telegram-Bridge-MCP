@@ -2,6 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 
+const RE_BOT_COMMAND = /^[a-z0-9_]+$/;
+
 /**
  * Sets (or clears) the Telegram slash-command menu for the active chat.
  *
@@ -30,7 +32,7 @@ export function register(server: McpServer) {
               .min(1)
               .max(32)
               .regex(
-                /^[a-z0-9_]+$/,
+                RE_BOT_COMMAND,
                 "Command must be lowercase letters, digits, or underscores — no slash prefix"
               )
               .describe('Command name without leading slash, e.g. "cancel"'),
@@ -55,12 +57,12 @@ export function register(server: McpServer) {
       const chatId = resolveChat();
 
       // For chat-scoped commands we need the active chat ID
-      if (scope === "chat" && typeof chatId !== "string") return toError(chatId);
+      if (scope === "chat" && typeof chatId !== "number") return toError(chatId);
 
       try {
         const botCommandScope =
           scope === "chat"
-            ? { type: "chat" as const, chat_id: chatId as string }
+            ? { type: "chat" as const, chat_id: chatId as number }
             : { type: "default" as const };
 
         await getApi().setMyCommands(commands, { scope: botCommandScope });

@@ -70,7 +70,7 @@ export function register(server: McpServer) {
     },
     async ({ text, yes_text, no_text, yes_data, no_data, yes_style, no_style, timeout_seconds, reply_to_message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       const textErr = validateText(text);
       if (textErr) return toError(textErr);
       const yesDataErr = validateCallbackData(yes_data);
@@ -102,7 +102,7 @@ export function register(server: McpServer) {
 
         const confirmed = cq.data === yes_data;
         const chosenLabel = confirmed ? yes_text : no_text;
-        await ackAndEditSelection(chatId, sent.message_id, text, chosenLabel, cq.id!);
+        await ackAndEditSelection(chatId, sent.message_id, text, chosenLabel, cq.id);
 
         return toResult({
           timed_out: false,

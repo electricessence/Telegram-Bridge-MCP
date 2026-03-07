@@ -3,7 +3,7 @@ import { createMockServer, parseResult, isError } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({
   showTyping: vi.fn(),
-  resolveChat: vi.fn(() => "99"),
+  resolveChat: vi.fn(() => 99),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {

@@ -79,7 +79,7 @@ export function register(server: McpServer) {
     },
     async ({ draft_id, text, parse_mode, message_thread_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
 
       let finalText = text;
       let finalMode: string | undefined = parse_mode;
@@ -93,14 +93,9 @@ export function register(server: McpServer) {
       const textErr = validateText(finalText);
       if (textErr) return toError(textErr);
 
-      const chatIdInt = parseInt(chatId, 10);
-      if (isNaN(chatIdInt)) {
-        return toError({ code: "INVALID_CHAT_ID", message: "sendMessageDraft requires a numeric chat_id (private chats only)." });
-      }
-
       try {
         await sendMessageDraft({
-          chat_id: chatIdInt,
+          chat_id: chatId,
           draft_id,
           text: finalText,
           parse_mode: finalMode,

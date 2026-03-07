@@ -36,7 +36,7 @@ export function register(server: McpServer) {
     },
     async ({ message_id, text, parse_mode, reply_markup }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       const resolved = resolveParseMode(text, parse_mode);
       const textErr = validateText(resolved.text);
       if (textErr) return toError(textErr);

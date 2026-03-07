@@ -17,7 +17,7 @@ export function register(server: McpServer) {
     },
     async ({ message_id, disable_notification }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       try {
         const ok = await getApi().pinChatMessage(chatId, message_id, {
           disable_notification,

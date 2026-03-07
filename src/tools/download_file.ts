@@ -20,10 +20,7 @@ const MAX_TEXT_BYTES = 100 * 1024; // 100 KB
 
 function isTextFile(fileName: string | undefined, mimeType: string | undefined): boolean {
   if (mimeType && TEXT_MIME_PREFIXES.some((p) => mimeType.startsWith(p))) return true;
-  if (fileName) {
-    const ext = extname(fileName).toLowerCase();
-    if (TEXT_EXTENSIONS.has(ext)) return true;
-  }
+  if (fileName && TEXT_EXTENSIONS.has(extname(fileName).toLowerCase())) return true;
   return false;
 }
 

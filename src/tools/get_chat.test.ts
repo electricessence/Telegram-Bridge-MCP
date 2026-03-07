@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ getChat: vi.fn() }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, resolveChat: () => "99" };
+  return { ...actual, getApi: () => mocks, resolveChat: () => 99 };
 });
 
 import { register } from "./get_chat.js";
@@ -31,7 +31,7 @@ describe("get_chat tool", () => {
   it("uses the configured chat id", async () => {
     mocks.getChat.mockResolvedValue({ id: 99, type: "private" });
     await call({});
-    expect(mocks.getChat).toHaveBeenCalledWith("99");
+    expect(mocks.getChat).toHaveBeenCalledWith(99);
   });
 
   it("returns error when chat not found", async () => {

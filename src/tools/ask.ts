@@ -36,9 +36,9 @@ export function register(server: McpServer) {
     },
     async ({ question, timeout_seconds, reply_to_message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
-      const chatErr = validateText(question);
-      if (chatErr) return toError(chatErr);
+      if (typeof chatId !== "number") return toError(chatId);
+      const textErr = validateText(question);
+      if (textErr) return toError(textErr);
 
       try {
         cancelTyping();
@@ -57,9 +57,10 @@ export function register(server: McpServer) {
           (updates) => {
             const msg = updates.find(
               (u) =>
-                (u.message?.text || u.message?.voice) &&
-                String(u.message!.chat.id) === chatId &&
-                u.message!.message_id > sent.message_id
+                u.message &&
+                (u.message.text || u.message.voice) &&
+                u.message.chat.id === chatId &&
+                u.message.message_id > sent.message_id
             );
             return msg?.message;
           },
@@ -71,15 +72,22 @@ export function register(server: McpServer) {
         }
 
         if (match.voice) {
-          const text = await transcribeWithIndicator(match.voice.file_id, match.message_id).catch((e) => `[transcription failed: ${e.message}]`);
-          return toResult({ timed_out: false, text, message_id: match.message_id, voice: true, reply_to_message_id: match.reply_to_message?.message_id ?? undefined });
+          const text = await transcribeWithIndicator(match.voice.file_id, match.message_id)
+            .catch((e) => `[transcription failed: ${e.message}]`);
+          return toResult({
+            timed_out: false,
+            text,
+            message_id: match.message_id,
+            voice: true,
+            reply_to_message_id: match.reply_to_message?.message_id,
+          });
         }
 
         return toResult({
           timed_out: false,
           text: match.text,
           message_id: match.message_id,
-          reply_to_message_id: match.reply_to_message?.message_id ?? undefined,
+          reply_to_message_id: match.reply_to_message?.message_id,
         });
       } catch (err) {
         return toError(err);

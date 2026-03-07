@@ -208,9 +208,11 @@ async function main() {
         console.log("");
 
         // Send confirmation back to the user
-        await api.sendMessage(chatId, "✅ *Pairing complete\\!*\n\nThis bot is now secured to your user ID\\.\nYou can now use Telegram Bridge MCP\\.", {
-          parse_mode: "MarkdownV2",
-        }).catch(() => {/* non-fatal */});
+        await api
+          .sendMessage(chatId, "✅ *Pairing complete\\!*\n\nThis bot is now secured to your user ID\\.\nYou can now use Telegram Bridge MCP\\.", {
+            parse_mode: "MarkdownV2",
+          })
+          .catch(() => {/* non-fatal */});
 
         process.exit(0);
 

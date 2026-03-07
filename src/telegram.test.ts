@@ -506,7 +506,7 @@ describe("resolveChat", () => {
   it("returns the configured chatId when ALLOWED_CHAT_ID is set", () => {
     process.env.ALLOWED_CHAT_ID = "12345";
     resetSecurityConfig();
-    expect(resolveChat()).toBe("12345");
+    expect(resolveChat()).toBe(12345);
   });
 });
 

@@ -62,7 +62,7 @@ export function register(server: McpServer) {
     },
     async ({ title, steps, message_id }) => {
       const chatId = resolveChat();
-      if (typeof chatId !== "string") return toError(chatId);
+      if (typeof chatId !== "number") return toError(chatId);
       try {
         const text = renderStatus(applyTopicToTitle(title), steps);
         const textErr = validateText(text);

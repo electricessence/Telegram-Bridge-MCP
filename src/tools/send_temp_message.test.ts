@@ -12,7 +12,7 @@ vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
   return {
     ...actual,
-    resolveChat: () => "49154463",
+    resolveChat: () => 49154463,
     getApi: () => apiMocks,
   };
 });
@@ -42,12 +42,12 @@ describe("send_temp_message tool", () => {
 
   it("calls setPendingTemp with chat_id, message_id, and ttl", async () => {
     await call({ text: "Analyzing…", ttl_seconds: 60 });
-    expect(tempMocks.setPendingTemp).toHaveBeenCalledWith("49154463", 42, 60);
+    expect(tempMocks.setPendingTemp).toHaveBeenCalledWith(49154463, 42, 60);
   });
 
   it("uses default ttl of 30 when not specified", async () => {
     await call({ text: "Working…" });
-    expect(tempMocks.setPendingTemp).toHaveBeenCalledWith("49154463", 42, 30);
+    expect(tempMocks.setPendingTemp).toHaveBeenCalledWith(49154463, 42, 30);
   });
 
   it("returns EMPTY_MESSAGE for blank text", async () => {

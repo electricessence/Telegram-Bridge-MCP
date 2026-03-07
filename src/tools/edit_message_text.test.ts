@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ editMessageText: vi.fn() }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, resolveChat: () => "42" };
+  return { ...actual, getApi: () => mocks, resolveChat: () => 42 };
 });
 
 import { register } from "./edit_message_text.js";
@@ -23,7 +23,7 @@ describe("edit_message_text tool", () => {
   it("calls API with correct positional args", async () => {
     mocks.editMessageText.mockResolvedValue({ message_id: 1 });
     await call({ message_id: 1, text: "Updated" });
-    expect(mocks.editMessageText).toHaveBeenCalledWith("42", 1, "Updated", expect.any(Object));
+    expect(mocks.editMessageText).toHaveBeenCalledWith(42, 1, "Updated", expect.any(Object));
   });
 
   it("returns result from API", async () => {

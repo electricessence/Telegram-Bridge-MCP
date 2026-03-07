@@ -75,8 +75,7 @@ export function bufferSize(): number {
  * Remaining updates stay buffered for the next call.
  */
 export function drainN(n: number): Update[] {
-  const taken = _queue.splice(0, n);
-  return taken;
+  return _queue.splice(0, n);
 }
 
 /** For testing only — resets buffer state between tests. */

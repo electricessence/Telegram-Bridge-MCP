@@ -10,7 +10,7 @@ const SAFE_TEST_PATH = join(tmpdir(), "telegram-bridge-mcp", "test.pdf");
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual, getApi: () => mocks, resolveChat: () => "1" };
+  return { ...actual, getApi: () => mocks, resolveChat: () => 1 };
 });
 
 vi.mock("fs", async (importActual) => {

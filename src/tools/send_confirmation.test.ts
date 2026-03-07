@@ -15,7 +15,7 @@ vi.mock("../telegram.js", async (importActual) => {
     getApi: () => mocks,
     getOffset: () => 0,
     advanceOffset: vi.fn(),
-    resolveChat: () => "42",
+    resolveChat: () => 42,
     pollUntil: async (matcher: any, _timeout: number) => {
       const updates = await mocks.getUpdates();
       const result = matcher(updates);
@@ -87,7 +87,7 @@ describe("send_confirmation tool", () => {
     mocks.getUpdates.mockResolvedValue([makeCallbackUpdate("confirm_yes")]);
     await call({ text: "Proceed?" });
     expect(mocks.editMessageText).toHaveBeenCalledWith(
-      "42",
+      42,
       5,
       expect.stringContaining("▸"),
       expect.objectContaining({ reply_markup: { inline_keyboard: [] } }),
@@ -120,7 +120,7 @@ describe("send_confirmation tool", () => {
     expect(data.timed_out).toBe(true);
     expect(mocks.answerCallbackQuery).not.toHaveBeenCalled();
     expect(mocks.editMessageText).toHaveBeenCalledWith(
-      "42",
+      42,
       5,
       expect.stringContaining("Timed out"),
       expect.objectContaining({ reply_markup: { inline_keyboard: [] } }),
@@ -142,7 +142,7 @@ describe("send_confirmation tool", () => {
     const data = parseResult(result) as any;
     expect(data.timed_out).toBe(true);
     expect(mocks.editMessageText).toHaveBeenCalledWith(
-      "42",
+      42,
       5,
       expect.stringContaining("Timed out"),
       expect.objectContaining({ reply_markup: { inline_keyboard: [] } }),

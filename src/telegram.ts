@@ -1,5 +1,5 @@
-import { Api, GrammyError, HttpError } from "grammy";
-import type { Update } from "grammy/types";
+import { Api, GrammyError, HttpError, InputFile } from "grammy";
+import type { ReactionTypeEmoji, Update } from "grammy/types";
 import { readFileSync, existsSync } from "fs";
 import path, { resolve } from "path";
 import { tmpdir } from "os";
@@ -8,6 +8,25 @@ import { recordUpdate } from "./session-recording.js";
 
 /** Directory where downloaded files are stored — only local paths under this dir are allowed for file uploads. */
 export const SAFE_FILE_DIR = resolve(tmpdir(), "telegram-bridge-mcp");
+
+/**
+ * Resolves a user-provided media input (file path, HTTPS URL, or Telegram file_id)
+ * into an InputFile or passthrough string. Rejects http:// and paths outside SAFE_FILE_DIR.
+ * Returns { source } on success, TelegramError on failure.
+ */
+export function resolveMediaSource(input: string): { source: string | InputFile } | TelegramError {
+  if (input.startsWith("http://"))
+    return { code: "UNKNOWN", message: "Plain HTTP URLs are not accepted — use HTTPS to prevent interception in transit." };
+  if (input.startsWith("https://")) return { source: input };
+  if (existsSync(input)) {
+    const resolvedPath = resolve(input);
+    const rel = path.relative(SAFE_FILE_DIR, resolvedPath);
+    if (rel.startsWith("..") || path.isAbsolute(rel))
+      return { code: "UNKNOWN", message: `Local file access is restricted to ${SAFE_FILE_DIR}. Use download_file to stage files first.` };
+    return { source: new InputFile(resolvedPath) };
+  }
+  return { source: input }; // Telegram file_id
+}
 
 // ---------------------------------------------------------------------------
 // Telegram limits (for pre-validation before hitting the API)
@@ -77,45 +96,90 @@ function classifyGrammyError(err: GrammyError): TelegramError {
   const raw = err.description;
 
   if (desc.includes("message is too long"))
-    return { code: "MESSAGE_TOO_LONG", message: `Message text exceeds ${LIMITS.MESSAGE_TEXT} characters. Shorten the text before sending.`, raw };
+    return {
+      code: "MESSAGE_TOO_LONG",
+      message: `Message text exceeds ${LIMITS.MESSAGE_TEXT} characters. Shorten the text before sending.`,
+      raw,
+    };
 
   if (desc.includes("caption is too long"))
-    return { code: "CAPTION_TOO_LONG", message: `Caption exceeds ${LIMITS.CAPTION} characters. Shorten the caption before sending.`, raw };
+    return {
+      code: "CAPTION_TOO_LONG",
+      message: `Caption exceeds ${LIMITS.CAPTION} characters. Shorten the caption before sending.`,
+      raw,
+    };
 
   if (desc.includes("message text is empty") || desc.includes("text must be non-empty"))
     return { code: "EMPTY_MESSAGE", message: "Message text is empty. Provide a non-empty string.", raw };
 
   if (desc.includes("can't parse entities") || desc.includes("can't parse"))
-    return { code: "PARSE_MODE_INVALID", message: "Telegram could not parse the message with the given parse_mode. Check for unclosed HTML tags or unescaped MarkdownV2 characters.", raw };
+    return {
+      code: "PARSE_MODE_INVALID",
+      message: "Telegram could not parse the message with the given parse_mode. Check for unclosed HTML tags or unescaped MarkdownV2 characters.",
+      raw,
+    };
 
   if (desc.includes("chat not found"))
-    return { code: "CHAT_NOT_FOUND", message: "Chat not found. Verify the chat_id is correct and the bot has been added to the chat.", raw };
+    return {
+      code: "CHAT_NOT_FOUND",
+      message: "Chat not found. Verify the chat_id is correct and the bot has been added to the chat.",
+      raw,
+    };
 
   if (desc.includes("user not found"))
     return { code: "USER_NOT_FOUND", message: "User not found. Verify the user_id is correct.", raw };
 
   if (desc.includes("bot was blocked by the user") || desc.includes("bot was kicked"))
-    return { code: "BOT_BLOCKED", message: "The user has blocked the bot. The message cannot be delivered.", raw };
+    return {
+      code: "BOT_BLOCKED",
+      message: "The user has blocked the bot. The message cannot be delivered.",
+      raw,
+    };
 
   if (desc.includes("not enough rights") || desc.includes("have no rights") || desc.includes("need administrator"))
-    return { code: "NOT_ENOUGH_RIGHTS", message: "The bot lacks the required permissions in this chat (e.g. pin, delete). Grant the bot admin rights.", raw };
+    return {
+      code: "NOT_ENOUGH_RIGHTS",
+      message: "The bot lacks the required permissions in this chat (e.g. pin, delete). Grant the bot admin rights.",
+      raw,
+    };
 
   if (desc.includes("message to edit not found"))
-    return { code: "MESSAGE_NOT_FOUND", message: "The message to edit was not found. It may have been deleted.", raw };
+    return {
+      code: "MESSAGE_NOT_FOUND",
+      message: "The message to edit was not found. It may have been deleted.",
+      raw,
+    };
 
   if (desc.includes("message can't be edited"))
-    return { code: "MESSAGE_CANT_BE_EDITED", message: "This message cannot be edited. Only messages sent by the bot within 48 hours can be edited.", raw };
+    return {
+      code: "MESSAGE_CANT_BE_EDITED",
+      message: "This message cannot be edited. Only messages sent by the bot within 48 hours can be edited.",
+      raw,
+    };
 
   if (desc.includes("message can't be deleted") || desc.includes("message to delete not found"))
-    return { code: "MESSAGE_CANT_BE_DELETED", message: "This message cannot be deleted. The bot may lack permissions, or the message is too old.", raw };
+    return {
+      code: "MESSAGE_CANT_BE_DELETED",
+      message: "This message cannot be deleted. The bot may lack permissions, or the message is too old.",
+      raw,
+    };
 
   if (err.error_code === 429) {
-    const retry = (err as any).parameters?.retry_after as number | undefined;
-    return { code: "RATE_LIMITED", message: `Rate limited by Telegram. Retry after ${retry ?? "a few"} seconds.`, retry_after: retry, raw };
+    const retry = err.parameters?.retry_after;
+    return {
+      code: "RATE_LIMITED",
+      message: `Rate limited by Telegram. Retry after ${retry ?? "a few"} seconds.`,
+      retry_after: retry,
+      raw,
+    };
   }
 
   if (desc.includes("button_data_invalid") || desc.includes("data is too long"))
-    return { code: "BUTTON_DATA_INVALID", message: `Inline button callback_data exceeds ${LIMITS.CALLBACK_DATA} bytes. Shorten each button's data field.`, raw };
+    return {
+      code: "BUTTON_DATA_INVALID",
+      message: `Inline button callback_data exceeds ${LIMITS.CALLBACK_DATA} bytes. Shorten each button's data field.`,
+      raw,
+    };
 
   return { code: "UNKNOWN", message: `Telegram API error ${err.error_code}: ${err.description}`, raw };
 }
@@ -127,18 +191,13 @@ function classifyGrammyError(err: GrammyError): TelegramError {
 let _api: Api | null = null;
 
 export function getApi(): Api {
-  if (!_api) {
-    const token = process.env.BOT_TOKEN;
-    if (!token) {
-      console.error(
-        "[telegram-bridge-mcp] Fatal: BOT_TOKEN environment variable is not set.\n" +
-          "Set it in a .env file or pass it via the MCP server env config."
-      );
-      process.exit(1);
-    }
-    _api = new Api(token);
-  }
-  return _api;
+  if (_api) return _api;
+  const token = process.env.BOT_TOKEN;
+  if (token) return (_api = new Api(token));
+  throw new Error(
+    "[telegram-bridge-mcp] Fatal: BOT_TOKEN environment variable is not set.\n" +
+      "Set it in a .env file or pass it via the MCP server env config."
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +209,7 @@ export function getApi(): Api {
  *   When set, every inbound update whose sender is NOT this user is dropped.
  *   Prevents message-injection attacks from anyone who discovers the bot username.
  *
- * ALLOWED_CHAT_ID  — Chat ID (numeric string, may be negative for groups) that
+ * ALLOWED_CHAT_ID  — Chat ID (integer, may be negative for group/channel chats) that
  *   the bot is permitted to operate in.
  *   When set:
  *     • Inbound updates from other chats are dropped.
@@ -161,47 +220,46 @@ export function getApi(): Api {
  * discouraged — a startup warning is emitted.
  */
 export interface SecurityConfig {
-  userId: number | null;
-  chatId: string | null;
+  userId: number; // 0 — no filter
+  chatId: number; // 0 — no filter
 }
 
 let _securityConfig: SecurityConfig | null = null;
 
+/** Reads an env var, trims it, parses as integer. Returns 0 if unset or not a valid integer. */
+function parseEnvInt(envVar: string): number {
+  const raw = process.env[envVar]?.trim();
+  if (!raw) return 0;
+  const n = parseInt(raw, 10);
+  if (Number.isFinite(n)) return n;
+  console.warn(
+    `[telegram-bridge-mcp] WARNING: ${envVar} "${raw}" is not a valid integer — ignored.`
+  );
+  return 0;
+}
+
 export function getSecurityConfig(): SecurityConfig {
   if (_securityConfig) return _securityConfig;
 
-  const rawUser = process.env.ALLOWED_USER_ID?.trim();
-  const rawChat = process.env.ALLOWED_CHAT_ID?.trim();
+  const userId = parseEnvInt("ALLOWED_USER_ID");
+  const chatId = parseEnvInt("ALLOWED_CHAT_ID");
 
-  let userId: number | null = rawUser ? parseInt(rawUser, 10) : null;
-  if (userId !== null && isNaN(userId)) {
-    console.warn(
-      `[telegram-bridge-mcp] WARNING: ALLOWED_USER_ID "${rawUser}" is not a valid integer — user filter disabled. ` +
-        "Set ALLOWED_USER_ID to your numeric Telegram user ID."
+  if (userId) return (_securityConfig = { userId, chatId });
+
+  if (process.env.ALLOW_ALL_USERS !== "true")
+    throw new Error(
+      "[telegram-bridge-mcp] ALLOWED_USER_ID is not set. " +
+        "Any Telegram user who messages the bot can inject updates. " +
+        "Set ALLOWED_USER_ID to your numeric Telegram user ID, " +
+        "or set ALLOW_ALL_USERS=true to explicitly bypass this check."
     );
-    userId = null;
-  }
-  const chatId = rawChat ?? null;
 
-  if (!userId) {
-    if (process.env.ALLOW_ALL_USERS === "true") {
-      console.warn(
-        "[telegram-bridge-mcp] WARNING: ALLOWED_USER_ID is not set and ALLOW_ALL_USERS=true. " +
-          "Any Telegram user who messages the bot can inject updates."
-      );
-    } else {
-      console.error(
-        "[telegram-bridge-mcp] FATAL: ALLOWED_USER_ID is not set. " +
-          "Any Telegram user who messages the bot can inject updates. " +
-          "Set ALLOWED_USER_ID to your numeric Telegram user ID, " +
-          "or set ALLOW_ALL_USERS=true to explicitly bypass this check."
-      );
-      process.exit(1);
-    }
-  }
+  console.warn(
+    "[telegram-bridge-mcp] WARNING: ALLOWED_USER_ID is not set and ALLOW_ALL_USERS=true. " +
+      "Any Telegram user who messages the bot can inject updates."
+  );
 
-  _securityConfig = { userId, chatId };
-  return _securityConfig;
+  return (_securityConfig = { userId, chatId });
 }
 
 /** For testing only: resets the security config singleton so env vars are re-read. */
@@ -232,7 +290,8 @@ export function unauthorizedChatError(chatId: string): TelegramError {
  */
 export function filterAllowedUpdates(updates: Update[]): Update[] {
   const { userId, chatId } = getSecurityConfig();
-  if (!userId && !chatId) return updates;
+  const hasUserFilter = userId > 0;
+  if (!hasUserFilter && !chatId) return updates;
 
   return updates.filter((u) => {
     const senderId =
@@ -241,17 +300,13 @@ export function filterAllowedUpdates(updates: Update[]): Update[] {
       u.message_reaction?.user?.id ??
       u.my_chat_member?.from?.id;
     const updateChatId =
-      u.message?.chat?.id != null
-        ? String(u.message.chat.id)
-        : u.callback_query?.message?.chat.id != null
-          ? String(u.callback_query.message.chat.id)
-          : u.message_reaction?.chat?.id != null
-            ? String(u.message_reaction.chat.id)
-            : u.my_chat_member?.chat?.id != null
-              ? String(u.my_chat_member.chat.id)
-              : null;
+      u.message?.chat?.id ??
+      u.callback_query?.message?.chat.id ??
+      u.message_reaction?.chat?.id ??
+      u.my_chat_member?.chat?.id ??
+      null;
 
-    if (userId && (!senderId || senderId !== userId)) return false;
+    if (hasUserFilter && (!senderId || senderId !== userId)) return false;
     if (chatId && (!updateChatId || updateChatId !== chatId)) return false;
     return true;
   });
@@ -264,10 +319,8 @@ export function filterAllowedUpdates(updates: Update[]): Update[] {
 export function validateTargetChat(chatId: string): TelegramError | null {
   const { chatId: allowed } = getSecurityConfig();
   if (!allowed) return null;
-  if (String(chatId).trim() !== String(allowed).trim()) {
-    return unauthorizedChatError(chatId);
-  }
-  return null;
+  if (chatId.trim() === String(allowed)) return null;
+  return unauthorizedChatError(chatId);
 }
 
 /**
@@ -277,20 +330,18 @@ export function validateTargetChat(chatId: string): TelegramError | null {
  * always fully determined by ALLOWED_CHAT_ID in the server config. Tools never
  * accept or expose chat_id as a parameter; it is resolved here transparently.
  *
- * Returns the chat ID string on success, or a TelegramError if ALLOWED_CHAT_ID
- * has not been configured (use `typeof result !== "string"` to detect errors).
+ * Returns the chat ID on success, or a TelegramError if ALLOWED_CHAT_ID
+ * has not been configured (use `typeof result !== "number"` to detect errors).
  */
-export function resolveChat(): string | TelegramError {
+export function resolveChat(): number | TelegramError {
   const { chatId } = getSecurityConfig();
-  if (!chatId) {
-    return {
-      code: "UNAUTHORIZED_CHAT",
-      message:
-        "ALLOWED_CHAT_ID is not configured. Set it in your .env or MCP server " +
-        "config to lock this server to its intended conversation.",
-    };
-  }
-  return chatId;
+  if (chatId) return chatId;
+  return {
+    code: "UNAUTHORIZED_CHAT",
+    message:
+      "ALLOWED_CHAT_ID is not configured. Set it in your .env or MCP server " +
+      "config to lock this server to its intended conversation.",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -304,10 +355,9 @@ export function getOffset(): number {
 }
 
 export function advanceOffset(updates: Update[]): void {
-  if (updates.length > 0) {
-    _offset = Math.max(...updates.map((u) => u.update_id)) + 1;
-    for (const u of updates) recordUpdate(u);
-  }
+  if (updates.length === 0) return;
+  _offset = Math.max(...updates.map((u) => u.update_id)) + 1;
+  for (const u of updates) recordUpdate(u);
 }
 
 export function resetOffset(): void {
@@ -321,9 +371,11 @@ export function resetOffset(): void {
 export function validateText(text: string): TelegramError | null {
   if (!text || text.trim().length === 0)
     return { code: "EMPTY_MESSAGE", message: "Message text must not be empty." };
-  if (text.length > LIMITS.MESSAGE_TEXT)
-    return { code: "MESSAGE_TOO_LONG", message: `Message text is ${text.length} chars but the Telegram limit is ${LIMITS.MESSAGE_TEXT}. Shorten by at least ${text.length - LIMITS.MESSAGE_TEXT} characters.` };
-  return null;
+  if (text.length <= LIMITS.MESSAGE_TEXT) return null;
+  return {
+    code: "MESSAGE_TOO_LONG",
+    message: `Message text is ${text.length} chars but the Telegram limit is ${LIMITS.MESSAGE_TEXT}. Shorten by at least ${text.length - LIMITS.MESSAGE_TEXT} characters.`,
+  };
 }
 
 /**
@@ -376,7 +428,7 @@ export function splitMessage(text: string): string[] {
  * Accepts a Buffer (TTS-generated OGG), a local file path, a public URL, or a Telegram file_id.
  */
 export async function sendVoiceDirect(
-  chatId: string,
+  chatId: number | string,
   voice: Buffer | string,
   options: {
     caption?: string;
@@ -422,7 +474,7 @@ export async function sendVoiceDirect(
 
   const json = (await res.json()) as {
     ok: boolean;
-    result?: { message_id: number; voice?: Record<string, unknown> };
+    result: { message_id: number; voice?: Record<string, unknown> };
     description?: string;
     error_code?: number;
   };
@@ -438,7 +490,24 @@ export async function sendVoiceDirect(
     );
   }
 
-  return json.result!;
+  return json.result;
+}
+
+/** Canonical type for a Telegram reaction emoji string. */
+export type ReactionEmoji = ReactionTypeEmoji["emoji"];
+
+/**
+ * Sets a reaction emoji on a message. Returns true on success, false if the
+ * reaction is not supported or the message is too old. Never throws.
+ */
+export function trySetMessageReaction(
+  chatId: number,
+  messageId: number,
+  emoji: ReactionEmoji,
+): Promise<boolean> {
+  return getApi()
+    .setMessageReaction(chatId, messageId, [{ type: "emoji", emoji }])
+    .then(() => true, () => false);
 }
 
 /**
@@ -465,16 +534,20 @@ export async function callApi<T>(fn: () => Promise<T>, maxRetries = 3): Promise<
 }
 
 export function validateCaption(caption: string): TelegramError | null {
-  if (caption.length > LIMITS.CAPTION)
-    return { code: "CAPTION_TOO_LONG", message: `Caption is ${caption.length} chars but the Telegram limit is ${LIMITS.CAPTION}. Shorten by at least ${caption.length - LIMITS.CAPTION} characters.` };
-  return null;
+  if (caption.length <= LIMITS.CAPTION) return null;
+  return {
+    code: "CAPTION_TOO_LONG",
+    message: `Caption is ${caption.length} chars but the Telegram limit is ${LIMITS.CAPTION}. Shorten by at least ${caption.length - LIMITS.CAPTION} characters.`,
+  };
 }
 
 export function validateCallbackData(data: string): TelegramError | null {
   const byteLen = Buffer.byteLength(data, "utf8");
-  if (byteLen > LIMITS.CALLBACK_DATA)
-    return { code: "CALLBACK_DATA_TOO_LONG", message: `Callback data "${data}" is ${byteLen} bytes but the Telegram limit is ${LIMITS.CALLBACK_DATA} bytes.` };
-  return null;
+  if (byteLen <= LIMITS.CALLBACK_DATA) return null;
+  return {
+    code: "CALLBACK_DATA_TOO_LONG",
+    message: `Callback data "${data}" is ${byteLen} bytes but the Telegram limit is ${LIMITS.CALLBACK_DATA} bytes.`,
+  };
 }
 
 // ---------------------------------------------------------------------------

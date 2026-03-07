@@ -35,8 +35,7 @@ export function clearTopic(): void {
  * just injects the label inline so it appears inside the bold heading.
  */
 export function applyTopicToTitle(title: string): string {
-  if (!_topic) return title;
-  return `[${_topic}] ${title}`;
+  return _topic ? `[${_topic}] ${title}` : title;
 }
 
 /**
