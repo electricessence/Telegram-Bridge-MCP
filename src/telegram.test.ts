@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { GrammyError } from "grammy";
+import { GrammyError, Api } from "grammy";
 import type { Update, ResponseParameters } from "grammy/types";
 import { tmpdir } from "os";
 import { resolve, join } from "path";
@@ -21,6 +21,8 @@ import {
   getOffset,
   advanceOffset,
   resetOffset,
+  fireHijackNotification,
+  resetApi,
   sendVoiceDirect,
   LIMITS,
   type TelegramError,
@@ -571,6 +573,60 @@ describe("offset management", () => {
     expect(result).toBeNull();
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fireHijackNotification — Telegram send path
+// ---------------------------------------------------------------------------
+
+describe("fireHijackNotification", () => {
+  let sendMessageSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    sendMessageSpy = vi
+      .spyOn(Api.prototype, "sendMessage")
+      .mockResolvedValue({} as never);
+    process.env.BOT_TOKEN = "test_token";
+  });
+
+  afterEach(() => {
+    sendMessageSpy.mockRestore();
+    delete process.env.BOT_TOKEN;
+    delete process.env.HIJACK_NOTIFY;
+    delete process.env.ALLOWED_CHAT_ID;
+    resetApi();
+    resetSecurityConfig();
+  });
+
+  it("sends to configured chat when HIJACK_NOTIFY includes 'telegram' and ALLOWED_CHAT_ID is set", () => {
+    process.env.HIJACK_NOTIFY = "telegram";
+    process.env.ALLOWED_CHAT_ID = "99999";
+    resetSecurityConfig();
+    fireHijackNotification("⚠️ test warning");
+    expect(sendMessageSpy).toHaveBeenCalledOnce();
+    expect(sendMessageSpy.mock.calls[0][0]).toBe(99999);
+    expect(sendMessageSpy.mock.calls[0][1]).toBe("⚠️ test warning");
+  });
+
+  it("skips Telegram send when ALLOWED_CHAT_ID is not configured", () => {
+    process.env.HIJACK_NOTIFY = "telegram";
+    resetSecurityConfig();
+    fireHijackNotification("⚠️ test warning");
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  it("swallows sendMessage rejection without throwing", async () => {
+    sendMessageSpy.mockRejectedValue(new Error("network error"));
+    process.env.HIJACK_NOTIFY = "telegram";
+    process.env.ALLOWED_CHAT_ID = "99999";
+    resetSecurityConfig();
+    // fire-and-forget — must not throw
+    expect(() => fireHijackNotification("⚠️ test warning")).not.toThrow();
+    // verify the send was actually attempted
+    expect(sendMessageSpy).toHaveBeenCalledOnce();
+    // flush microtask queue so the rejection is handled and swallowed
+    await Promise.resolve();
   });
 });
 

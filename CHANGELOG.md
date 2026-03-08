@@ -5,15 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [Unreleased]
 
-## [2.1.0] — 2026-06-08
+## [2.1.1] — 2026-03-07
+
+### Changed
+
+- Switched project license from MIT to AGPL-3.0-only
+- CI coverage upload now uses tokenless Codecov upload (public repo; no token required)
+
+### Fixed
+
+- Duplicate `### Added` headings under `[2.1.0]` in CHANGELOG merged into one section
+- `_api` singleton now reset after tests that set `BOT_TOKEN`, preventing cross-test coupling
+
+## [2.1.0] — 2026-03-07
 
 ### Added
 
 - **Dual-instance hijack detection** — `advanceOffset()` detects `update_id` gaps caused by a competing MCP instance consuming the same bot's update queue. Emits a `console.error` and sends a ⚠️ Telegram message to the operator by default. Configurable via `HIJACK_NOTIFY=console,telegram,agent` (any combination; default `console,telegram`). When `agent` is included, `get_update` and `get_updates` return a `hijack_warning` field so the agent can act on it directly.
 - **409 Conflict detection** — Telegram 409 responses (two live `getUpdates` calls on the same token) are now classified as `DUAL_INSTANCE_CONFLICT` and fire the same `HIJACK_NOTIFY` channels (console, Telegram message, or agent `hijack_warning`) as gap detection. Covers the simultaneous-overlap case that gap detection misses.
-
-### Added
-
 - **CI workflow** — new `.github/workflows/ci.yml` runs tests and uploads coverage to Codecov on every push/PR to `master`
 - **Codecov integration** — coverage badge is now live and tied to the actual CI run
 - **Cosign image signing** — every Docker image is signed with keyless Cosign (GitHub OIDC) in the publish workflow
@@ -25,7 +34,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Changed
 
-- README badges replaced with live dynamic badges (CI status, Docker publish status, Codecov coverage, npm version, GHCR link, MIT license)
+- README badges replaced with live dynamic badges (CI status, Docker publish status, Codecov coverage, npm version, GHCR link, license)
 - `publish.yml` permissions expanded with `id-token: write` and `attestations: write`
 
 ## [2.0.0] — 2026-03-07
