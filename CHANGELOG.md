@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [Unreleased]
 
+## [2.1.1] — 2026-03-07
+
+### Fixed
+
+- Duplicate `### Added` headings under `[2.1.0]` in CHANGELOG merged into one section
+- Test for `fireHijackNotification` rejection path now asserts `sendMessage` was called and uses `Promise.resolve()` instead of `setTimeout` to flush microtasks
+
 ## [2.1.0] — 2026-03-07
 
 ### Added

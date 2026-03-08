@@ -621,8 +621,10 @@ describe("fireHijackNotification", () => {
     resetSecurityConfig();
     // fire-and-forget — must not throw
     expect(() => fireHijackNotification("⚠️ test warning")).not.toThrow();
-    // let the rejected promise settle — must be swallowed
-    await new Promise((r) => setTimeout(r, 0));
+    // verify the send was actually attempted
+    expect(sendMessageSpy).toHaveBeenCalledOnce();
+    // flush microtask queue so the rejection is handled and swallowed
+    await Promise.resolve();
   });
 });
 
