@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [2.1.1] — 2026-03-07
 
+### Changed
+
+- Switched project license from MIT to AGPL-3.0-only
+- CI coverage upload now uses tokenless Codecov upload (public repo; no token required)
+
 ### Fixed
 
 - Duplicate `### Added` headings under `[2.1.0]` in CHANGELOG merged into one section
