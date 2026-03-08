@@ -371,11 +371,9 @@ export function getOffset(): number {
  */
 function getHijackNotifyConfig(): { console: boolean; telegram: boolean; agent: boolean } {
   const raw = (process.env.HIJACK_NOTIFY ?? "console,telegram").toLowerCase();
-  return {
-    console: raw.includes("console"),
-    telegram: raw.includes("telegram"),
-    agent: raw.includes("agent"),
-  };
+  const tokens = raw.split(",").map((t) => t.trim()).filter((t) => t.length > 0);
+  const has = (name: "console" | "telegram" | "agent") => tokens.includes(name);
+  return { console: has("console"), telegram: has("telegram"), agent: has("agent") };
 }
 
 /**
@@ -423,7 +421,8 @@ export function resetOffset(): void {
 
 /** Returns true if the agent channel is enabled for hijack warnings. */
 export function hijackNotifyAgent(): boolean {
-  return (process.env.HIJACK_NOTIFY ?? "console,telegram").toLowerCase().includes("agent");
+  const raw = (process.env.HIJACK_NOTIFY ?? "console,telegram").toLowerCase();
+  return raw.split(",").map((t) => t.trim()).includes("agent");
 }
 
 // ---------------------------------------------------------------------------

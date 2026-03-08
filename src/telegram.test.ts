@@ -515,8 +515,14 @@ describe("resolveChat", () => {
 // ---------------------------------------------------------------------------
 
 describe("offset management", () => {
-  beforeEach(() => resetOffset());
-  afterEach(() => resetOffset());
+  beforeEach(() => {
+    resetOffset();
+    process.env.HIJACK_NOTIFY = "console"; // pin to console-only for deterministic spy assertions
+  });
+  afterEach(() => {
+    resetOffset();
+    delete process.env.HIJACK_NOTIFY;
+  });
 
   it("getOffset returns 0 initially", () => {
     expect(getOffset()).toBe(0);

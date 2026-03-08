@@ -33,10 +33,9 @@ export function register(server: McpServer) {
       },
     },
     async ({ max, allowed_updates }) => {
+      // Step 1: drain buffer before try — so catch can still return these if Telegram throws
+      const buffered = filterAllowedUpdates(drainN(max));
       try {
-        // Step 1: take up to `max` from the local buffer first
-        const buffered = filterAllowedUpdates(drainN(max));
-
         let fresh: Update[] = [];
         if (buffered.length < max) {
           // Step 2: fetch from Telegram to fill up to max
@@ -47,8 +46,17 @@ export function register(server: McpServer) {
             allowed_updates: (allowed_updates ?? DEFAULT_ALLOWED_UPDATES) as ReadonlyArray<Exclude<keyof Update, "update_id">>,
           });
           const hijackWarning = advanceOffset(fetched);
-          if (hijackWarning && hijackNotifyAgent())
-            return toResult({ hijack_warning: hijackWarning, updates: [], remaining: bufferSize() });
+          if (hijackWarning && hijackNotifyAgent()) {
+            const updates = [...buffered, ...filterAllowedUpdates(fetched)];
+            const remaining = bufferSize();
+            const sanitized = updates.length > 0 ? await sanitizeUpdates(updates) : [];
+            return toResult({
+              hijack_warning: hijackWarning,
+              updates: sanitized,
+              remaining,
+              ...(remaining > 0 ? { hint: `${remaining} more update${remaining === 1 ? "" : "s"} buffered — call get_update again.` } : {}),
+            });
+          }
           fresh = filterAllowedUpdates(fetched);
         }
 
@@ -75,8 +83,17 @@ export function register(server: McpServer) {
             "⚠️ Telegram 409 Conflict — another getUpdates call is already active for this bot token. " +
             "Ensure only one MCP instance is running against this bot token.";
           fireHijackNotification(msg);
-          if (hijackNotifyAgent())
-            return toResult({ hijack_warning: msg, updates: [], remaining: bufferSize() });
+          if (hijackNotifyAgent()) {
+            // buffered was already drained — include it so no updates are lost
+            const remaining = bufferSize();
+            const sanitized = buffered.length > 0 ? await sanitizeUpdates(buffered) : [];
+            return toResult({
+              hijack_warning: msg,
+              updates: sanitized,
+              remaining,
+              ...(remaining > 0 ? { hint: `${remaining} more update${remaining === 1 ? "" : "s"} buffered — call get_update again.` } : {}),
+            });
+          }
         }
         return toError(err);
       }

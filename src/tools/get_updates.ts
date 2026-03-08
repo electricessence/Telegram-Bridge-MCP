@@ -44,14 +44,13 @@ export function register(server: McpServer) {
       },
     },
     async ({ limit, timeout_seconds, allowed_updates, reset_offset }) => {
+      if (reset_offset) resetOffset();
+
+      // Drain buffer before try — so catch can still return these if Telegram throws.
+      const buffered = drainBuffer();
+      const filteredBuffered = filterAllowedUpdates(buffered);
+
       try {
-        if (reset_offset) resetOffset();
-
-        // Drain any updates buffered by pollUntil (wait_for_message, etc.)
-        // before hitting the Telegram API — nothing is ever lost.
-        const buffered = drainBuffer();
-        const filteredBuffered = filterAllowedUpdates(buffered);
-
         // Only fetch from Telegram if buffer didn't already satisfy the limit.
         let fresh: typeof buffered = [];
         if (filteredBuffered.length < limit) {
@@ -62,8 +61,11 @@ export function register(server: McpServer) {
             allowed_updates: (allowed_updates ?? DEFAULT_ALLOWED_UPDATES) as ReadonlyArray<Exclude<keyof Update, "update_id">>,
           });
           const hijackWarning = advanceOffset(fetched);
-          if (hijackWarning && hijackNotifyAgent())
-            return toResult({ hijack_warning: hijackWarning, updates: [] });
+          if (hijackWarning && hijackNotifyAgent()) {
+            const updates = [...filteredBuffered, ...filterAllowedUpdates(fetched)];
+            const sanitized = updates.length > 0 ? await sanitizeUpdates(updates) : [];
+            return toResult({ hijack_warning: hijackWarning, updates: sanitized });
+          }
           fresh = filterAllowedUpdates(fetched);
         }
 
@@ -77,8 +79,11 @@ export function register(server: McpServer) {
             "⚠️ Telegram 409 Conflict — another getUpdates call is already active for this bot token. " +
             "Ensure only one MCP instance is running against this bot token.";
           fireHijackNotification(msg);
-          if (hijackNotifyAgent())
-            return toResult({ hijack_warning: msg, updates: [] });
+          if (hijackNotifyAgent()) {
+            // filteredBuffered was drained before the try — return it so no updates are lost
+            const sanitized = filteredBuffered.length > 0 ? await sanitizeUpdates(filteredBuffered) : [];
+            return toResult({ hijack_warning: msg, updates: sanitized });
+          }
         }
         return toError(err);
       }
