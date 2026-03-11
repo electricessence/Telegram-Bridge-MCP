@@ -48,8 +48,11 @@ export function isBuiltInPanelQuery(update: Update): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * Sends the one-shot "enable auto recording?" prompt to the user.
- * Called on startup from index.ts. Safe to call multiple times — only fires once.
+ * Sends the one-shot startup prefs questionnaire.
+ * Step 1: Record / Not now.
+ * Step 2 (if Record chosen): auto-dump frequency.
+ * The message deletes itself once the user has answered.
+ * Called from index.ts after connecting. Safe to call multiple times — only fires once.
  */
 export async function sendSessionPrefsPrompt(): Promise<void> {
   if (_sessionPrefsAsked) return;
@@ -58,23 +61,45 @@ export async function sendSessionPrefsPrompt(): Promise<void> {
   _sessionPrefsAsked = true;
   const api = getApi();
   try {
-    const msg = await api.sendMessage(
-      chatId,
-      "📼 *Auto session recording?*\nI can capture the full conversation and send periodic dumps as .txt files.",
-      {
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [[
-            { text: "Off", callback_data: "session:auto:off" },
-            { text: "25 msg", callback_data: "session:auto:25" },
-            { text: "50 msg", callback_data: "session:auto:50" },
-            { text: "100 msg", callback_data: "session:auto:100" },
-          ]],
-        },
-      },
-    );
+    const msg = await api.sendMessage(chatId, buildPrefsStep1Text(), {
+      parse_mode: "Markdown",
+      reply_markup: { inline_keyboard: buildPrefsStep1Keyboard() },
+    });
     _activePanels.set(msg.message_id, "session");
   } catch { /* ignore */ }
+}
+
+function buildPrefsStep1Text(): string {
+  return (
+    "🎬 *Telegram Bridge MCP — Session Start*\n\n" +
+    "Use /session at any time to view and manage session recording.\n\n" +
+    "Would you like to record this session?"
+  );
+}
+
+function buildPrefsStep1Keyboard(): { text: string; callback_data: string }[][] {
+  return [[
+    { text: "🔴 Record Session", callback_data: "session:prefs:record" },
+    { text: "⬛ Not now",        callback_data: "session:prefs:skip" },
+  ]];
+}
+
+function buildPrefsStep2Text(): string {
+  return (
+    "🎬 *Telegram Bridge MCP — Session Start*\n\n" +
+    "Auto-dump sends the conversation log as a .txt file when the message count" +
+    " hits the threshold, then resets for the next window.\n\n" +
+    "How many messages before auto-dump?"
+  );
+}
+
+function buildPrefsStep2Keyboard(): { text: string; callback_data: string }[][] {
+  return [[
+    { text: "25",   callback_data: "session:auto:25" },
+    { text: "50",   callback_data: "session:auto:50" },
+    { text: "100",  callback_data: "session:auto:100" },
+    { text: "Skip", callback_data: "session:auto:never" },
+  ]];
 }
 
 /** Built-in command metadata (for merging into set_commands menus). */
@@ -150,22 +175,38 @@ async function handleSessionCallback(
     return;
   }
 
-  // Auto-recording prefs selection (from startup prompt)
+  // ── Startup questionnaire — step 1 response ───────────────────────────
+  if (data === "session:prefs:record") {
+    // Advance to step 2 by editing the same message
+    try {
+      await api.editMessageText(chatId, panelMsgId, buildPrefsStep2Text(), {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: buildPrefsStep2Keyboard() },
+      });
+    } catch { /* ignore */ }
+    return;
+  }
+
+  if (data === "session:prefs:skip") {
+    _activePanels.delete(panelMsgId);
+    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+    return;
+  }
+
+  // ── Startup questionnaire — step 2 response (auto-dump frequency) ─────
   if (data.startsWith("session:auto:")) {
     _activePanels.delete(panelMsgId);
     try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
     const val = data.slice("session:auto:".length);
-    if (val !== "off") {
+    if (val !== "off" && val !== "never") {
       const n = parseInt(val, 10);
       if (!isNaN(n) && n > 0) {
         startRecording(Math.max(n * 2, 100));
         setAutoDump(n, createAutoDumpFn(chatId, api));
-        try {
-          await api.sendMessage(chatId, `📼 Recording started — auto-dump every *${n}* messages`, {
-            parse_mode: "Markdown",
-          });
-        } catch { /* ignore */ }
       }
+    } else if (val === "never") {
+      // Record without auto-dump — large rolling buffer, manual dump via /session
+      startRecording(500);
     }
     return;
   }
