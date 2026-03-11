@@ -9,7 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
-- **Built-in `/session` command** — server-level panel intercepted before the agent sees it; shows session recording status with contextual inline keyboard buttons (▶ Start / 📤 Dump / ⏹ Stop / ✖ Dismiss); agent never receives the command or its callback queries
+- **Automatic session recording prefs prompt** — on startup the server sends a one-shot inline keyboard asking whether to auto-record and at what message interval (Off / 25 / 50 / 100); recording starts silently with no agent involvement; when the buffer fills, a `.txt` dump is sent to the chat and the buffer resets for the next window
+- **Built-in `/session` command** — server-level panel intercepted before the agent sees it; shows session recording status with contextual inline keyboard buttons (▶ Start / 📤 Dump / ⏹ Stop / ✖ Dismiss); agent never receives the command or its callback queries; panel now shows auto-dump threshold when configured
 - **Built-in commands merged into `set_commands`** — `BUILT_IN_COMMANDS` are always prepended to every `setMyCommands` call so they survive agent command registration; passing `[]` clears agent commands but retains built-ins
 - **Startup command menu registration** — `src/index.ts` registers built-in commands in the Telegram bot menu immediately after the MCP server connects
 - **`/command` detection in `wait_for_message`** — messages containing a leading `bot_command` entity are now deserialized as `{ type: "command", command: "status", args?: "..." }` instead of plain text; `@botname` suffix is stripped automatically (group-chat format)

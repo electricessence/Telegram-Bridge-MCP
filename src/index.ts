@@ -6,7 +6,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createServer } from "./server.js";
 import { getSecurityConfig, getApi, resolveChat } from "./telegram.js";
 import { clearCommandsOnShutdown } from "./shutdown.js";
-import { BUILT_IN_COMMANDS } from "./built-in-commands.js";
+import { BUILT_IN_COMMANDS, sendSessionPrefsPrompt } from "./built-in-commands.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as { name: string; version: string };
@@ -34,8 +34,8 @@ const transport = new StdioServerTransport();
 
 await server.connect(transport);
 
-// Register built-in commands in the Telegram menu after connecting.
-// Best-effort — don't block startup if this fails.
+// Register built-in commands in the Telegram menu and ask session-recording
+// prefs after connecting. Both are best-effort — don't block startup.
 void (async () => {
   const chatId = resolveChat();
   if (typeof chatId !== "number") return;
@@ -44,4 +44,5 @@ void (async () => {
       scope: { type: "chat", chat_id: chatId },
     });
   } catch { /* ignore */ }
+  await sendSessionPrefsPrompt();
 })();

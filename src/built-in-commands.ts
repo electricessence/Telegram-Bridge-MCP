@@ -22,6 +22,8 @@ import {
   getMaxUpdates,
   getSessionEntries,
   clearRecording,
+  setAutoDump,
+  getAutoDumpThreshold,
 } from "./session-recording.js";
 import { sanitizeSessionEntries } from "./update-sanitizer.js";
 
@@ -32,6 +34,9 @@ import { sanitizeSessionEntries } from "./update-sanitizer.js";
 /** Maps from message_id → panel type so we can route callback_queries back to us. */
 const _activePanels = new Map<number, "session">();
 
+/** Set to true after sending the startup prefs prompt so we only ask once per process. */
+let _sessionPrefsAsked = false;
+
 export function isBuiltInPanelQuery(update: Update): boolean {
   const msgId = update.callback_query?.message?.message_id;
   if (msgId === undefined) return false;
@@ -41,6 +46,36 @@ export function isBuiltInPanelQuery(update: Update): boolean {
 // ---------------------------------------------------------------------------
 // Public API — called by the update-intercept layer
 // ---------------------------------------------------------------------------
+
+/**
+ * Sends the one-shot "enable auto recording?" prompt to the user.
+ * Called on startup from index.ts. Safe to call multiple times — only fires once.
+ */
+export async function sendSessionPrefsPrompt(): Promise<void> {
+  if (_sessionPrefsAsked) return;
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  _sessionPrefsAsked = true;
+  const api = getApi();
+  try {
+    const msg = await api.sendMessage(
+      chatId,
+      "📼 *Auto session recording?*\nI can capture the full conversation and send periodic dumps as .txt files.",
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "Off", callback_data: "session:auto:off" },
+            { text: "25 msg", callback_data: "session:auto:25" },
+            { text: "50 msg", callback_data: "session:auto:50" },
+            { text: "100 msg", callback_data: "session:auto:100" },
+          ]],
+        },
+      },
+    );
+    _activePanels.set(msg.message_id, "session");
+  } catch { /* ignore */ }
+}
 
 /** Built-in command metadata (for merging into set_commands menus). */
 export const BUILT_IN_COMMANDS = [
@@ -115,6 +150,26 @@ async function handleSessionCallback(
     return;
   }
 
+  // Auto-recording prefs selection (from startup prompt)
+  if (data.startsWith("session:auto:")) {
+    _activePanels.delete(panelMsgId);
+    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+    const val = data.slice("session:auto:".length);
+    if (val !== "off") {
+      const n = parseInt(val, 10);
+      if (!isNaN(n) && n > 0) {
+        startRecording(Math.max(n * 2, 100));
+        setAutoDump(n, createAutoDumpFn(chatId, api));
+        try {
+          await api.sendMessage(chatId, `📼 Recording started — auto-dump every *${n}* messages`, {
+            parse_mode: "Markdown",
+          });
+        } catch { /* ignore */ }
+      }
+    }
+    return;
+  }
+
   if (data === "session:start") {
     startRecording(100);
   } else if (data === "session:stop") {
@@ -135,13 +190,21 @@ async function handleSessionCallback(
   } catch { /* ignore */ }
 }
 
+function createAutoDumpFn(chatId: number, api: ReturnType<typeof getApi>): () => Promise<void> {
+  return async () => {
+    await doSessionDump(chatId, null, api);
+    clearRecording(); // keep recording + auto-dump active; reset buffer only
+  };
+}
+
 function buildSessionPanel(): { text: string; keyboard: { text: string; callback_data: string }[][] } {
   const recording = isRecording();
   const count = recordedCount();
   const max = getMaxUpdates();
+  const autoDump = getAutoDumpThreshold();
 
   const status = recording
-    ? `🔴 Recording · ${count} / ${max} updates captured`
+    ? `🔴 Recording · ${count} / ${max} captured${autoDump != null ? ` · auto-dump @${autoDump}` : ""}`
     : `⬛ Not recording`;
 
   const text = `📼 *Session Recording*\nStatus: ${status}`;
@@ -166,11 +229,13 @@ function buildSessionPanel(): { text: string; keyboard: { text: string; callback
 
 async function doSessionDump(
   chatId: number,
-  panelMsgId: number,
+  panelMsgId: number | null,
   api: ReturnType<typeof getApi>,
 ): Promise<void> {
-  _activePanels.delete(panelMsgId);
-  try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+  if (panelMsgId !== null) {
+    _activePanels.delete(panelMsgId);
+    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+  }
 
   const entries = getSessionEntries();
   const sanitized = await sanitizeSessionEntries(entries);
