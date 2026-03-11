@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [2.1.2] — 2026-03-11
 
+### Added
+
+- **`/command` detection in `wait_for_message`** — messages containing a leading `bot_command` entity are now deserialized as `{ type: "command", command: "status", args?: "..." }` instead of plain text; `@botname` suffix is stripped automatically (group-chat format)
+- **Slash-command cleanup on shutdown** — new `shutdown.ts` module clears all registered slash-command menus (chat-scoped and default) on `SIGTERM`, `SIGINT`, and `restart_server`; commands no longer persist in the Telegram menu after the agent disconnects
+
 ### Changed
 
 - **`send_temp_message` TTL** — default raised from 30 s to 300 s (5 minutes); maximum raised from 300 s to 600 s (10 minutes)

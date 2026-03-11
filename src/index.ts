@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { getSecurityConfig } from "./telegram.js";
+import { clearCommandsOnShutdown } from "./shutdown.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as { name: string; version: string };
@@ -19,6 +20,12 @@ if (process.env.TTS_HOST && !process.env.TTS_HOST.startsWith("https://")) {
 }
 if (process.env.STT_HOST && !process.env.STT_HOST.startsWith("https://")) {
   process.stderr.write("[warn] STT_HOST is not using HTTPS — credentials and audio may be exposed in transit.\n");
+}
+
+for (const sig of ["SIGTERM", "SIGINT"] as const) {
+  process.on(sig, () => {
+    void clearCommandsOnShutdown().finally(() => process.exit(0));
+  });
 }
 
 const server = createServer();
