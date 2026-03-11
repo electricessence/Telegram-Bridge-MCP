@@ -89,16 +89,17 @@ function buildPrefsStep2Text(): string {
     "🎬 *Telegram Bridge MCP — Session Start*\n\n" +
     "Auto-dump sends the conversation log as a .txt file when the message count" +
     " hits the threshold, then resets for the next window.\n\n" +
+    "Or choose *Manual* to record without auto-dump — use /session → *Dump* whenever you want a snapshot.\n\n" +
     "How many messages before auto-dump?"
   );
 }
 
 function buildPrefsStep2Keyboard(): { text: string; callback_data: string }[][] {
   return [[
-    { text: "25",   callback_data: "session:auto:25" },
-    { text: "50",   callback_data: "session:auto:50" },
-    { text: "100",  callback_data: "session:auto:100" },
-    { text: "Skip", callback_data: "session:auto:never" },
+    { text: "25",       callback_data: "session:auto:25" },
+    { text: "50",       callback_data: "session:auto:50" },
+    { text: "100",      callback_data: "session:auto:100" },
+    { text: "Manual",   callback_data: "session:auto:never" },
   ]];
 }
 
