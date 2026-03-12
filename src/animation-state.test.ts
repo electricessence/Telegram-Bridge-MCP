@@ -79,7 +79,7 @@ describe("animation-state", () => {
 
     it("uses default frames when none provided", async () => {
       await startAnimation();
-      expect(mocks.sendMessage).toHaveBeenCalledWith(123, "`\.\.\.`", { parse_mode: "MarkdownV2" });
+      expect(mocks.sendMessage).toHaveBeenCalledWith(123, "`...`", { parse_mode: "MarkdownV2" });
     });
 
     it("cancels previous animation before starting new one", async () => {

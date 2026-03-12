@@ -19,6 +19,7 @@ vi.mock("../animation-state.js", async (importActual) => {
 });
 
 import { register } from "./show_animation.js";
+import { DEFAULT_FRAMES } from "../animation-state.js";
 
 describe("show_animation tool", () => {
   let call: (args: Record<string, unknown>) => Promise<unknown>;
@@ -42,7 +43,7 @@ describe("show_animation tool", () => {
     mocks.startAnimation.mockResolvedValue(51);
     await call({});
     expect(mocks.startAnimation).toHaveBeenCalledWith(
-      ["`...`", "` ..`", "`. .`", "`.. `", "`...`", "`...`"],
+      DEFAULT_FRAMES,
       1000,
       30,
     );
