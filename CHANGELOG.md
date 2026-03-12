@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`send_file` photo broken for local files** — `case "photo"` was passing the raw path string to Grammy instead of the `InputFile` object from `resolveMediaSource`; local photo uploads silently failed with invalid file_id errors
+- **`ask`/`choose` latency stall** — `scanAndRemove` (formerly `_scanAndRemove`) now calls `notifyWaiters()` after re-enqueuing non-matched items; without this, a blocking wait could stall up to the full timeout when an unrelated event was scanned while a waiter was about to register
+- **Symlink bypass in path guard** — replaced `path.resolve()` with `realpathSync()` in `resolveMediaSource` and `sendVoiceDirect`; `resolve()` is lexical-only and cannot detect symlinks pointing outside `SAFE_FILE_DIR`
+- **`ackVoice` double `resolveChat()` call** — now assigns to a `const` before narrowing, per "named intermediate variables" convention
+- **Stale JSDoc in `poller.ts`** — removed "not yet implemented" from `🫡` phase; `ackVoice` in `dequeue_update` is implemented
+
 ### Changed
 
 - **ESLint upgraded to `strictTypeChecked`** — switched from `recommended` to `strictTypeChecked` preset; fixed all violations across source and test files (323 → 0)
