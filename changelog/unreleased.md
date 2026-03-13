@@ -6,6 +6,7 @@
 - **`keyboard-interactions.md`** — new doc formalising the four keyboard primitives (`send_message`, `send_choice`, `choose`, `send_confirmation`), the hierarchy, button types (momentary/toggle/rotary), implementation notes; linked from `behavior.md`
 - **`send_message` tool** — core send primitive; sends a message with optional inline keyboard and returns `{ message_id }` immediately (fire-and-forget); keyboard buttons arrive as `callback_query` events via `dequeue_update`; supports per-button styles, `reply_to_message_id`, `disable_notification`, and all parse modes; the foundation on which `choose` and `send_confirmation` are built
 - **`edit_message` tool** — core edit primitive; updates text, keyboard, or both on an existing message; pass `keyboard: null` to remove buttons; omit `text` to update keyboard only (calls `editMessageReplyMarkup` internally); omit `keyboard` to update text while preserving existing buttons
+- **`super-tools.md`** — new doc introducing the super-tools concept and listing planned super tools (`send_new_checklist`, `progress_bar`) with design notes
 
 - **Outbound proxy** — transparent JS Proxy wrapping Grammy `Api` that handles all cross-cutting concerns (cancel typing, clear pending temp messages, animation promotion, outgoing message recording) so tool files never import those utilities directly
 - **Animation promotion via proxy** — when an animation is active, text sends are intercepted: the animation placeholder is edited to show the real content and a new animation starts below; file sends use suspend/resume (delete → send → restart)
@@ -50,7 +51,8 @@
 - **`notify.ts`** — uses `recordOutgoing` and `resetAnimationTimeout`
 - **`edit_message_text.ts`** — adds `recordOutgoingEdit` and `resetAnimationTimeout`
 - **`send_text_as_voice.ts`** — uses `recordOutgoing` and `resetAnimationTimeout`
-- **`update_status.ts`** — uses `recordOutgoing` and `resetAnimationTimeout`
+- **`update_status` renamed to `send_new_checklist`** — MCP tool name, filename, and all doc references updated; API shape unchanged (omit `message_id` to create, pass it to edit in-place)
+- **`send_new_checklist.ts`** — uses `recordOutgoing` and `resetAnimationTimeout`
 - **`show_typing.ts`** — absorbed `cancel_typing` via `cancel: boolean` parameter
 - **`pin_message.ts`** — absorbed `unpin_message` via `unpin: boolean` parameter; `message_id` optional for unpin
 - **`dump_session_record.ts`** — complete rewrite; returns JSON from `dumpTimeline`/`timelineSize`/`storeSize` (no recording needed)

@@ -31,7 +31,7 @@ MCP resources: `telegram-bridge-mcp://communication-guide` (full) · `telegram-b
 | Ephemeral placeholder ("Thinking…") | `show_animation` / `cancel_animation` |
 | Structured result / explanation | `send_text` (Markdown) |
 | Build / deploy / error event | `notify` with severity |
-| Multi-step task (3+ steps) | `update_status` checklist |
+| Multi-step task (3+ steps) | `send_new_checklist` checklist |
 
 ---
 
@@ -76,10 +76,10 @@ MCP resources: `telegram-bridge-mcp://communication-guide` (full) · `telegram-b
 
 ## Multi-Step Tasks
 
-Use `update_status` for any task with 3+ steps.
+Use `send_new_checklist` for any task with 3+ steps.
 
 ```txt
-msg = update_status(title, steps: [{label, status: "running"}, ...])
+msg = send_new_checklist(title, steps: [{label, status: "running"}, ...])
 pin_message(msg.message_id, disable_notification: true)
 # ... update after each step ...
 unpin_message(msg.message_id)

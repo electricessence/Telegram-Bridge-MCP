@@ -11,7 +11,7 @@ vi.mock("../telegram.js", async (importActual) => {
   return { ...actual, getApi: () => mocks, resolveChat: () => 1 };
 });
 
-import { register } from "./update_status.js";
+import { register } from "./send_new_checklist.js";
 
 const STEPS = [
   { label: "Install deps", status: "done" },
@@ -20,14 +20,14 @@ const STEPS = [
   { label: "Deploy", status: "failed" },
 ];
 
-describe("update_status tool", () => {
+describe("send_new_checklist tool", () => {
   let call: (args: Record<string, unknown>) => Promise<unknown>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     const server = createMockServer();
     register(server);
-    call = server.getHandler("update_status");
+    call = server.getHandler("send_new_checklist");
   });
 
   it("creates a new message when no message_id is given", async () => {

@@ -33,7 +33,7 @@ const DESCRIPTION =
 
 export function register(server: McpServer) {
   server.registerTool(
-    "update_status",
+    "send_new_checklist",
     {
       description: DESCRIPTION,
       inputSchema: {
@@ -83,7 +83,7 @@ export function register(server: McpServer) {
           } as Record<string, unknown>);
           return toResult({
             message_id: msg.message_id,
-            hint: "Pass this message_id to future update_status calls to edit in-place.",
+            hint: "Pass this message_id to future send_new_checklist calls to edit in-place.",
           });
         }
       } catch (err) {

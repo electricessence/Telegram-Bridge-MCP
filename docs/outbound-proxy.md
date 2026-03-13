@@ -9,7 +9,7 @@
 
 ## Problem
 
-Every outbound tool (`send_text`, `notify`, `update_status`, `send_file`,
+Every outbound tool (`send_text`, `notify`, `send_new_checklist`, `send_file`,
 `send_text_as_voice`, `ask`, `choose`, `send_confirmation`) manually calls
 the same boilerplate before and after each send:
 
@@ -310,7 +310,7 @@ Tool → proxy.sendMessage()
 | `src/animation-state.ts` | Register/clear interceptor on start/cancel; use `getRawApi()` |
 | `src/tools/send_text.ts` | Remove `cancelTyping`, `clearPendingTemp`, animation imports, `recordOutgoing` |
 | `src/tools/notify.ts` | Remove `cancelTyping`, `clearPendingTemp`, animation imports, `recordOutgoing` |
-| `src/tools/update_status.ts` | Remove animation imports, `recordOutgoing` |
+| `src/tools/send_new_checklist.ts` | Remove animation imports, `recordOutgoing` |
 | `src/tools/send_file.ts` | Remove `suspendAnimation`, `resumeAnimation`, `cancelTyping`, `clearPendingTemp`, `recordOutgoing` |
 | `src/tools/send_text_as_voice.ts` | Remove `suspendAnimation`, `resumeAnimation`, `cancelTyping`, `clearPendingTemp` |
 | `src/tools/append_text.ts` | Remove `resetAnimationTimeout`, `recordOutgoingEdit` (edits stay manual) |

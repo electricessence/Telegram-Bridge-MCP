@@ -31,7 +31,7 @@ Full guide: `communication.md` · MCP resource: `telegram-bridge-mcp://communica
 | Fixed options | `choose` |
 | Open-ended input | `ask` |
 | Status / result | `notify` or `send_message` |
-| Multi-step task (3+) | `update_status` + `pin_message` |
+| Multi-step task (3+) | `send_new_checklist` + `pin_message` |
 | Completed work / ready to proceed | `send_confirmation` (single-button CTA) |
 
 See `communication.md` for formatting, commit/push flow, pinning, and session end patterns.

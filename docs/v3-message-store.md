@@ -458,7 +458,7 @@ These consume from the queue internally — the agent never sees the raw callbac
 | 16 | `answer_callback_query` | **Interact** | Acknowledge button press |
 | 17 | `show_typing` | **Status** | Sustained typing indicator. `cancel: true` to stop. |
 | 18 | `send_chat_action` | **Status** | One-shot action (upload_photo, record_video, etc.) |
-| 19 | `update_status` | **Status** | Live task checklist |
+| 19 | `send_new_checklist` | **Status** | Live task checklist |
 | 20 | `set_reaction` | **React** | Emoji reaction on a message |
 | 21 | `pin_message` | **Pin** | Pin or unpin (`unpin: true`) |
 | 22 | `download_file` | **File** | Download by file_id |
@@ -546,7 +546,7 @@ show_animation({
 | `delete_message`, `forward_message` | `download_file`, `transcribe_voice` |
 | `set_reaction`, `pin_message` | `dequeue_update`, `get_message` |
 | `ask`, `choose`, `send_confirmation` (send internally) | `dump_session_record`, `restart_server` |
-| `update_status`, `show_typing`, `send_chat_action` | |
+| `send_new_checklist`, `show_typing`, `send_chat_action` | |
 
 **Rule:** If it calls a Telegram Bot API method that modifies the chat, it resets the timer. Read-only and config tools do not.
 

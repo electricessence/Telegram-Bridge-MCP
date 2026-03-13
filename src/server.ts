@@ -24,7 +24,7 @@ import { register as registerSendConfirmation } from "./tools/send_confirmation.
 import { register as registerAnswerCallbackQuery } from "./tools/answer_callback_query.js";
 import { register as registerShowTyping } from "./tools/show_typing.js";
 import { register as registerSendChatAction } from "./tools/send_chat_action.js";
-import { register as registerUpdateStatus } from "./tools/update_status.js";
+import { register as registerSendNewChecklist } from "./tools/send_new_checklist.js";
 import { register as registerSetReaction } from "./tools/set_reaction.js";
 import { register as registerPinMessage } from "./tools/pin_message.js";
 import { register as registerDownloadFile } from "./tools/download_file.js";
@@ -51,7 +51,7 @@ export function createServer(): McpServer {
   registerSetTopic(server);
   registerNotify(server);
   registerAsk(server);
-  registerChoose(server);  registerSendChoice(server);  registerUpdateStatus(server);
+  registerChoose(server);  registerSendChoice(server);  registerSendNewChecklist(server);
   registerSendConfirmation(server);
 
   // ── Polling ─────────────────────────────────────────────────────────────

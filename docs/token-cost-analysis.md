@@ -32,7 +32,7 @@ A rough token count of all tool definitions in this MCP:
 | Polling (dequeue_update) | 1 | ~300 |
 | Media (send_file) | 1 | ~400 |
 | Interaction (confirmation, buttons, reaction, etc.) | 7 | ~1,050 |
-| Status / utility (update_status, show_typing, etc.) | 6 | ~600 |
+| Status / utility (send_new_checklist, show_typing, etc.) | 6 | ~600 |
 | Admin / misc (restart, agent guide, get_me, etc.) | 4 | ~350 |
 | **Total** | **35** | **~5,900 tokens** |
 

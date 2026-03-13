@@ -240,7 +240,7 @@ The assistant uses emoji reactions to acknowledge without noise:
 
 You can do the same to confirm instructions.
 
-### Use `update_status` for multi-step tasks
+### Use `send_new_checklist` for multi-step tasks
 
 For complex tasks (e.g., "add a new tool with tests and docs"), the assistant can send a **live checklist** that updates as each step completes:
 

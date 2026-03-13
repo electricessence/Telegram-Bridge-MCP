@@ -174,7 +174,7 @@ set_topic("Refactor Agent")
 
 **Behavior:**
 
-- Applies to: `send_text`, `notify`, `ask`, `choose`, `send_confirmation`, `update_status`
+- Applies to: `send_text`, `notify`, `ask`, `choose`, `send_confirmation`, `send_new_checklist`
 - Does **not** apply to: `send_file` (file captions stay clean)
 - The tag always appears — there is no per-message override
 - Pass an empty string to clear: `set_topic("")`
@@ -209,7 +209,7 @@ For a static placeholder:
 
 ```ts
 const { message_id } = await show_animation({ frames: ["Setting up…"] })
-await update_status(...)  // visible; animation still cleaned up by cancel_animation
+await send_new_checklist(...)  // visible; animation still cleaned up by cancel_animation
 await cancel_animation()
 ```
 
@@ -218,7 +218,7 @@ await cancel_animation()
 - Only one animation at a time — `show_animation` replaces any active one.
 - `cancel_animation` without `text` deletes the placeholder message.
 - `cancel_animation` with `text` edits the placeholder into a permanent log message.
-- Prefer `update_status` for tasks with 3+ named steps. Use `show_animation` for a quick "I'm on it" with no structured progress to show.
+- Prefer `send_new_checklist` for tasks with 3+ named steps. Use `show_animation` for a quick "I'm on it" with no structured progress to show.
 - **Cancel the animation before waiting for input.** If your task is done, cancel the animation and send a completion message. Do not leave an animation running while idle — this misleads the operator into thinking you are still working.
 - **Use animation only during active work.** The moment you transition from working to waiting, the animation must stop.
 

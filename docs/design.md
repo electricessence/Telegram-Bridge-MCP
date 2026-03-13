@@ -52,7 +52,7 @@ Tools are grouped by abstraction level.
 | `ask` | Sends a question and blocks until the user replies with free text or voice. |
 | `choose` | Sends a question with labeled inline keyboard buttons; blocks until a button is pressed or the user replies with text/voice. |
 | `send_confirmation` | Sends a Yes/No inline keyboard and blocks until a button is pressed. Returns `{ confirmed: true \| false }`, or `{ timed_out: true }` if the timeout expires without input. |
-| `update_status` | Creates or edits a live task checklist message with per-step status indicators. |
+| `send_new_checklist` | Creates or edits a live task checklist message with per-step status indicators. |
 
 ### Polling & message retrieval
 
@@ -189,7 +189,7 @@ telegram-bridge-mcp/
 │       ├── ask.ts
 │       ├── choose.ts
 │       ├── send_confirmation.ts
-│       ├── update_status.ts
+        ├── send_new_checklist.ts
 │       ├── dequeue_update.ts
 │       ├── get_message.ts
 │       ├── answer_callback_query.ts

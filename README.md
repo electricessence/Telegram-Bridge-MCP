@@ -127,7 +127,7 @@ Paste the contents of `LOOP-PROMPT.md` into your AI assistant's chat. It will co
 | `ask` | Send a question; blocks until you reply with text or voice |
 | `choose` | Send a question with 2–8 labeled buttons; blocks until you tap one or speak a reply. Supports per-button color (`success`/`primary`/`danger`). |
 | `send_confirmation` | Yes/No prompt with customizable button colors; blocks until confirmed or denied. |
-| `update_status` | Live in-place checklist — edits itself as steps complete |
+| `send_new_checklist` | Live in-place checklist — edits itself as steps complete |
 | `show_animation` | Cycling placeholder message visible while the agent works — signals "thinking". Cancel with text to make it a permanent log entry. |
 | `dequeue_update` | Wait for the next message, button tap, voice reply, or slash command from the user |
 
