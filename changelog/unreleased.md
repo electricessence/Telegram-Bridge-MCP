@@ -8,6 +8,7 @@
 - **`keyboard-interactions.md`** — new doc formalising the four keyboard primitives (`send_message`, `send_choice`, `choose`, `send_confirmation`), the hierarchy, button types (momentary/toggle/rotary), implementation notes; linked from `behavior.md`
 - **`send_message` tool** — core send primitive; sends a message with optional inline keyboard and returns `{ message_id }` immediately (fire-and-forget); keyboard buttons arrive as `callback_query` events via `dequeue_update`; supports per-button styles, `reply_to_message_id`, `disable_notification`, and all parse modes; the foundation on which `choose` and `send_confirmation` are built
 - **`edit_message` tool** — core edit primitive; updates text, keyboard, or both on an existing message; pass `keyboard: null` to remove buttons; omit `text` to update keyboard only (calls `editMessageReplyMarkup` internally); omit `keyboard` to update text while preserving existing buttons
+- **Symbol usage guide in `communication.md`** — added "Symbol usage — quiet vs loud" table clarifying when to use ✓/✗ (U+2713/U+2717, quiet inline markers) vs ✅/❌ (loud emoji, strong final outcomes)
 - **`super-tools.md`** — new doc introducing the super-tools concept and listing planned super tools (`send_new_checklist`, `progress_bar`) with design notes
 
 ## Fixed
@@ -40,6 +41,9 @@
 - **`REACTION_EMOJI_INVALID` error code** — `set_reaction` was incorrectly returning `BUTTON_DATA_INVALID` when the emoji wasn't in the allowed reaction set; replaced with the correct `REACTION_EMOJI_INVALID` code; `MISSING_MESSAGE_ID` (used in `pin_message`) was also missing from the `TelegramErrorCode` union — both added; `pin_message` tests expanded to cover the missing-message-id guard and unpin paths
 
 ## Changed
+
+- **`show_typing` fires temp reaction restore** — calling `show_typing` now triggers `fireTempReactionRestore()` at the start of the handler (before extend-vs-new branch), consistent with the principle that typing = intent to respond = outbound signal; previously only actual message sends cleared the 👀 reaction
+- **Animation frame auto-padding** — `startAnimation` now pads all frames to equal length with U+00A0 (non-breaking space) before Markdown processing; for backtick code-span frames the NBSP is inserted inside the closing `` ` `` (`` `·\u00A0\u00A0` `` not `` `·` \u00A0\u00A0 ``) so Telegram preserves them in the monospace run and the cycling message stays stable width
 
 - **All tool files stripped of cross-cutting imports** — `cancelTyping`, `clearPendingTemp`, `recordOutgoing`, `juggleAnimation`, `suspendAnimation`, `resumeAnimation` removed from 11 tool files; the outbound proxy handles these transparently
 - **`animation-state` simplified** — removed `juggleAnimation`, `suspendAnimation`, `resumeAnimation` exports; animation promotion is now handled internally via `SendInterceptor` registered with the outbound proxy

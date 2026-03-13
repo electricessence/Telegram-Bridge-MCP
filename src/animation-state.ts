@@ -148,8 +148,17 @@ export async function startAnimation(
 
   // Pad all frames to equal length with non-breaking spaces (U+00A0) so
   // cycling frames don't shift the message layout in Telegram.
+  // For backtick code spans, insert NBSP inside the closing ` so Telegram
+  // preserves them in the monospace run (outside-backtick NBSP gets trimmed).
   const maxLen = Math.max(...frames.map((f) => f.length));
-  const paddedFrames = frames.map((f) => f + "\u00A0".repeat(maxLen - f.length));
+  const paddedFrames = frames.map((f) => {
+    const pad = "\u00A0".repeat(maxLen - f.length);
+    if (pad.length === 0) return f;
+    if (f.startsWith("`") && f.endsWith("`") && f.length >= 2) {
+      return f.slice(0, -1) + pad + "`";
+    }
+    return f + pad;
+  });
 
   // Pre-process all frames through Markdown→MarkdownV2 once
   const processed = paddedFrames.map((f) => resolveParseMode(f, "Markdown"));
