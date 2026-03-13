@@ -57,6 +57,20 @@ MCP resources: `telegram-bridge-mcp://communication-guide` (full) · `telegram-b
 - ` ``` ` for command output / config snippets
 - Always thread replies with `reply_to_message_id`
 
+### Symbol usage — quiet vs loud
+
+Prefer the **quiet Unicode symbol** over the emoji version unless you need to signal strong finality:
+
+| Situation | Use | Avoid |
+| --- | --- | --- |
+| Task done (quiet) | ✓ (U+2713) | ✅ (emoji) |
+| Cancel / reject (quiet) | ✗ (U+2717) | ❌ (emoji) |
+| Strong positive completion | ✅ (emoji) | — |
+| Strong negative / warning | ❌ (emoji) | — |
+
+The ✅/❌ emoji carry high visual weight — they're right for one-off confirmations and final results, but feel loud when used repeatedly.  
+The ✓/✗ characters read as a natural part of text and work well inside button labels, checklist items, inline status notes, and anywhere the context already provides enough emphasis.
+
 ---
 
 ## Commit → Push Flow
