@@ -16,7 +16,7 @@ import {
   type ReactionEmoji,
 } from "./telegram.js";
 import { handleIfBuiltIn } from "./built-in-commands.js";
-import { recordInbound, hasPendingWaiters } from "./message-store.js";
+import { recordInbound, hasPendingWaiters, patchVoiceText } from "./message-store.js";
 import { transcribeVoice } from "./transcribe.js";
 
 const REACT_TRANSCRIBING = "\u270D" as ReactionEmoji;  // ✍
@@ -94,6 +94,10 @@ async function _pollLoop(): Promise<void> {
           if (consumed) continue;
 
           if (u.message?.voice) {
+            // Phase 1: record immediately so blocking waiters unblock at once.
+            // text is undefined — waiters that require text will stay in their
+            // loop until patchVoiceText fires after transcription (phase 2).
+            recordInbound(u);
             voiceUpdates.push(u);
             continue;
           }
@@ -191,11 +195,9 @@ async function _transcribeAndRecord(u: Update): Promise<void> {
       clearTimeout(_transcriptionTimer);
     }
 
-    // Record first so a pending waiter can consume immediately.
-    // Then check if a waiter was already waiting — if so, skip 😴
-    // because the waiter will set 🫡 on dequeue immediately.
+    // Phase 2: patch transcribed text and notify waiters
     const waiterWaiting = hasPendingWaiters();
-    recordInbound(u, text);
+    patchVoiceText(messageId, text);
 
     if (!waiterWaiting) {
       const setQueued = await trySetMessageReaction(chatId, messageId, REACT_QUEUED);
@@ -204,7 +206,7 @@ async function _transcribeAndRecord(u: Update): Promise<void> {
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     process.stderr.write(`[poller] transcription error for msg ${messageId}: ${errMsg}\n`);
-    recordInbound(u, `[transcription failed: ${errMsg}]`);
+    patchVoiceText(messageId, `[transcription failed: ${errMsg}]`);
     await trySetMessageReaction(chatId, messageId, REACT_QUEUED).catch(() => {});
   }
 }

@@ -8,6 +8,10 @@
 - **`edit_message` tool** — core edit primitive; updates text, keyboard, or both on an existing message; pass `keyboard: null` to remove buttons; omit `text` to update keyboard only (calls `editMessageReplyMarkup` internally); omit `keyboard` to update text while preserving existing buttons
 - **`super-tools.md`** — new doc introducing the super-tools concept and listing planned super tools (`send_new_checklist`, `progress_bar`) with design notes
 
+## Fixed
+
+- **Voice reply delay in `choose`/`ask`/`send_confirmation`** — voice messages during a blocking button wait are now recognised immediately on arrival (before transcription begins); blocking waiters wake instantly and wait only for the transcription to complete, not the full pipeline; the fix uses two-phase recording: `recordInbound` fires on arrival with no text, then `patchVoiceText` patches the transcribed text in-place once ready and notifies waiters; `send_choice` is unaffected (non-blocking)
+
 - **Outbound proxy** — transparent JS Proxy wrapping Grammy `Api` that handles all cross-cutting concerns (cancel typing, clear pending temp messages, animation promotion, outgoing message recording) so tool files never import those utilities directly
 - **Animation promotion via proxy** — when an animation is active, text sends are intercepted: the animation placeholder is edited to show the real content and a new animation starts below; file sends use suspend/resume (delete → send → restart)
 - **`set_default_animation` tool** — set session-level default frames, register named presets, reset to built-in, or query current state

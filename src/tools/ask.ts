@@ -53,8 +53,11 @@ export function register(server: McpServer) {
           const match = dequeueMatch((event: TimelineEvent) => {
             if (event.event === "message" && event.id > sent.message_id) {
               if (event.content.type === "text"
-                || event.content.type === "voice"
                 || event.content.type === "command") {
+                return event;
+              }
+              // Don't consume voice until transcription is complete (two-phase recording)
+              if (event.content.type === "voice" && event.content.text) {
                 return event;
               }
             }
@@ -66,7 +69,7 @@ export function register(server: McpServer) {
               ackVoiceMessage(match.id);
               return toResult({
                 timed_out: false,
-                text: match.content.text ?? "[no transcription]",
+                text: match.content.text ?? "",
                 message_id: match.id,
                 voice: true,
               });

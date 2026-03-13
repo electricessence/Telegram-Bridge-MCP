@@ -671,3 +671,19 @@ export function registerCallbackHook(messageId: number, fn: CallbackHookFn): voi
 export function clearCallbackHook(messageId: number): void {
   _callbackHooks.delete(messageId);
 }
+
+/**
+ * Patches the transcribed text onto an already-recorded voice event.
+ * Called by the poller after transcription completes (two-phase recording).
+ * The event object is mutated in-place — the queue still holds the same
+ * reference, so blocking waiters will see the text on their next scan.
+ * Notifies waiters so they unblock and consume the now-complete event.
+ */
+export function patchVoiceText(messageId: number, text: string): void {
+  const versions = _index.get(messageId);
+  if (!versions) return;
+  const current = versions.get(CURRENT);
+  if (!current || current.content.type !== "voice") return;
+  current.content.text = text;
+  notifyWaiters();
+}

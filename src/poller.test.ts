@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   trySetMessageReaction: vi.fn(),
   handleIfBuiltIn: vi.fn((): Promise<boolean> => Promise.resolve(false)),
   recordInbound: vi.fn(),
+  patchVoiceText: vi.fn(),
   transcribeVoice: vi.fn((): Promise<string> => Promise.resolve("hello world")),
 }));
 
@@ -34,6 +35,7 @@ vi.mock("./built-in-commands.js", () => ({
 
 vi.mock("./message-store.js", () => ({
   recordInbound: mocks.recordInbound,
+  patchVoiceText: mocks.patchVoiceText,
   hasPendingWaiters: vi.fn().mockReturnValue(false),
 }));
 
@@ -210,18 +212,22 @@ describe("poller", () => {
       const u = voiceUpdate(10);
       await runOneCycle([u]);
 
-      // Should have set ✍ reaction first
+      // Phase 1: recorded immediately (no text) before transcription
+      expect(mocks.recordInbound).toHaveBeenCalledWith(u);
+      // Should have set ✍ reaction
       expect(mocks.trySetMessageReaction).toHaveBeenCalledWith(
         123, 10, "✍",
       );
       // Transcription called with file_id
       expect(mocks.transcribeVoice).toHaveBeenCalledWith("voice_10");
-      // Then � reaction
+      // Then 😴 reaction
       expect(mocks.trySetMessageReaction).toHaveBeenCalledWith(
         123, 10, "😴",
       );
-      // Recorded with transcribed text
-      expect(mocks.recordInbound).toHaveBeenCalledWith(u, "transcribed text");
+      // Phase 2: text patched after transcription
+      expect(mocks.patchVoiceText).toHaveBeenCalledWith(10, "transcribed text");
+      // recordInbound should NOT be called with text
+      expect(mocks.recordInbound).not.toHaveBeenCalledWith(u, "transcribed text");
     });
 
     it("records failure message when transcription throws", async () => {
@@ -230,13 +236,16 @@ describe("poller", () => {
       const u = voiceUpdate(11);
       await runOneCycle([u]);
 
-      expect(mocks.recordInbound).toHaveBeenCalledWith(
-        u,
+      // Phase 1: immediate record (no text)
+      expect(mocks.recordInbound).toHaveBeenCalledWith(u);
+      // Phase 2: error text patched
+      expect(mocks.patchVoiceText).toHaveBeenCalledWith(
+        11,
         "[transcription failed: whisper down]",
       );
     });
 
-    it("still sets � reaction on transcription failure", async () => {
+    it("still sets 😴 reaction on transcription failure", async () => {
       mocks.transcribeVoice.mockRejectedValue(new Error("fail"));
       mocks.trySetMessageReaction.mockResolvedValue(undefined);
       const u = voiceUpdate(12);
@@ -303,8 +312,10 @@ describe("poller", () => {
 
       // Text recorded immediately
       expect(mocks.recordInbound).toHaveBeenCalledWith(text);
-      // Voice recorded with transcription
-      expect(mocks.recordInbound).toHaveBeenCalledWith(voice, "voice text");
+      // Voice recorded immediately (phase 1, no text)
+      expect(mocks.recordInbound).toHaveBeenCalledWith(voice);
+      // Voice text patched after transcription (phase 2)
+      expect(mocks.patchVoiceText).toHaveBeenCalledWith(2, "voice text");
     });
   });
 

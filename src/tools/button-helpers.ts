@@ -116,6 +116,8 @@ export async function pollButtonOrTextOrVoice(
           return { kind: "text" as const, message_id: event.id, text };
         }
         if (event.content.type === "voice") {
+          // Don't consume until transcription is complete (two-phase recording)
+          if (!event.content.text) return undefined;
           ackVoiceMessage(event.id);
           return {
             kind: "voice" as const,

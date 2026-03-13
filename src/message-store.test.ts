@@ -15,6 +15,7 @@ import {
   timelineSize,
   storeSize,
   resetStoreForTest,
+  patchVoiceText,
   CURRENT,
 } from "./message-store.js";
 
@@ -261,6 +262,43 @@ describe("recordInbound — voice messages", () => {
     const evt = dequeue();
     expect(evt!.content.type).toBe("voice");
     expect(evt!.content.text).toBeUndefined();
+  });
+});
+
+describe("patchVoiceText — two-phase voice recording", () => {
+  it("sets text on a recorded voice event", () => {
+    recordInbound(voiceUpdate(20));
+    const before = getMessage(20);
+    expect(before!.content.text).toBeUndefined();
+
+    patchVoiceText(20, "transcribed now");
+    const after = getMessage(20);
+    expect(after!.content.text).toBe("transcribed now");
+  });
+
+  it("updates the queued event in-place (same object reference)", () => {
+    recordInbound(voiceUpdate(21));
+    // Predicate only matches voice events that have text — so this should miss
+    const queued = dequeueMatch((e) => e.id === 21 && e.content.type === "voice" && e.content.text ? e : undefined);
+    // Can't consume yet — text is undefined
+    expect(queued).toBeUndefined();
+
+    patchVoiceText(21, "after transcription");
+    const consumed = dequeueMatch((e) => e.id === 21 && e.content.type === "voice" && e.content.text ? e : undefined);
+    expect(consumed!.content.text).toBe("after transcription");
+  });
+
+  it("is a no-op when message_id is unknown", () => {
+    // Should not throw
+    expect(() => patchVoiceText(999, "text")).not.toThrow();
+  });
+
+  it("is a no-op when event is not a voice type", () => {
+    recordInbound(textUpdate(22, "hello"));
+    patchVoiceText(22, "should not apply");
+    const evt = getMessage(22);
+    // Text message unchanged
+    expect(evt!.content.text).toBe("hello");
   });
 });
 
