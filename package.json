@@ -26,7 +26,7 @@
   "type": "module",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
-    "build": "node scripts/gen-build-info.mjs && tsc",
+    "build": "tsc && node scripts/gen-build-info.mjs",
     "typecheck": "tsc --noEmit",
     "pair": "node dist/setup.js",
     "start": "node dist/index.js",

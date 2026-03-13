@@ -5,8 +5,6 @@ coverage/
 *.js.map
 node_modules
 temp/
-# Generated at build time — do not commit
-src/build-info.json
 # Session state files — regenerated each session by the agent
 HANDOFF.md
 memory.md

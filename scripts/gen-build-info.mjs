@@ -15,7 +15,7 @@ try {
 const buildTime = new Date().toISOString();
 
 writeFileSync(
-  "src/build-info.json",
+  "dist/tools/build-info.json",
   JSON.stringify({ BUILD_COMMIT: commit, BUILD_TIME: buildTime }, null, 2) + "\n"
 );
 
