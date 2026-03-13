@@ -10,18 +10,26 @@
 - **`edit_message` tool** — core edit primitive; updates text, keyboard, or both on an existing message; pass `keyboard: null` to remove buttons; omit `text` to update keyboard only (calls `editMessageReplyMarkup` internally); omit `keyboard` to update text while preserving existing buttons
 - **Symbol usage guide in `communication.md`** — added "Symbol usage — quiet vs loud" table clarifying when to use ✓/✗ (U+2713/U+2717, quiet inline markers) vs ✅/❌ (loud emoji, strong final outcomes)
 - **`super-tools.md`** — new doc introducing the super-tools concept and listing planned super tools (`send_new_checklist`, `progress_bar`) with design notes
-
-## Fixed
-
-- **Voice reply delay in `choose`/`ask`/`send_confirmation`** — voice messages during a blocking button wait are now recognised immediately on arrival (before transcription begins); blocking waiters wake instantly and wait only for the transcription to complete, not the full pipeline; the fix uses two-phase recording: `recordInbound` fires on arrival with no text, then `patchVoiceText` patches the transcribed text in-place once ready and notifies waiters; `send_choice` is unaffected (non-blocking)
-
 - **Outbound proxy** — transparent JS Proxy wrapping Grammy `Api` that handles all cross-cutting concerns (cancel typing, clear pending temp messages, animation promotion, outgoing message recording) so tool files never import those utilities directly
-- **Animation promotion via proxy** — when an animation is active, text sends are intercepted: the animation placeholder is edited to show the real content and a new animation starts below; file sends use suspend/resume (delete → send → restart)
-- **`set_default_animation` tool** — set session-level default frames, register named presets, reset to built-in, or query current state
-- **`show_animation` preset parameter** — resolve animation frames by named preset key
 - **Message store** (`message-store.ts`) — always-on store replacing both `session-recording.ts` and `update-buffer.ts`; provides `recordInbound`, `recordOutgoing`, `recordOutgoingEdit`, `recordBotReaction`, `dequeue`, `dequeueMatch`, `waitForEnqueue`, `getMessage` (random-access with version history), `dumpTimeline`
 - **Background poller** (`poller.ts`) — continuously calls `getUpdates`, feeds `recordInbound` into the store, auto-transcribes voice messages with ✍→📝 reaction feedback
+- **`set_default_animation` tool** — set session-level default frames, register named presets, reset to built-in, or query current state
+- **Built-in animation presets** — five named presets always available without `set_default_animation`: `bounce` (default tracer), `dots` (growing middle dots), `working`, `thinking`, `loading`; accessible via `show_animation(preset: "name")` or `getPreset()`; session presets shadow built-ins with the same key; `set_default_animation` (no-args query) now returns `session_presets` and `builtin_presets` fields separately
+- **`reply_to` field in message store** — `EventContent` now captures `reply_to_message.message_id` from inbound messages
+- **`file_id` in `EventContent`** — `buildMessageContent` now populates `file_id` for photo, video, audio, voice, document, and animation messages
+- **`session_start` tool** — startup tool that sends an intro message, checks for pending messages from a previous session, and asks the operator whether to resume or start fresh via server-generated confirmation buttons
+- **`CommandResult` in button helpers** — `pollButtonOrTextOrVoice` now returns slash commands as `{ kind: "command" }` instead of silently dropping them; `ask`, `choose`, and `send_confirmation` all handle command interrupts
+
+
+## Changed
+
+- **`show_animation` preset parameter** — resolve animation frames by named preset key
+- **`show_typing` fires temp reaction restore** — calling `show_typing` now triggers `fireTempReactionRestore()` at the start of the handler (before extend-vs-new branch), consistent with the principle that typing = intent to respond = outbound signal; previously only actual message sends cleared the 👀 reaction
+- **Animation frame auto-padding** — `startAnimation` now pads all frames to equal length with U+00A0 (non-breaking space) before Markdown processing; for backtick code-span frames the NBSP is inserted inside the closing `` ` `` so Telegram preserves them in the monospace run and the cycling message stays stable width
+- **Animation space normalisation** — `startAnimation` replaces all regular spaces (U+0020) with NBSP (U+00A0) in frame strings before processing, preventing Telegram from trimming trailing or internal spaces; opt out per-call with `allow_breaking_spaces: true` (also exposed as a `show_animation` tool parameter)
+- **Animation promotion via proxy** — when an animation is active, text sends are intercepted: the animation placeholder is edited to show the real content and a new animation starts below; file sends use suspend/resume (delete → send → restart)
 - **Animation state** (`animation-state.ts`) — manages typing/thinking animations via edit-not-delete mechanism with `startAnimation`, `cancelAnimation`, `resetAnimationTimeout`
+- **`animation-state` simplified** — removed `juggleAnimation`, `suspendAnimation`, `resumeAnimation` exports; animation promotion is now handled internally via `SendInterceptor` registered with the outbound proxy
 - **`send_text` tool** — replaces `send_message` with `recordOutgoing` integration and `resetAnimationTimeout`
 - **`send_file` tool** — consolidates `send_photo`, `send_document`, `send_video`, `send_audio`, `send_voice` into one tool with auto-detection by file extension
 - **`dequeue_update` tool** — universal update consumption; blocks via `waitForEnqueue` with configurable timeout and filter predicate
@@ -29,27 +37,6 @@
 - **`append_text` tool** — delta-append using `getMessage` + `editMessageText` + `recordOutgoingEdit`
 - **`show_animation` tool** — starts a typing/thinking animation via `startAnimation`
 - **`cancel_animation` tool** — cancels active animation with optional replacement text
-- **`reply_to` field in message store** — `EventContent` now captures `reply_to_message.message_id` from inbound messages
-- **`file_id` in `EventContent`** — `buildMessageContent` now populates `file_id` for photo, video, audio, voice, document, and animation messages
-- **`session_start` tool** — startup tool that sends an intro message, checks for pending messages from a previous session, and asks the operator whether to resume or start fresh via server-generated confirmation buttons
-- **`CommandResult` in button helpers** — `pollButtonOrTextOrVoice` now returns slash commands as `{ kind: "command" }` instead of silently dropping them; `ask`, `choose`, and `send_confirmation` all handle command interrupts
-
-## Fixed
-
-- **🫡 ack on voice messages in `ask`, `choose`, `send_confirmation`** — only `dequeue_update` was setting the 🫡 reaction after consuming a voice message; the other dequeue paths (`ask` via `dequeueMatch`, `choose`/`send_confirmation` via `pollButtonOrTextOrVoice`) skipped the ack, leaving ✍ stuck on the message when a waiter was pending (since the poller also skips 😴 in that case); added shared `ackVoiceMessage` to `telegram.ts` and wired it into all voice dequeue paths
-- **Button style colors now actually work** — `style: "success" | "primary" | "danger"` on `choose` options and `yes_style`/`no_style` on `send_confirmation` was not being forwarded to the Telegram Bot API; `style` IS a real `AbstractInlineKeyboardButton` field in grammy/Telegram types for native button background color; restored `style` pass-through; label text is now fully caller-controlled (no forced emoji injection)
-- **`REACTION_EMOJI_INVALID` error code** — `set_reaction` was incorrectly returning `BUTTON_DATA_INVALID` when the emoji wasn't in the allowed reaction set; replaced with the correct `REACTION_EMOJI_INVALID` code; `MISSING_MESSAGE_ID` (used in `pin_message`) was also missing from the `TelegramErrorCode` union — both added; `pin_message` tests expanded to cover the missing-message-id guard and unpin paths
-- **`choose`/`send_confirmation` delayed skip edit on voice** — when the user replies with a voice message instead of pressing a button, the question message (with buttons) was only edited to "⏭ Skipped" after transcription completed, causing a visible delayed flicker; `pollButtonOrTextOrVoice` now accepts an `onVoiceDetected` callback that fires immediately when a voice message arrives (before transcription); `choose` and `send_confirmation` use this to remove the keyboard instantly; the `editWithSkipped` call is skipped on completion if it already fired
-
-## Changed
-
-- **`show_typing` fires temp reaction restore** — calling `show_typing` now triggers `fireTempReactionRestore()` at the start of the handler (before extend-vs-new branch), consistent with the principle that typing = intent to respond = outbound signal; previously only actual message sends cleared the 👀 reaction
-- **Animation frame auto-padding** — `startAnimation` now pads all frames to equal length with U+00A0 (non-breaking space) before Markdown processing; for backtick code-span frames the NBSP is inserted inside the closing `` ` `` (`` `·\u00A0\u00A0` `` not `` `·` \u00A0\u00A0 ``) so Telegram preserves them in the monospace run and the cycling message stays stable width
-- **Animation space normalisation** — `startAnimation` replaces all regular spaces (U+0020) with NBSP (U+00A0) in frame strings before processing, preventing Telegram from trimming trailing or internal spaces; opt out per-call with `allow_breaking_spaces: true` (also exposed as a `show_animation` tool parameter)
-- **Built-in animation presets** — five named presets always available without `set_default_animation`: `bounce` (default tracer), `dots` (growing middle dots), `working`, `thinking`, `loading`; accessible via `show_animation(preset: "name")` or `getPreset()`; session presets shadow built-ins with the same key; `set_default_animation` (no-args query) now returns `session_presets` and `builtin_presets` fields separately
-
-- **All tool files stripped of cross-cutting imports** — `cancelTyping`, `clearPendingTemp`, `recordOutgoing`, `juggleAnimation`, `suspendAnimation`, `resumeAnimation` removed from 11 tool files; the outbound proxy handles these transparently
-- **`animation-state` simplified** — removed `juggleAnimation`, `suspendAnimation`, `resumeAnimation` exports; animation promotion is now handled internally via `SendInterceptor` registered with the outbound proxy
 - **`telegram.ts` split API singletons** — `getRawApi()` returns the unwrapped Grammy `Api` (for animation internals), `getApi()` returns the proxied version (for tools)
 - **ESLint upgraded to `strictTypeChecked`** — switched from `recommended` to `strictTypeChecked` preset; fixed all violations across source and test files (323 → 0)
 - **Replaced `@tsdotnet/queue` with inline `SimpleQueue<T>`** — eliminates external dependency and fixes 33 type-resolution failures caused by pnpm strict symlinking
@@ -81,9 +68,15 @@
 - **`dequeue_update` reports real `pendingCount` on timeout** — timeout path now returns actual pending count instead of hardcoded `0`
 - **`session-recording.ts` docstring** — clarified that this module is a supplementary opt-in buffer for `/session` only; `dump_session_record` reads from the message store timeline
 - **`LOOP-PROMPT.md` updated** — setup flow now uses `session_start` instead of manual drain loop
+- **All tool files stripped of cross-cutting imports** — `cancelTyping`, `clearPendingTemp`, `recordOutgoing`, `juggleAnimation`, `suspendAnimation`, `resumeAnimation` removed from 11 tool files; the outbound proxy handles these transparently
 
 ## Fixed
 
+- **Voice reply delay in `choose`/`ask`/`send_confirmation`** — voice messages during a blocking button wait are now recognised immediately on arrival (before transcription begins); blocking waiters wake instantly and wait only for the transcription to complete, not the full pipeline; the fix uses two-phase recording: `recordInbound` fires on arrival with no text, then `patchVoiceText` patches the transcribed text in-place once ready and notifies waiters; `send_choice` is unaffected (non-blocking)
+- **`choose`/`send_confirmation` delayed skip edit on voice** — when the user replies with a voice message instead of pressing a button, the question message (with buttons) was only edited to "⏭ Skipped" after transcription completed, causing a visible delayed flicker; `pollButtonOrTextOrVoice` now accepts an `onVoiceDetected` callback that fires immediately when a voice message arrives (before transcription); `choose` and `send_confirmation` use this to remove the keyboard instantly; the `editWithSkipped` call is skipped on completion if it already fired
+- **🫡 ack on voice messages in `ask`, `choose`, `send_confirmation`** — only `dequeue_update` was setting the 🫡 reaction after consuming a voice message; the other dequeue paths (`ask` via `dequeueMatch`, `choose`/`send_confirmation` via `pollButtonOrTextOrVoice`) skipped the ack, leaving ✍ stuck on the message when a waiter was pending (since the poller also skips 😴 in that case); added shared `ackVoiceMessage` to `telegram.ts` and wired it into all voice dequeue paths
+- **Button style colors now actually work** — `style: "success" | "primary" | "danger"` on `choose` options and `yes_style`/`no_style` on `send_confirmation` was not being forwarded to the Telegram Bot API; `style` IS a real `AbstractInlineKeyboardButton` field in grammy/Telegram types for native button background color; restored `style` pass-through; label text is now fully caller-controlled (no forced emoji injection)
+- **`REACTION_EMOJI_INVALID` error code** — `set_reaction` was incorrectly returning `BUTTON_DATA_INVALID` when the emoji wasn't in the allowed reaction set; replaced with the correct `REACTION_EMOJI_INVALID` code; `MISSING_MESSAGE_ID` (used in `pin_message`) was also missing from the `TelegramErrorCode` union — both added; `pin_message` tests expanded to cover the missing-message-id guard and unpin paths
 - **Animation stuck above messages** — animation placeholder now moves below each new outbound message via proxy-driven promotion instead of manual tool-level juggling
 - **Voice 😴 reaction skipped when agent is already waiting** — poller now checks `hasPendingWaiters()` and skips the queued reaction when a `dequeue_update` waiter is pending
 - **`send_file` photo broken for local files** — `case "photo"` was passing the raw path string to Grammy instead of the `InputFile` object from `resolveMediaSource`; local photo uploads silently failed with invalid file_id errors

@@ -8,9 +8,14 @@ Paste `loop-prompt.md` into this chat to start the loop.
 
 ## This Codebase
 
-Edits to `src/` directly change the running MCP server. Follow pre-action announcement rules in `behavior.md` (via `get_agent_guide`).
+Edits to `src/` directly change the running MCP server.
 
-Communication patterns: `communication.md` · `telegram-bridge-mcp://communication-guide`
+## Communication
+
+All responses go through Telegram. Hard rules are in `.github/instructions/telegram-communication.instructions.md` (auto-applied via `applyTo: "**"`). Key rules: drain before speaking, announce before every build/restart/commit/push/delete, never assume silence means approval.
+
+Full guide: `docs/communication.md` · MCP resource: `telegram-bridge-mcp://communication-guide`  
+Behavior + pre-action rules: `docs/behavior.md` (via `get_agent_guide`)
 
 ---
 

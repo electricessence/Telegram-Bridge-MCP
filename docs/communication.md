@@ -93,6 +93,25 @@ The ✓/✗ characters read as a natural part of text and work well inside butto
 
 ---
 
+## Announce Before Major Actions
+
+Before any significant state-changing operation, briefly state what you're about to do:
+
+| Action | How to announce |
+| --- | --- |
+| Commit | `notify` summary of changes before committing |
+| Push | `send_text` "Pushing now…" |
+| Build / compile | `send_text` "Building now — ~10s…" |
+| Restart server | `send_text` "Restarting server…" |
+| Delete files | `send_text` "Deleting X…" |
+| Destructive / irreversible | `send_confirmation` — require explicit approval first |
+
+This keeps the operator's eyes on what's happening. A brief heads-up before a restart or push means they won't be surprised when the bot goes quiet for a few seconds. It's not a formal gate — just transparency.
+
+For any action that is hard or impossible to reverse (deleting branches, `reset --hard`, dropping data), always stop and ask first.
+
+---
+
 ## Multi-Step Tasks
 
 Use `send_new_checklist` for any task with 3+ steps.
