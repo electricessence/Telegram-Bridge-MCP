@@ -9,6 +9,7 @@
  * the replaced slot — caller is responsible for overlapping calls).
  */
 
+import { getBotReaction } from "./message-store.js";
 import { resolveChat, trySetMessageReaction, getApi, type ReactionEmoji } from "./telegram.js";
 
 interface TempReactionSlot {
@@ -36,6 +37,11 @@ export async function setTempReaction(
   // Cancel any previous pending slot (no restore — caller replaced it)
   _clearSlot(false);
 
+  // Capture previous reaction before we overwrite it
+  const previousEmoji = getBotReaction(messageId) as ReactionEmoji | null;
+  const resolvedRestore: ReactionEmoji | null =
+    restoreEmoji !== undefined ? restoreEmoji : previousEmoji;
+
   const ok = await trySetMessageReaction(resolved, messageId, emoji);
   if (!ok) return false;
 
@@ -47,7 +53,7 @@ export async function setTempReaction(
   _slot = {
     chatId: resolved,
     messageId,
-    restoreEmoji: restoreEmoji ?? null,
+    restoreEmoji: resolvedRestore,
     timeoutHandle: handle,
   };
 

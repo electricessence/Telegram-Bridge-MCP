@@ -137,6 +137,9 @@ let _insertionOrder: number[] = [];
 /** Highwater mark — highest message_id seen (from any source). */
 let _highestMessageId = 0;
 
+/** Per-message bot reaction index — tracks the current bot reaction for restore. */
+let _botReactionIndex = new Map<number, string>();
+
 /** Two-lane queue — response lane items drain before message lane. */
 const _responseLane = new SimpleQueue<QueueItem>();
 const _messageLane = new SimpleQueue<QueueItem>();
@@ -499,6 +502,19 @@ export function recordBotReaction(
   };
   _timeline.push(evt);
   evictTimeline();
+  if (emoji) {
+    _botReactionIndex.set(targetMessageId, emoji);
+  } else {
+    _botReactionIndex.delete(targetMessageId);
+  }
+}
+
+/**
+ * Returns the most recent bot reaction emoji recorded for the given message,
+ * or null if no reaction has been set (or it was removed).
+ */
+export function getBotReaction(messageId: number): string | null {
+  return _botReactionIndex.get(messageId) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -660,6 +676,7 @@ export function resetStoreForTest(): void {
   _messageLane.clear();
   _waiters = [];
   _callbackHooks.clear();
+  _botReactionIndex.clear();
 }
 
 /** Register a one-shot auto-lock hook for a send_choice message. */

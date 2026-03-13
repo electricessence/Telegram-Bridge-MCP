@@ -3,6 +3,11 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 const mocks = vi.hoisted(() => ({
   setMessageReaction: vi.fn(),
   trySetMessageReaction: vi.fn(),
+  getBotReaction: vi.fn<(messageId: number) => string | null>().mockReturnValue(null),
+}));
+
+vi.mock("./message-store.js", () => ({
+  getBotReaction: mocks.getBotReaction,
 }));
 
 vi.mock("./telegram.js", async (importActual) => {
@@ -78,5 +83,20 @@ describe("temp-reaction", () => {
     expect(mocks.trySetMessageReaction).toHaveBeenCalledTimes(1);
     expect(mocks.trySetMessageReaction).toHaveBeenCalledWith(42, 200, "🤔");
     expect(hasTempReaction()).toBe(true);
+  });
+
+  it("auto-restores to previously recorded reaction when restore_emoji is omitted", async () => {
+    mocks.getBotReaction.mockReturnValue("🫡");
+    await setTempReaction(100, "👀");
+    await fireTempReactionRestore();
+    expect(mocks.trySetMessageReaction).toHaveBeenLastCalledWith(42, 100, "🫡");
+    expect(mocks.setMessageReaction).not.toHaveBeenCalled();
+  });
+
+  it("removes reaction if no previous reaction recorded and no restore_emoji", async () => {
+    mocks.getBotReaction.mockReturnValue(null);
+    await setTempReaction(100, "👀");
+    await fireTempReactionRestore();
+    expect(mocks.setMessageReaction).toHaveBeenCalledWith(42, 100, []);
   });
 });
