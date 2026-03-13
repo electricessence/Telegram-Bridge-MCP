@@ -10,7 +10,7 @@
  */
 
 import { getBotReaction } from "./message-store.js";
-import { resolveChat, trySetMessageReaction, getApi, type ReactionEmoji } from "./telegram.js";
+import { resolveChat, trySetMessageReaction, type ReactionEmoji } from "./telegram.js";
 
 interface TempReactionSlot {
   chatId: number;
@@ -62,7 +62,9 @@ export async function setTempReaction(
 
 /**
  * Called by the outbound proxy before every send.
- * Restores (or removes) the reaction if one is pending, then clears the slot.
+ * Restores the reaction if one is pending, then clears the slot.
+ * If no restore target is known (none provided, none previously recorded),
+ * the reaction is left in place — no removal attempted.
  * Safe to call unconditionally — no-ops when no slot is active.
  */
 export async function fireTempReactionRestore(): Promise<void> {
@@ -72,18 +74,8 @@ export async function fireTempReactionRestore(): Promise<void> {
 
   if (restoreEmoji) {
     void trySetMessageReaction(chatId, messageId, restoreEmoji);
-  } else {
-    // Remove the reaction by sending an empty array
-    void resolveAndRemove(chatId, messageId);
   }
-}
-
-async function resolveAndRemove(chatId: number, messageId: number): Promise<void> {
-  try {
-    await getApi().setMessageReaction(chatId, messageId, []);
-  } catch {
-    // best-effort
-  }
+  // else: no restore target — leave the reaction in place
 }
 
 function _clearSlot(fireRestore: boolean): void {
@@ -93,7 +85,7 @@ function _clearSlot(fireRestore: boolean): void {
     const { chatId, messageId, restoreEmoji } = _slot;
     _slot = null;
     if (restoreEmoji) void trySetMessageReaction(chatId, messageId, restoreEmoji);
-    else void resolveAndRemove(chatId, messageId);
+    // else: no restore target — leave the reaction in place
   } else {
     _slot = null;
   }
