@@ -1,14 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
-  getApi, resolveChat,
+  resolveChat,
   toResult, toError, validateText, validateCallbackData, LIMITS,
 } from "../telegram.js";
-import { markdownToV2 } from "../markdown.js";
-import { applyTopicToText } from "../topic-state.js";
 import {
   pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped, editWithTimedOut,
-  type ButtonStyle,
+  sendChoiceMessage, type KeyboardOption,
 } from "./button-helpers.js";
 
 const DESCRIPTION =
@@ -88,79 +86,68 @@ export function register(server: McpServer) {
           });
       }
 
-      // Build keyboard rows (n columns per row)
-      const rows: { text: string; callback_data: string; style?: ButtonStyle }[][] = [];
-      for (let i = 0; i < options.length; i += columns) {
-        rows.push(
-          options.slice(i, i + columns).map((o) => ({
-            text: o.label,
-            callback_data: o.value,
-            ...(o.style ? { style: o.style as ButtonStyle } : {}),
-          }))
-        );
-      }
-
       try {
-        const sent = await getApi().sendMessage(chatId, markdownToV2(applyTopicToText(question, "Markdown")), {
-          parse_mode: "MarkdownV2",
-          reply_markup: { inline_keyboard: rows },
-          reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
-          _rawText: question,
-        } as Record<string, unknown>);
+        const messageId = await sendChoiceMessage(chatId, {
+          text: question,
+          options: options as KeyboardOption[],
+          columns,
+          parseMode: "Markdown",
+          replyToMessageId: reply_to_message_id,
+        });
 
-        const match = await pollButtonOrTextOrVoice(chatId, sent.message_id, timeout_seconds);
+        const match = await pollButtonOrTextOrVoice(chatId, messageId, timeout_seconds);
 
         if (!match) {
           // Timeout — remove buttons so they can't be clicked with no listener.
           // The agent can call dequeue_update next to capture a free-text reply.
-          await editWithTimedOut(chatId, sent.message_id, question);
+          await editWithTimedOut(chatId, messageId, question);
           return toResult({
             timed_out: true,
-            message_id: sent.message_id,
+            message_id: messageId,
           });
         }
 
         if (match.kind === "text") {
-          await editWithSkipped(chatId, sent.message_id, question);
+          await editWithSkipped(chatId, messageId, question);
           return toResult({
             skipped: true,
             text_response: match.text,
             text_message_id: match.message_id,
-            message_id: sent.message_id,
+            message_id: messageId,
           });
         }
 
         if (match.kind === "voice") {
-          await editWithSkipped(chatId, sent.message_id, question);
+          await editWithSkipped(chatId, messageId, question);
           return toResult({
             skipped: true,
             text_response: match.text ?? "[no transcription]",
             text_message_id: match.message_id,
-            message_id: sent.message_id,
+            message_id: messageId,
             voice: true,
           });
         }
 
         if (match.kind === "command") {
-          await editWithSkipped(chatId, sent.message_id, question);
+          await editWithSkipped(chatId, messageId, question);
           return toResult({
             skipped: true,
             command: match.command,
             args: match.args,
-            message_id: sent.message_id,
+            message_id: messageId,
           });
         }
 
         // Button was pressed
         const chosen = options.find((o) => o.value === match.data);
         const chosenLabel = chosen?.label ?? match.data;
-        await ackAndEditSelection(chatId, sent.message_id, question, chosenLabel, match.callback_query_id);
+        await ackAndEditSelection(chatId, messageId, question, chosenLabel, match.callback_query_id);
 
         return toResult({
           timed_out: false,
           label: chosenLabel,
           value: match.data,
-          message_id: sent.message_id,
+          message_id: messageId,
         });
       } catch (err) {
         return toError(err);

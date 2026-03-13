@@ -1,12 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
-  getApi, toResult, toError, validateText, resolveChat, validateCallbackData, LIMITS, callApi,
+  toResult, toError, validateText, resolveChat, validateCallbackData, LIMITS, getApi,
 } from "../telegram.js";
-import { resolveParseMode } from "../markdown.js";
-import { applyTopicToText } from "../topic-state.js";
 import { registerCallbackHook } from "../message-store.js";
-import type { ButtonStyle } from "./button-helpers.js";
+import {
+  sendChoiceMessage, type KeyboardOption,
+} from "./button-helpers.js";
 
 const DESCRIPTION =
   "Non-blocking one-shot keyboard — sends a message with choice buttons and " +
@@ -98,33 +98,15 @@ export function register(server: McpServer) {
         }
       }
 
-      // Build keyboard rows
-      const rows: { text: string; callback_data: string; style?: ButtonStyle }[][] = [];
-      for (let i = 0; i < options.length; i += columns) {
-        rows.push(
-          options.slice(i, i + columns).map((o) => ({
-            text: o.label,
-            callback_data: o.value,
-            ...(o.style ? { style: o.style as ButtonStyle } : {}),
-          })),
-        );
-      }
-
-      const textWithTopic = applyTopicToText(text, parse_mode);
-      const { text: finalText, parse_mode: finalMode } = resolveParseMode(textWithTopic, parse_mode);
-
       try {
-        const sent = await callApi(() =>
-          getApi().sendMessage(chatId, finalText, {
-            parse_mode: finalMode,
-            reply_markup: { inline_keyboard: rows },
-            disable_notification,
-            reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
-            _rawText: text,
-          } as Record<string, unknown>),
-        );
-
-        const messageId = sent.message_id;
+        const messageId = await sendChoiceMessage(chatId, {
+          text,
+          options: options as KeyboardOption[],
+          columns,
+          parseMode: parse_mode,
+          disableNotification: disable_notification,
+          replyToMessageId: reply_to_message_id,
+        });
 
         // Register one-shot auto-lock: on first press, dismiss the spinner and
         // remove the buttons. The callback_query event is still enqueued normally.

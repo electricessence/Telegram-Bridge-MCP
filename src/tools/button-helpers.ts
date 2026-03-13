@@ -1,9 +1,10 @@
 /**
- * Shared helpers for button-based interaction tools (choose, send_confirmation).
+ * Shared helpers for button-based interaction tools (choose, send_choice, send_confirmation).
  */
 
 import { getApi, ackVoiceMessage } from "../telegram.js";
-import { markdownToV2 } from "../markdown.js";
+import { markdownToV2, resolveParseMode } from "../markdown.js";
+import { applyTopicToText } from "../topic-state.js";
 import { dequeueMatch, waitForEnqueue, type TimelineEvent } from "../message-store.js";
 
 // ---------------------------------------------------------------------------
@@ -205,4 +206,62 @@ export async function editWithSkipped(
   originalText: string,
 ): Promise<void> {
   await appendSuffixAndEdit(chatId, messageId, originalText, "⏭ _Skipped_");
+}
+
+// ---------------------------------------------------------------------------
+// Shared keyboard-send helpers (used by choose + send_choice)
+// ---------------------------------------------------------------------------
+
+export interface KeyboardOption {
+  label: string;
+  value: string;
+  style?: "success" | "primary" | "danger";
+}
+
+/** Arrange options into rows of `columns` buttons each. */
+export function buildKeyboardRows(
+  options: KeyboardOption[],
+  columns: number,
+): { text: string; callback_data: string; style?: ButtonStyle }[][] {
+  const rows: { text: string; callback_data: string; style?: ButtonStyle }[][] = [];
+  for (let i = 0; i < options.length; i += columns) {
+    rows.push(
+      options.slice(i, i + columns).map((o) => ({
+        text: o.label,
+        callback_data: o.value,
+        ...(o.style ? { style: o.style as ButtonStyle } : {}),
+      })),
+    );
+  }
+  return rows;
+}
+
+export interface SendChoiceMessageOptions {
+  text: string;
+  options: KeyboardOption[];
+  columns: number;
+  parseMode: "Markdown" | "HTML" | "MarkdownV2";
+  disableNotification?: boolean;
+  replyToMessageId?: number;
+}
+
+/**
+ * Send a message with an inline keyboard. Returns the message_id.
+ * Does NOT register any auto-lock hook — callers decide what happens on press.
+ */
+export async function sendChoiceMessage(
+  chatId: number,
+  opts: SendChoiceMessageOptions,
+): Promise<number> {
+  const rows = buildKeyboardRows(opts.options, opts.columns);
+  const textWithTopic = applyTopicToText(opts.text, opts.parseMode);
+  const { text: finalText, parse_mode: finalMode } = resolveParseMode(textWithTopic, opts.parseMode);
+  const sent = await getApi().sendMessage(chatId, finalText, {
+    parse_mode: finalMode,
+    reply_markup: { inline_keyboard: rows },
+    disable_notification: opts.disableNotification,
+    reply_parameters: opts.replyToMessageId ? { message_id: opts.replyToMessageId } : undefined,
+    _rawText: opts.text,
+  } as Record<string, unknown>);
+  return sent.message_id;
 }
