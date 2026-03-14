@@ -9,9 +9,9 @@ const EMPTY  = "░";
 const DEFAULT_WIDTH = 10;
 
 export function renderProgress(
-  title: string,
   percent: number,
   width: number,
+  title?: string,
   subtext?: string,
 ): string {
   const clamped = Math.max(0, Math.min(100, percent));
@@ -19,7 +19,9 @@ export function renderProgress(
   const empty = width - filled;
   const bar = FILLED.repeat(filled) + EMPTY.repeat(empty);
   const pct = `${Math.round(clamped)}%`;
-  const lines = [`<b>${escapeHtml(title)}</b>`, `${bar}  ${pct}`];
+  const lines: string[] = [];
+  if (title) lines.push(`<b>${escapeHtml(title)}</b>`);
+  lines.push(`${bar}  ${pct}`);
   if (subtext) lines.push(`<i>${escapeHtml(subtext)}</i>`);
   return lines.join("\n");
 }
@@ -35,12 +37,15 @@ export function register(server: McpServer) {
     {
       description: DESCRIPTION,
       inputSchema: {
-        title: z.string().describe("Bold heading, e.g. \"Building dist/\""),
         percent: z
           .number()
           .min(0)
           .max(100)
           .describe("Progress percentage (0–100)"),
+        title: z
+          .string()
+          .optional()
+          .describe("Optional bold heading. Omit or pass empty string to render bar only."),
         subtext: z
           .string()
           .optional()
@@ -54,16 +59,17 @@ export function register(server: McpServer) {
           .describe(`Bar width in characters. Default ${DEFAULT_WIDTH}.`),
       },
     },
-    async ({ title, percent, subtext, width }) => {
+    async ({ percent, title, subtext, width }) => {
       const chatId = resolveChat();
       if (typeof chatId !== "number") return toError(chatId);
       try {
-        const text = renderProgress(applyTopicToTitle(title), percent, width, subtext);
+        const topicTitle = title ? applyTopicToTitle(title) : undefined;
+        const text = renderProgress(percent, width, topicTitle, subtext);
         const textErr = validateText(text);
         if (textErr) return toError(textErr);
         const msg = await getApi().sendMessage(chatId, text, {
           parse_mode: "HTML",
-          _rawText: title,
+          _rawText: title ?? "",
         } as Record<string, unknown>);
         return toResult({
           message_id: msg.message_id,

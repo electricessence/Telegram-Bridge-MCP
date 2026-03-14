@@ -24,7 +24,7 @@ describe("update_progress tool", () => {
 
   it("edits message in-place and returns updated: true", async () => {
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
-    const result = await call({ message_id: 10, title: "Building", percent: 75 });
+    const result = await call({ message_id: 10, percent: 75 });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.updated).toBe(true);
@@ -34,22 +34,30 @@ describe("update_progress tool", () => {
 
   it("renders updated bar with bold title", async () => {
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
-    await call({ message_id: 10, title: "Building", percent: 100 });
+    await call({ message_id: 10, percent: 100, title: "Building" });
     const [, , text] = mocks.editMessageText.mock.calls[0] as [unknown, unknown, string];
     expect(text).toContain("<b>Building</b>");
     expect(text).toContain("▓▓▓▓▓▓▓▓▓▓  100%");
   });
 
+  it("renders bar-only when no title", async () => {
+    mocks.editMessageText.mockResolvedValue({ message_id: 10 });
+    await call({ message_id: 10, percent: 50 });
+    const [, , text] = mocks.editMessageText.mock.calls[0] as [unknown, unknown, string];
+    expect(text).not.toContain("<b>");
+    expect(text).toContain("▓▓▓▓▓░░░░░  50%");
+  });
+
   it("renders subtext when provided", async () => {
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
-    await call({ message_id: 10, title: "T", percent: 50, subtext: "half done" });
+    await call({ message_id: 10, percent: 50, subtext: "half done" });
     const [, , text] = mocks.editMessageText.mock.calls[0] as [unknown, unknown, string];
     expect(text).toContain("<i>half done</i>");
   });
 
   it("handles boolean result from editMessageText (Telegram unchanged)", async () => {
     mocks.editMessageText.mockResolvedValue(true);
-    const result = await call({ message_id: 10, title: "T", percent: 50 });
+    const result = await call({ message_id: 10, percent: 50 });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.message_id).toBe(10);
