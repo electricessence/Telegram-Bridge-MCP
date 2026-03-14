@@ -213,6 +213,26 @@ export function getRawApi(): Api {
 }
 
 /**
+ * Sends a formatted service message (📦 header + status line) via the raw API,
+ * bypassing the outbound proxy so it never appears in the message store.
+ * Returns a promise that resolves when sent (or rejects on failure).
+ */
+export async function sendServiceMessage(status: string): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") {
+    process.stderr.write(`[service-msg] skipped: chatId is not a number\n`);
+    return;
+  }
+  process.stderr.write(`[service-msg] sending: ${status}\n`);
+  await getRawApi().sendMessage(
+    chatId,
+    `📦 *Telegram Bridge MCP*\n\n${status}`,
+    { parse_mode: "Markdown" },
+  );
+  process.stderr.write(`[service-msg] sent: ${status}\n`);
+}
+
+/**
  * Install the outbound proxy. Called once at startup from server.ts,
  * after all modules are loaded (avoids circular-import issues).
  */
