@@ -95,7 +95,10 @@ describe("animation-state", () => {
 
     it("uses default frames when none provided", async () => {
       await startAnimation();
-      expect(mocks.sendMessage).toHaveBeenCalledWith(123, "`...`", { parse_mode: "MarkdownV2" });
+      const [chatId, text, opts] = mocks.sendMessage.mock.calls[0] as [number, string, unknown];
+      expect(chatId).toBe(123);
+      expect(text).toMatch(/\u258e/); // ▎ delimiter — confirms default frames are used
+      expect(opts).toEqual({ parse_mode: "MarkdownV2" });
     });
 
     it("reuses existing message when starting new animation", async () => {

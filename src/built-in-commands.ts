@@ -412,7 +412,7 @@ function buildSessionPanel(): { text: string; keyboard: { text: string; callback
   // Row 2: actions
   const actionButtons: { text: string; callback_data: string }[] = [];
   if (mode !== null && tSize > 0) {
-    actionButtons.push({ text: "📤 Dump JSON", callback_data: "session:dump" });
+    actionButtons.push({ text: "� Dump JSON", callback_data: "session:dump" });
   }
   actionButtons.push({ text: "✖ Dismiss", callback_data: "session:dismiss" });
 

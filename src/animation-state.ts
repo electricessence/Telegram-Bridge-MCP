@@ -26,7 +26,7 @@ import { recordOutgoing, getHighestMessageId, trackMessageId } from "./message-s
 // State
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_FRAMES: readonly string[] = Object.freeze(["`...`", "`·..`", "`.·.`", "`..·`", "`...`"]);
+export const DEFAULT_FRAMES: readonly string[] = Object.freeze(["`\u258e\u00b7\u00b7\u00b7  \u258e`", "`\u258e\u00b7\u00b7   \u258e`", "`\u258e\u00b7    \u258e`", "`\u258e     \u258e`", "`\u258e\u00b7    \u258e`", "`\u258e\u00b7\u00b7   \u258e`"]);
 
 /**
  * Built-in animation presets always available by name.
@@ -34,10 +34,10 @@ export const DEFAULT_FRAMES: readonly string[] = Object.freeze(["`...`", "`·..`
  */
 export const BUILTIN_PRESETS: ReadonlyMap<string, readonly string[]> = new Map([
   ["bounce",    DEFAULT_FRAMES],
-  ["dots",      ["`·`",       "`··`",       "`···`"]],
-  ["working",   ["`working`", "`working·`", "`working··`", "`working···`"]],
-  ["thinking",  ["`thinking`","`thinking·`","`thinking··`","`thinking···`"]],
-  ["loading",   ["`loading`", "`loading·`", "`loading··`", "`loading···`"]],
+  ["dots",      ["`\u258e\u00b7    \u258e`", "`\u258e\u00b7\u00b7   \u258e`", "`\u258e\u00b7\u00b7\u00b7  \u258e`"]],
+  ["working",   ["`\u258eworking    \u258e`", "`\u258eworking\u00b7   \u258e`", "`\u258eworking\u00b7\u00b7  \u258e`", "`\u258eworking\u00b7\u00b7\u00b7 \u258e`"]],
+  ["thinking",  ["`\u258ethinking    \u258e`", "`\u258ethinking\u00b7   \u258e`", "`\u258ethinking\u00b7\u00b7  \u258e`", "`\u258ethinking\u00b7\u00b7\u00b7 \u258e`"]],
+  ["loading",   ["`\u258eloading    \u258e`", "`\u258eloading\u00b7   \u258e`", "`\u258eloading\u00b7\u00b7  \u258e`", "`\u258eloading\u00b7\u00b7\u00b7 \u258e`"]],
 ]);
 
 /** Named animation presets registered during this session. */
