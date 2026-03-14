@@ -8,6 +8,7 @@
 ## Changed
 
 - Updated `LOOP-PROMPT.md` casing reference in `.github/copilot-instructions.md`
+- Changed `working`, `thinking`, and `loading` builtin animation presets to use `[···word···]` bracket delimiter style
 
 ## Fixed
 

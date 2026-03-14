@@ -35,9 +35,9 @@ export const DEFAULT_FRAMES: readonly string[] = Object.freeze(["`\u258e\u00b7\u
 export const BUILTIN_PRESETS: ReadonlyMap<string, readonly string[]> = new Map([
   ["bounce",    DEFAULT_FRAMES],
   ["dots",      ["`\u258e\u00b7    \u258e`", "`\u258e\u00b7\u00b7   \u258e`", "`\u258e\u00b7\u00b7\u00b7  \u258e`"]],
-  ["working",   ["`\u258eworking    \u258e`", "`\u258eworking\u00b7   \u258e`", "`\u258eworking\u00b7\u00b7  \u258e`", "`\u258eworking\u00b7\u00b7\u00b7 \u258e`"]],
-  ["thinking",  ["`\u258ethinking    \u258e`", "`\u258ethinking\u00b7   \u258e`", "`\u258ethinking\u00b7\u00b7  \u258e`", "`\u258ethinking\u00b7\u00b7\u00b7 \u258e`"]],
-  ["loading",   ["`\u258eloading    \u258e`", "`\u258eloading\u00b7   \u258e`", "`\u258eloading\u00b7\u00b7  \u258e`", "`\u258eloading\u00b7\u00b7\u00b7 \u258e`"]],
+  ["working",   ["`[   working   ]`", "`[  \u00b7working\u00b7  ]`", "`[ \u00b7\u00b7working\u00b7\u00b7 ]`", "`[\u00b7\u00b7\u00b7working\u00b7\u00b7\u00b7]`", "`[\u00b7\u00b7 working \u00b7\u00b7]`", "`[\u00b7  working  \u00b7]`"]],
+  ["thinking",  ["`[   thinking   ]`", "`[  \u00b7thinking\u00b7  ]`", "`[ \u00b7\u00b7thinking\u00b7\u00b7 ]`", "`[\u00b7\u00b7\u00b7thinking\u00b7\u00b7\u00b7]`", "`[\u00b7\u00b7 thinking \u00b7\u00b7]`", "`[\u00b7  thinking  \u00b7]`"]],
+  ["loading",   ["`[   loading   ]`", "`[  \u00b7loading\u00b7  ]`", "`[ \u00b7\u00b7loading\u00b7\u00b7 ]`", "`[\u00b7\u00b7\u00b7loading\u00b7\u00b7\u00b7]`", "`[\u00b7\u00b7 loading \u00b7\u00b7]`", "`[\u00b7  loading  \u00b7]`"]],
 ]);
 
 /** Named animation presets registered during this session. */
