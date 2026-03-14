@@ -269,7 +269,7 @@ A pre-built image is published to the GitHub Container Registry on every push to
 
 ```txt
 ghcr.io/electricessence/telegram-bridge-mcp:latest
-ghcr.io/electricessence/telegram-bridge-mcp:1.7.9
+ghcr.io/electricessence/telegram-bridge-mcp:3.0.0
 ```
 
 Create a `.env` file with your credentials (see `.env.example`), then configure your MCP host to use Docker instead of Node:
