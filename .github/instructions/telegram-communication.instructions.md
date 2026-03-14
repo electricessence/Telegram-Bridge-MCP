@@ -13,7 +13,7 @@ When Telegram MCP tools are available, **all communication goes through Telegram
 
 ```text
 announce ready → dequeue_update (loop) → on message:
-  a) voice? → set temporary 👀
+  a) voice? → server already set 🫡 (ackVoiceMessage fires on dequeue) — no manual reaction needed
   b) show thinking animation
   c) plan clear? → switch to working animation
   d) ready to reply → show_typing → send
@@ -24,7 +24,7 @@ announce ready → dequeue_update (loop) → on message:
 
 1. **Reply via Telegram** for every substantive response — not the agent panel.
 2. **`confirm`** for yes/no · **`choose`** for multi-option — always buttons.
-3. **👀 on voice messages only — always temporary.** Use `timeout_seconds ≤ 5`, omit `restore_emoji` to auto-remove. Resolve to 🫡 or 👍 when done. Skip 👀 on text messages entirely.
+3. **👀 is temporary and voice-only — read the rules.** The server auto-sets 🫡 on voice via `ackVoiceMessage`; you rarely need to set 👀 manually. If you do, it **must** be `temporary: true`, omit `restore_emoji` to auto-remove. Skip 👀 on text messages entirely. See `docs/behavior.md` § *👀 rules* for the full table.
 4. **`show_typing`** just before sending a reply — signals response is imminent, not a generic receipt.
 5. **Watch `pending`.** Non-zero means the operator sent more while you were working — check before acting.
 6. **Announce before major actions** (`send_text` or `notify`). Require `confirm` for destructive/irreversible ones.

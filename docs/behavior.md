@@ -247,11 +247,26 @@ React to user messages instead of sending a separate acknowledgement text. Commo
 
 - 👍 — confirmed / noted
 - 🫡 — task complete / will do
-- 👀 — seen / noted without full ack
+- 👀 — seen, considering (see rules below)
 - 🎉 — success / great news
 - 🙏 — thank you
 - 👌 — OK / all good
 - 🥰 — love it (for particularly nice feedback)
+
+### 👀 rules — read carefully
+
+`👀` has strong human-perception impact. Use it sparingly and correctly:
+
+| Rule | Detail |
+| --- | --- |
+| **Temporary only** | Always call `set_reaction(emoji: "👀", temporary: true)` — never a permanent `👀`. It auto-clears the moment the bot sends any outbound message. |
+| **Voice messages only** | Use `👀` exclusively on voice messages, as an immediate "I saw it" ack while transcription runs. Do **not** react to text messages with 👀 — it adds noise without value. |
+| **One shot** | Set `👀` once per voice message, before transcription. The server calls `ack_voice_message` automatically on `dequeue_update`; you do not need to call `set_reaction` yourself for voice. |
+| **Auto-restores on outbound** | When any outbound message or animation fires, `fireTempReactionRestore` runs automatically — the `👀` is replaced with the bot's previous reaction (or cleared if none). No manual cleanup needed. |
+| **No-op if already set** | The server silently skips `trySetMessageReaction` when the message already carries the same emoji. No redundant API calls. |
+| **Never leave 👀 stuck** | If you somehow set `👀` manually, it **must** be cleared by your next outbound action. If you set it and then decide not to respond, call `set_reaction(emoji: "")` to clear it explicitly. |
+
+**TL;DR:** `👀` on voice = fine. `👀` on text = don't. Temporary always. Let the auto-restore do its job.
 
 ---
 
