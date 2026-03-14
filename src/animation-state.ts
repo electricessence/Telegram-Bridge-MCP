@@ -138,8 +138,14 @@ async function cycleFrame(): Promise<void> {
     await bypassProxy(() =>
       getRawApi().editMessageText(chatId, messageId, text, { parse_mode: parseMode }),
     );
-  } catch {
-    // Best-effort — animation is cosmetic; swallow failures
+  } catch (err) {
+    // Animation placeholder is gone (deleted, expired) — stop cycling
+    const msg = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`[animation] cycleFrame failed for msg ${messageId}, stopping: ${msg}\n`);
+    clearTimers();
+    _state = null;
+    _savedForResume = null;
+    clearSendInterceptor();
   }
 }
 
@@ -230,12 +236,26 @@ export async function startAnimation(
       _state = null;
       if (!captured) return { intercepted: false };
 
-      // Don't promote messages with inline keyboards (choose, send_confirmation) —
-      // editMessageText can't carry reply_markup reliably, and the keyboard UX breaks.
+      // Can't edit-in-place when message has inline keyboards or reply context —
+      // editMessageText can't carry reply_markup reliably, and edits lose reply threading.
+      // Delete animation + restart below instead.
       const hasReplyMarkup = "reply_markup" in opts && opts.reply_markup != null;
-      if (hasReplyMarkup) {
-        // Restore state — this send won't consume the animation
-        _state = captured;
+      const hasReplyParameters = "reply_parameters" in opts && opts.reply_parameters != null;
+      if (hasReplyMarkup || hasReplyParameters) {
+        const { chatId: animChatId, messageId: animMsgId, persistent: isPersistent, rawFrames, intervalMs: ivl, timeoutMs } = captured;
+        if (captured.cycleTimer) clearInterval(captured.cycleTimer);
+        if (captured.timeoutTimer) clearTimeout(captured.timeoutTimer);
+        // Stash resume config BEFORE the yield point — mirrors beforeFileSend pattern.
+        if (isPersistent) {
+          _savedForResume = { rawFrames, intervalMs: ivl, timeoutSeconds: timeoutMs / 1000 };
+        } else {
+          clearSendInterceptor();
+        }
+        try {
+          await bypassProxy(() => getRawApi().deleteMessage(animChatId, animMsgId));
+        } catch {
+          // Already gone — cosmetic only
+        }
         return { intercepted: false };
       }
 
@@ -363,15 +383,21 @@ export async function cancelAnimation(
   text?: string,
   parseMode?: "Markdown" | "HTML" | "MarkdownV2",
 ): Promise<{ cancelled: boolean; message_id?: number }> {
-  if (!_state) return { cancelled: false };
+  // Check _savedForResume too — during a file send, _state is null but
+  // _savedForResume holds the config for afterFileSend restart.
+  if (!_state && !_savedForResume) return { cancelled: false };
 
-  const { chatId, messageId } = _state;
+  const chatId = _state?.chatId;
+  const messageId = _state?.messageId;
   clearTimers();
   _state = null;
   _savedForResume = null;
 
   // Unregister the proxy interceptor
   clearSendInterceptor();
+
+  // _state was null (file-send gap) — no message to edit/delete
+  if (chatId === undefined || messageId === undefined) return { cancelled: true };
 
   if (text) {
     // Replace animation with real content — message becomes permanent

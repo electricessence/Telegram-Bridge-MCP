@@ -175,13 +175,13 @@ describe("animation-state", () => {
       expect(mocks.editMessageText).toHaveBeenCalledWith(123, 42, "B", { parse_mode: "MarkdownV2" });
     });
 
-    it("swallows errors from editMessageText during cycling", async () => {
-      mocks.editMessageText.mockRejectedValueOnce(new Error("rate limited"));
+    it("stops animation on editMessageText failure during cycling", async () => {
+      mocks.editMessageText.mockRejectedValueOnce(new Error("message not found"));
       await startAnimation(["A", "B"], 2000);
 
-      // Should not throw
+      // First cycle fails — animation should be stopped
       await vi.advanceTimersByTimeAsync(2000);
-      expect(isAnimationActive()).toBe(true);
+      expect(isAnimationActive()).toBe(false);
     });
   });
 
@@ -499,7 +499,7 @@ describe("animation-state", () => {
   // -----------------------------------------------------------------------
 
   describe("send interceptor — reply markup bypass", () => {
-    it("temporary: skips interception, animation remains active", async () => {
+    it("temporary: deletes animation and returns not-intercepted", async () => {
       mocks.getHighestMessageId.mockReturnValue(42);
       mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
       await startAnimation(["⏳"], 1000, 120, false);
@@ -511,13 +511,12 @@ describe("animation-state", () => {
 
       expect(result).toEqual({ intercepted: false });
       expect(mocks.editMessageText).not.toHaveBeenCalled();
-      expect(mocks.deleteMessage).not.toHaveBeenCalled();
-      // Animation must still be active — state was restored
-      expect(isAnimationActive()).toBe(true);
-      expect(getAnimationMessageId()).toBe(42);
+      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 42);
+      // Temporary animation: cleared after delete
+      expect(isAnimationActive()).toBe(false);
     });
 
-    it("persistent: skips interception, animation remains active", async () => {
+    it("persistent: deletes animation, saves for resume", async () => {
       mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
       await startAnimation(["⏳"], 1000, 120, true);
       const int = mocks.registerSendInterceptor.mock.calls[0][0];
@@ -527,7 +526,9 @@ describe("animation-state", () => {
       });
 
       expect(result).toEqual({ intercepted: false });
-      expect(isAnimationActive()).toBe(true);
+      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 42);
+      // Animation no longer active inline, but afterTextSend will restart it
+      expect(isAnimationActive()).toBe(false);
     });
 
     it("null reply_markup does NOT bypass", async () => {
