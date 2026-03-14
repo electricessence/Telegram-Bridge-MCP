@@ -56,3 +56,14 @@ announce ready → dequeue_update (loop) → on message:
 - Symbols/unicode icons strongly encouraged. **All-or-nothing** — if one button has a symbol, all must.
 - Emojis only in unstyled buttons; use plain text + unicode when a style is applied.
 
+## Async Wait Etiquette
+
+When waiting for external events (CI, code review, deploy, etc.), **keep the channel alive**:
+
+1. **Use a persistent animation** — `show_animation` with `persistent: true` to signal you are watching.
+2. **Loop with short timeouts** — call `dequeue_update(timeout: 300)` (5 min) repeatedly; never block indefinitely.
+3. **Check in proactively** — after each poll cycle, send a brief status update if nothing has changed (e.g., "still waiting on CI...").
+4. **Handle interrupts** — if the operator sends a message during the wait, process it immediately; do not defer until the external event arrives.
+5. **Cancel the animation** before sending any substantive reply — `cancel_animation` turns it into a permanent status message.
+6. **Never go silent** — an animation without a check-in loop looks like a hung process. Proactive updates build trust.
+

@@ -48,6 +48,7 @@ export function register(server: McpServer) {
         // Poll from the store queue for text or voice messages after our question.
         // Voice messages arrive pre-transcribed by the background poller.
         const deadline = Date.now() + timeout_seconds * 1000;
+        const abortPromise = new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => r(), { once: true }); });
 
         while (Date.now() < deadline) {
           if (signal.aborted) return toResult({ timed_out: true });
@@ -96,7 +97,7 @@ export function register(server: McpServer) {
           await Promise.race([
             waitForEnqueue(),
             new Promise<void>((r) => setTimeout(r, Math.min(remaining, 5000))),
-            new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => { r(); }, { once: true }); }),
+            abortPromise,
           ]);
         }
 

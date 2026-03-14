@@ -22,8 +22,9 @@ interface TempReactionSlot {
 let _slot: TempReactionSlot | null = null;
 
 /**
- * Set a temporary reaction. Fires `restoreEmoji` (or removes the reaction
- * if omitted) on the first outbound event or after `timeoutSeconds`.
+ * Set a temporary reaction. Fires `restoreEmoji` on restore; if omitted,
+ * restores the previous recorded reaction (or removes it if none was recorded).
+ * Restore is triggered by the first outbound event or after `timeoutSeconds`.
  */
 export async function setTempReaction(
   messageId: number,

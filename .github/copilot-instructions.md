@@ -4,7 +4,7 @@ This repository **is** the Telegram Bridge MCP server. When Telegram MCP tools a
 
 ## Starting a Session
 
-Paste `loop-prompt.md` into this chat to start the loop.
+Paste `LOOP-PROMPT.md` into this chat to start the loop.
 
 ## This Codebase
 

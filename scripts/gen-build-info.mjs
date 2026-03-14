@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generates src/build-info.json with git commit hash and build timestamp.
+// Generates dist/tools/build-info.json with git commit hash and build timestamp.
 // Called as part of `pnpm build`. Falls back gracefully if git is unavailable.
 
 import { execSync } from "child_process";
