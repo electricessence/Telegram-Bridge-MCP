@@ -96,7 +96,7 @@ Tools are grouped by abstraction level.
 | --- | --- |
 | `get_me` | Returns basic information about the bot (id, username, capabilities). |
 | `get_chat` | Returns information about the configured chat. Requires operator approval via a consent button before any PII is returned. |
-| `set_commands` | Registers (or clears) the Telegram slash-command menu for the active chat or globally. Pass `[]` to remove the menu. Commands are automatically cleared on shutdown (SIGTERM, SIGINT, `restart_server`) so stale menu options never linger. |
+| `set_commands` | Registers (or clears) the Telegram slash-command menu for the active chat or globally. Pass `[]` to remove the menu. Commands are automatically cleared on shutdown (SIGTERM, SIGINT, `shutdown`) so stale menu options never linger. |
 
 ### Reactions
 
@@ -114,7 +114,7 @@ Tools are grouped by abstraction level.
 
 | Tool | Description |
 | --- | --- |
-| `restart_server` | Exits the process cleanly; VS Code restarts it automatically to pick up new builds. |
+| `shutdown` | Exits the process cleanly; the MCP client restarts it automatically to pick up new builds. |
 
 ---
 
@@ -212,7 +212,7 @@ telegram-bridge-mcp/
 │       ├── get_chat.ts
 │       ├── set_reaction.ts
 │       ├── dump_session_record.ts
-│       └── restart_server.ts
+│       └── shutdown.ts
 ├── docs/
 │   ├── behavior.md               # Agent behavioral guide (also served as MCP resource)
 │   ├── communication.md          # Communication patterns (also served as MCP resource)

@@ -4,7 +4,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
-import { getSecurityConfig, getApi, resolveChat, installOutboundProxy } from "./telegram.js";
+import { getSecurityConfig, getApi, resolveChat, installOutboundProxy, sendServiceMessage } from "./telegram.js";
 import { clearCommandsOnShutdown } from "./shutdown.js";
 import { BUILT_IN_COMMANDS } from "./built-in-commands.js";
 import { startPoller, stopPoller } from "./poller.js";
@@ -25,10 +25,18 @@ if (process.env.STT_HOST && !process.env.STT_HOST.startsWith("https://")) {
   process.stderr.write("[warn] STT_HOST is not using HTTPS — credentials and audio may be exposed in transit.\n");
 }
 
+let _shuttingDown = false;
 for (const sig of ["SIGTERM", "SIGINT"] as const) {
   process.on(sig, () => {
+    process.stderr.write(`[shutdown] received ${sig}\n`);
+    if (_shuttingDown) return;
+    _shuttingDown = true;
     stopPoller();
-    void clearCommandsOnShutdown().finally(() => process.exit(0));
+    const notifyOffline = Promise.race([
+      sendServiceMessage("🔴 Offline").catch((e) => { process.stderr.write(`[shutdown] sendServiceMessage error: ${e}\n`); }),
+      new Promise<void>((r) => setTimeout(r, 5000)),
+    ]);
+    void notifyOffline.finally(() => clearCommandsOnShutdown().finally(() => process.exit(0)));
   });
 }
 
@@ -55,3 +63,6 @@ void (async () => {
 
 startPoller();
 process.stderr.write("[info] background poller started\n");
+
+// Best-effort startup notification — bypasses proxy (operational, not agent content)
+void sendServiceMessage("🟢 Online").catch(() => {});

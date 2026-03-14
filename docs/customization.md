@@ -10,7 +10,7 @@ Once configured, this MCP becomes your development assistant for its own codebas
 
 - **Your working directory IS the repo** — the MCP has full access to all source files
 - **Loop prompt enforces best practices** — pre-action notifications, error reporting, test validation
-- **Hot reload built-in** — `restart_server` tool rebuilds and restarts without breaking the session
+- **Hot reload built-in** — `shutdown` tool exits cleanly; the MCP client restarts automatically
 - **Voice-driven coding** — speak instructions from anywhere, get status updates on your phone
 
 ---
@@ -109,7 +109,7 @@ Open your AI assistant (VS Code Copilot, Claude Desktop, etc.) and paste the con
 **Build and restart:**
 
 - "Rebuild and restart the server"
-  - The `restart_server` tool runs `pnpm build`, restarts the MCP, drains stale updates, and resumes the loop
+  - The `shutdown` tool exits the MCP process; the client relaunches it, drains stale updates, and resumes the loop
 
 **Documentation:**
 
@@ -134,9 +134,9 @@ Open your AI assistant (VS Code Copilot, Claude Desktop, etc.) and paste the con
 
 ---
 
-## Hot Reload with `restart_server`
+## Hot Reload with `shutdown`
 
-After modifying TypeScript source files, call the `restart_server` tool (via the loop prompt, the assistant can do this automatically or you can request it):
+After modifying TypeScript source files, run `pnpm build` then call the `shutdown` tool (via the loop prompt, the assistant can do this automatically or you can request it):
 
 ```text
 "Rebuild and restart the server"
@@ -145,10 +145,11 @@ After modifying TypeScript source files, call the `restart_server` tool (via the
 **What happens:**
 
 1. Runs `pnpm build` (compiles TypeScript)
-2. Restarts the MCP server process
-3. Calls `get_updates` twice to drain stale messages
-4. Sends a "back online" notification
-5. Returns to `wait_for_message` loop
+2. `shutdown` exits the MCP server process
+3. The MCP client (e.g. VS Code) detects the exit and relaunches
+4. Calls `dequeue_update` to drain stale messages
+5. Sends a "back online" notification
+6. Returns to `dequeue_update` loop
 
 **Important:** The loop prompt enforces that after a restart, the assistant immediately drains updates and re-engages. No session state is lost.
 

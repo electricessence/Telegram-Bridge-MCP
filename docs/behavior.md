@@ -156,7 +156,7 @@ When the operator taps a command, `dequeue_update` delivers it as:
 - When entering a long task: add a `/cancel` command so the operator can abort
 - When the session ends or capabilities change: call `set_commands([])` to clear — or let shutdown handle it automatically
 
-**Shutdown behaviour:** the server automatically calls `set_commands([])` for both chat-scope and default-scope on `SIGTERM`, `SIGINT`, and `restart_server`. You never need to manually clear the menu before stopping.
+**Shutdown behaviour:** the server automatically calls `set_commands([])` for both chat-scope and default-scope on `SIGTERM`, `SIGINT`, and `shutdown`. You never need to manually clear the menu before stopping.
 
 ---
 
@@ -449,7 +449,7 @@ The `/session` built-in command provides a Telegram-side panel for start/stop re
 
 ## Restart flow
 
-After calling `restart_server` (or the server restarts for any reason):
+After calling `shutdown` (or the server restarts for any reason):
 
 1. Drain stale messages: call `dequeue_update(timeout: 0)` in a loop until `pending == 0`
 2. Send a "back online" message via `notify` describing what changed

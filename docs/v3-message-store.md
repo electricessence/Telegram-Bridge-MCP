@@ -469,7 +469,7 @@ These consume from the queue internally — the agent never sees the raw callbac
 | 27 | `get_chat` | **Info** | Chat details |
 | 28 | `get_agent_guide` | **Info** | Behavior guide |
 | 29 | `dump_session_record` | **Session** | Full timeline JSON |
-| 30 | `restart_server` | **System** | Exit for relaunch |
+| 30 | `shutdown` | **System** | Exit for relaunch |
 
 ### What Didn't Get Cut (and Why)
 
@@ -545,7 +545,7 @@ show_animation({
 | `edit_message_text`, `append_text` | `set_commands`, `set_topic` |
 | `delete_message`, `forward_message` | `download_file`, `transcribe_voice` |
 | `set_reaction`, `pin_message` | `dequeue_update`, `get_message` |
-| `ask`, `choose`, `send_confirmation` (send internally) | `dump_session_record`, `restart_server` |
+| `ask`, `choose`, `send_confirmation` (send internally) | `dump_session_record`, `shutdown` |
 | `send_new_checklist`, `show_typing`, `send_chat_action` | |
 
 **Rule:** If it calls a Telegram Bot API method that modifies the chat, it resets the timer. Read-only and config tools do not.
