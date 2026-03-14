@@ -102,6 +102,7 @@
 - **`send_file` voice http:// rejection** — voice type now consistently rejects `http://` URLs through `resolveMediaSource` instead of silently bypassing the check
 - **`send_confirmation` command handling** — slash commands during a confirmation now return `{ skipped: true, command, args }` instead of causing a type error
 - **Stale built-in commands on startup** — built-in commands (`/shutdown`, `/session`, `/version`) sent before the server started are now silently discarded; prevents a queued `/shutdown` from killing a freshly-restarted server in a loop
+- **Animation promotion incorrect `reply_markup` bypass** — removed erroneous `hasReplyMarkup` check from the animation `beforeTextSend` interceptor; `editMessageText` handles inline keyboards fine — only `reply_parameters` (reply threading) cannot be added to an existing message; messages with keyboards now promote via edit-in-place instead of unnecessary delete+send-new
 
 ## Security
 

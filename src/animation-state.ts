@@ -257,14 +257,17 @@ export async function startAnimation(
       // the animation; subsequent sends see null and go through normal path.
       const captured = _state;
       _state = null;
-      if (!captured) return { intercepted: false };
+      if (!captured) {
+        process.stderr.write(`[animation] beforeTextSend: no _state, passing through\n`);
+        return { intercepted: false };
+      }
+      process.stderr.write(`[animation] beforeTextSend: captured msg ${captured.messageId}, persistent=${captured.persistent}\n`);
 
-      // Can't edit-in-place when message has inline keyboards or reply context —
-      // editMessageText can't carry reply_markup reliably, and edits lose reply threading.
+      // Can't edit-in-place when message has reply context —
+      // editMessageText can't add reply threading to an existing message.
       // Delete animation + restart below instead.
-      const hasReplyMarkup = "reply_markup" in opts && opts.reply_markup != null;
       const hasReplyParameters = "reply_parameters" in opts && opts.reply_parameters != null;
-      if (hasReplyMarkup || hasReplyParameters) {
+      if (hasReplyParameters) {
         const { chatId: animChatId, messageId: animMsgId, persistent: isPersistent, rawFrames, intervalMs: ivl, timeoutMs } = captured;
         if (captured.cycleTimer) clearInterval(captured.cycleTimer);
         if (captured.timeoutTimer) clearTimeout(captured.timeoutTimer);
@@ -290,7 +293,9 @@ export async function startAnimation(
       if (captured.timeoutTimer) clearTimeout(captured.timeoutTimer);
 
       // Position detection: is the animation still the last message?
-      const isLastMessage = messageId >= getHighestMessageId();
+      const highestMsg = getHighestMessageId();
+      const isLastMessage = messageId >= highestMsg;
+      process.stderr.write(`[animation] position check: anim=${messageId} highest=${highestMsg} isLast=${isLastMessage}\n`);
 
       if (isLastMessage) {
         // R4: Edit in place — avoids Telegram's visible delete animation
@@ -298,8 +303,11 @@ export async function startAnimation(
           await bypassProxy(() =>
             getRawApi().editMessageText(animChatId, messageId, text, opts),
           );
-        } catch {
+          process.stderr.write(`[animation] R4 edit succeeded for msg ${messageId}\n`);
+        } catch (editErr) {
           // Animation message was deleted or unavailable
+          const editMsg = editErr instanceof Error ? editErr.message : String(editErr);
+          process.stderr.write(`[animation] R4 edit FAILED for msg ${messageId}: ${editMsg}\n`);
           if (isPersistent) {
             // Stash for deferred restart via afterTextSend
             _savedForResume = { rawFrames, intervalMs: ivl, timeoutSeconds: savedTimeoutSeconds };
@@ -312,9 +320,11 @@ export async function startAnimation(
         if (isPersistent) {
           // Restart animation below — inline, since we already edited
           try {
-            await startAnimation(rawFrames, ivl, savedTimeoutSeconds, true);
-          } catch {
-            // Restart failed — animation is cosmetic
+            const restartId = await startAnimation(rawFrames, ivl, savedTimeoutSeconds, true);
+            process.stderr.write(`[animation] persistent restart: new msg ${restartId}\n`);
+          } catch (restartErr) {
+            const restartMsg = restartErr instanceof Error ? restartErr.message : String(restartErr);
+            process.stderr.write(`[animation] persistent restart FAILED: ${restartMsg}\n`);
           }
         } else {
           // Temporary: one-shot — done after promotion

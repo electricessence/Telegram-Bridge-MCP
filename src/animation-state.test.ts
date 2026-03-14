@@ -495,11 +495,41 @@ describe("animation-state", () => {
   });
 
   // -----------------------------------------------------------------------
-  // REPLY-MARKUP BYPASS (keyboards must not consume the animation)
+  // REPLY-PARAMETERS BYPASS (reply threading can't be added via edit)
   // -----------------------------------------------------------------------
 
-  describe("send interceptor — reply markup bypass", () => {
+  describe("send interceptor — reply parameters bypass", () => {
     it("temporary: deletes animation and returns not-intercepted", async () => {
+      mocks.getHighestMessageId.mockReturnValue(42);
+      mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
+      await startAnimation(["⏳"], 1000, 120, false);
+      const int = mocks.registerSendInterceptor.mock.calls[0][0];
+
+      const result = await int.beforeTextSend(123, "Reply text", {
+        reply_parameters: { message_id: 10 },
+      });
+
+      expect(result).toEqual({ intercepted: false });
+      expect(mocks.editMessageText).not.toHaveBeenCalled();
+      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 42);
+      expect(isAnimationActive()).toBe(false);
+    });
+
+    it("persistent: deletes animation, saves for resume", async () => {
+      mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
+      await startAnimation(["⏳"], 1000, 120, true);
+      const int = mocks.registerSendInterceptor.mock.calls[0][0];
+
+      const result = await int.beforeTextSend(123, "Reply text", {
+        reply_parameters: { message_id: 10 },
+      });
+
+      expect(result).toEqual({ intercepted: false });
+      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 42);
+      expect(isAnimationActive()).toBe(false);
+    });
+
+    it("reply_markup edits in place (keyboards are fine)", async () => {
       mocks.getHighestMessageId.mockReturnValue(42);
       mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
       await startAnimation(["⏳"], 1000, 120, false);
@@ -509,26 +539,11 @@ describe("animation-state", () => {
         reply_markup: { inline_keyboard: [[{ text: "A", callback_data: "a" }]] },
       });
 
-      expect(result).toEqual({ intercepted: false });
-      expect(mocks.editMessageText).not.toHaveBeenCalled();
-      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 42);
-      // Temporary animation: cleared after delete
-      expect(isAnimationActive()).toBe(false);
-    });
-
-    it("persistent: deletes animation, saves for resume", async () => {
-      mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
-      await startAnimation(["⏳"], 1000, 120, true);
-      const int = mocks.registerSendInterceptor.mock.calls[0][0];
-
-      const result = await int.beforeTextSend(123, "Choose", {
-        reply_markup: { inline_keyboard: [[{ text: "X", callback_data: "x" }]] },
+      expect(result).toEqual({ intercepted: true, message_id: 42 });
+      expect(mocks.editMessageText).toHaveBeenCalledWith(123, 42, "Pick one", {
+        reply_markup: { inline_keyboard: [[{ text: "A", callback_data: "a" }]] },
       });
-
-      expect(result).toEqual({ intercepted: false });
-      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 42);
-      // Animation no longer active inline, but afterTextSend will restart it
-      expect(isAnimationActive()).toBe(false);
+      expect(mocks.deleteMessage).not.toHaveBeenCalled();
     });
 
     it("null reply_markup does NOT bypass", async () => {
