@@ -133,4 +133,10 @@ describe("append_text tool", () => {
       expect.objectContaining({ parse_mode: "HTML" }),
     );
   });
+
+  it("returns error when message has non-text content type", async () => {
+    mocks.getMessage.mockReturnValue({ content: { type: "voice" } });
+    const result = await call({ message_id: 10, text: "oops" });
+    expect(isError(result)).toBe(true);
+  });
 });

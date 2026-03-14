@@ -121,6 +121,38 @@ describe("send_choice tool", () => {
     expect(mocks.editMessageReplyMarkup).not.toHaveBeenCalled();
   });
 
+  it("hook invokes answerCallbackQuery and removes keyboard on button press", async () => {
+    await call({ text: "Pick", options: TWO_OPTIONS });
+    const [hookedMessageId, hookFn] = mocks.registerCallbackHook.mock.calls[0] as [number, (evt: { content: { qid?: string } }) => void];
+    expect(hookedMessageId).toBe(9);
+
+    mocks.answerCallbackQuery.mockResolvedValue(undefined);
+    mocks.editMessageReplyMarkup.mockResolvedValue(undefined);
+
+    // Simulate a button press callback event
+    hookFn({ content: { qid: "ack123" } });
+
+    // Flush async microtasks
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+    expect(mocks.answerCallbackQuery).toHaveBeenCalledWith("ack123");
+    expect(mocks.editMessageReplyMarkup).toHaveBeenCalledWith(
+      42, 9, { reply_markup: { inline_keyboard: [] } },
+    );
+  });
+
+  it("hook skips answerCallbackQuery when qid is absent", async () => {
+    await call({ text: "Pick", options: TWO_OPTIONS });
+    const [, hookFn] = mocks.registerCallbackHook.mock.calls[0] as [number, (evt: { content: { qid?: string } }) => void];
+
+    mocks.editMessageReplyMarkup.mockResolvedValue(undefined);
+    hookFn({ content: {} });
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+    expect(mocks.answerCallbackQuery).not.toHaveBeenCalled();
+    expect(mocks.editMessageReplyMarkup).toHaveBeenCalled();
+  });
+
   it("passes reply_to_message_id via reply_parameters", async () => {
     await call({ text: "Reply", options: TWO_OPTIONS, reply_to_message_id: 5 });
     expect(mocks.sendMessage).toHaveBeenCalledWith(

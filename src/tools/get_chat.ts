@@ -10,8 +10,9 @@ const TIMEOUT_SECONDS = 60;
 const DESCRIPTION =
   "Returns information about the configured chat: id, type, title, " +
   "username, first/last name, and description. Requires user " +
-  "approval — a confirmation prompt is sent to the chat and the " +
-  "tool waits until the user approves or denies.";
+  "approval — a confirmation prompt is sent and the tool waits until " +
+  "the user presses Allow or Deny. Returns { approved: true, ...chatInfo } " +
+  "on approval, or { approved: false, timed_out: true|false } on denial/timeout.";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -39,7 +40,7 @@ export function register(server: McpServer) {
 
         if (!result) {
           await editWithTimedOut(chatId, sent.message_id, promptText);
-          return toError("User did not respond — get_chat request timed out.");
+          return toResult({ approved: false, timed_out: true, message_id: sent.message_id });
         }
 
         const approved = result.data === CONFIRM_DATA;
@@ -50,12 +51,13 @@ export function register(server: McpServer) {
         );
 
         if (!approved) {
-          return toError("User denied the get_chat request.");
+          return toResult({ approved: false, timed_out: false, message_id: sent.message_id });
         }
 
         const chat = await getApi().getChat(chatId);
         const c = chat as unknown as Record<string, unknown>;
         return toResult({
+          approved: true,
           id: chat.id,
           type: chat.type,
           title: c.title,

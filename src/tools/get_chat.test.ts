@@ -57,9 +57,9 @@ describe("get_chat tool", () => {
     mocks.getChat.mockResolvedValue({ id: 99, type: "group", title: "Dev Chat" });
     const result = await call({});
     expect(isError(result)).toBe(false);
-    expect(parseResult(result)).toEqual({
+    expect(parseResult(result)).toMatchObject({
+      approved: true,
       id: 99, type: "group", title: "Dev Chat",
-      username: undefined, first_name: undefined, last_name: undefined, description: undefined,
     });
   });
 
@@ -84,19 +84,21 @@ describe("get_chat tool", () => {
     );
   });
 
-  it("returns error when user denies", async () => {
+  it("returns approved:false when user denies", async () => {
     mocks.pollButtonPress.mockResolvedValue({
       kind: "button", callback_query_id: "q2", data: "get_chat_no", message_id: 1,
     });
     const result = await call({});
-    expect(isError(result)).toBe(true);
+    expect(isError(result)).toBe(false);
+    expect(parseResult(result)).toMatchObject({ approved: false, timed_out: false });
     expect(mocks.getChat).not.toHaveBeenCalled();
   });
 
-  it("returns error on timeout", async () => {
+  it("returns approved:false timed_out:true on timeout", async () => {
     mocks.pollButtonPress.mockResolvedValue(null);
     const result = await call({});
-    expect(isError(result)).toBe(true);
+    expect(isError(result)).toBe(false);
+    expect(parseResult(result)).toMatchObject({ approved: false, timed_out: true });
     expect(mocks.editWithTimedOut).toHaveBeenCalled();
     expect(mocks.getChat).not.toHaveBeenCalled();
   });

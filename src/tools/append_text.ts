@@ -34,6 +34,9 @@ export function register(server: McpServer) {
 
       // Read current text from the store
       const current = getMessage(message_id, CURRENT);
+      if (current && current.content.type != null && current.content.type !== "text") {
+        return toError("MESSAGE_NOT_TEXT: append_text only supports text messages.");
+      }
       const currentText = current?.content.text ?? "";
 
       // Concatenate

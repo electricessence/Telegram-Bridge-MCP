@@ -24,6 +24,10 @@ const V2_SPECIAL = /[_*[\]()~`>#+\-=|{}.!\\]/g;
 const V2_SPECIAL_CHAR = /[_*[\]()~`>#+\-=|{}.!\\]/;
 const MCP_BACKSLASH_STASH = /\\\\/g;
 const MCP_MARKDOWN_UNESCAPE = /\\([_*~`[\]()>#+\-=|{}.!])/g;
+const FENCED_CODE_BLOCK = /```([^\n`]*)\n([\s\S]*?)```/g;
+const FENCED_CODE_UNCLOSED = /```([^\n`]*)\n([\s\S]*)$/;
+const BLOCKQUOTE_LINE = /^> ?(.+)$/gm;
+const ATX_HEADING = /^#{1,6} +(.+)$/gm;
 
 export function escapeV2(s: string): string {
   return s.replace(V2_SPECIAL, "\\$&");
@@ -50,14 +54,14 @@ export function resolveParseMode(
 export function markdownToV2(input: string, partial = true): string {
   // ── 0. Extract fenced code blocks FIRST so normalization never touches them ─
   const codeBlocks: string[] = [];
-  let text = input.replace(/```([^\n`]*)\n([\s\S]*?)```/g, (_m: string, lang: string, body: string) => {
+  let text = input.replace(FENCED_CODE_BLOCK, (_m: string, lang: string, body: string) => {
     const idx = codeBlocks.length;
     codeBlocks.push("```" + lang + "\n" + body.replace(/[\\`]/g, "\\$&") + "```");
     return `\x00CB${idx}\x00`;
   });
   // In partial mode, also capture unclosed fenced code blocks (no closing ```)
   if (partial) {
-    text = text.replace(/```([^\n`]*)\n([\s\S]*)$/, (_m: string, lang: string, body: string) => {
+    text = text.replace(FENCED_CODE_UNCLOSED, (_m: string, lang: string, body: string) => {
       const idx = codeBlocks.length;
       codeBlocks.push("```" + lang + "\n" + body.replace(/[\\`]/g, "\\$&") + "```");
       return `\x00CB${idx}\x00`;
@@ -78,14 +82,14 @@ export function markdownToV2(input: string, partial = true): string {
 
   // ── 1b. Extract blockquote lines so > is never re-escaped ───────────────
   const blockquotes: string[] = [];
-  text = text.replace(/^> ?(.+)$/gm, (_m: string, content: string) => {
+  text = text.replace(BLOCKQUOTE_LINE, (_m: string, content: string) => {
     const idx = blockquotes.length;
     blockquotes.push(">" + escapeV2(content));
     return `\x00BQ${idx}\x00`;
   });
 
   // ── 2. Convert ATX headings to bold ─────────────────────────────────────
-  text = text.replace(/^#{1,6} +(.+)$/gm, (_m: string, content: string) => `*${escapeV2(content)}*`);
+  text = text.replace(ATX_HEADING, (_m: string, content: string) => `*${escapeV2(content)}*`);
 
   // ── 3. Inline tokeniser ─────────────────────────────────────────────────
   const out: string[] = [];
