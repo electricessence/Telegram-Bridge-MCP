@@ -30,7 +30,7 @@ export function clearTopic(): void {
 }
 
 /**
- * Prepend `[Topic] ` to a title string (used in notify, update_status).
+ * Prepend `[Topic] ` to a title string (used in notify, send_new_checklist).
  * The caller's tool is responsible for bold-formatting the title — this
  * just injects the label inline so it appears inside the bold heading.
  */

@@ -142,21 +142,22 @@ export function stripForTts(text: string): string {
 const DEFAULT_LOCAL_MODEL = "Xenova/mms-tts-eng";
 
 // Singleton — model is loaded once and reused across calls.
-let _localPipeline: Promise<(text: string) => Promise<{ audio: Float32Array; sampling_rate: number }>> | null = null;
+type TTSSynthesizer = (text: string) => Promise<{ audio: Float32Array; sampling_rate: number }>;
+
+let _localPipeline: Promise<TTSSynthesizer> | null = null;
 
 /** @internal Exposed for testing — resets the local pipeline singleton. */
 export function _resetLocalPipeline(): void {
   _localPipeline = null;
 }
 
-function getLocalPipeline() {
+function getLocalPipeline(): Promise<TTSSynthesizer> {
   if (_localPipeline) return _localPipeline;
   const model = process.env.TTS_MODEL_LOCAL ?? DEFAULT_LOCAL_MODEL;
   if (process.env.TTS_CACHE_DIR) {
     env.cacheDir = process.env.TTS_CACHE_DIR;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (_localPipeline = pipeline("text-to-speech", model) as any);
+  return (_localPipeline = pipeline("text-to-speech", model) as unknown as Promise<TTSSynthesizer>);
 }
 
 async function synthesizeLocalToOgg(text: string): Promise<Buffer> {
@@ -212,7 +213,11 @@ async function synthesizeHttpToOgg(text: string, host: string, apiKey: string | 
   if (nativeOgg) return audio;
 
   // Otherwise decode WAV → Float32 PCM → OGG/Opus
-  const { default: decode } = await import("audio-decode");
+  interface DecodedAudio {
+    getChannelData(channel: number): Float32Array;
+    sampleRate: number;
+  }
+  const { default: decode } = await import("audio-decode") as { default: (buf: Buffer) => Promise<DecodedAudio> };
   const decoded = await decode(audio);
   const channelData = decoded.getChannelData(0);
   const { pcmToOggOpus } = await import("./ogg-opus-encoder.js");

@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Built-in server-level slash commands.
  *
  * These commands are intercepted in the update pipeline *before* any update
- * is delivered to the agent via pollUntil / wait_for_message. The agent never
+ * is delivered to the agent via dequeue_update. The agent never
  * sees them — the server handles them directly and responds to the user.
  *
  * Currently registered:
@@ -12,20 +12,28 @@
  * always appear in autocomplete regardless of what the agent has registered.
  */
 
+import { createRequire } from "module";
 import type { Update } from "grammy/types";
-import { getApi, resolveChat } from "./telegram.js";
-import {
-  isRecording,
-  startRecording,
-  stopRecording,
-  recordedCount,
-  getMaxUpdates,
-  getSessionEntries,
-  clearRecording,
-  setAutoDump,
-  getAutoDumpThreshold,
-} from "./session-recording.js";
-import { sanitizeSessionEntries } from "./update-sanitizer.js";
+import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
+import { clearCommandsOnShutdown } from "./shutdown.js";
+import { stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
+import { getSessionLogMode, setSessionLogMode, sessionLogLabel } from "./config.js";
+
+const require = createRequire(import.meta.url);
+const { version: MCP_VERSION } = require("../package.json") as { version: string };
+let _mcpCommit = "dev";
+let _mcpBuildTime = "unknown";
+try {
+  const info = require("./tools/build-info.json") as { BUILD_COMMIT: string; BUILD_TIME: string };
+  _mcpCommit = info.BUILD_COMMIT;
+  _mcpBuildTime = info.BUILD_TIME;
+} catch { /* build-info.json not generated yet */ }
+
+export function getVersionString(): string {
+  return `v${MCP_VERSION} (${_mcpCommit} ${_mcpBuildTime})`;
+}
+import type { TimelineEvent } from "./message-store.js";
+import { dumpTimeline, dumpTimelineSince, timelineSize, storeSize, setOnEvent } from "./message-store.js";
 
 // ---------------------------------------------------------------------------
 // Tracking panel message IDs so callback_query intercept can route back
@@ -36,6 +44,63 @@ const _activePanels = new Map<number, "session">();
 
 /** Set to true after sending the startup prefs prompt so we only ask once per process. */
 let _sessionPrefsAsked = false;
+
+// ---------------------------------------------------------------------------
+// Auto-dump state — tracks timeline events since last dump
+// ---------------------------------------------------------------------------
+
+let _autoDumpThreshold: number | null = null;
+let _eventsSinceLastDump = 0;
+let _dumpInFlight = false;
+let _dumpCursor = 0;
+
+/** Advance the dump cursor to the current end of timeline. Call after any external dump to prevent redundant re-dumps. */
+export function advanceDumpCursor(): void {
+  _dumpCursor = timelineSize();
+}
+
+/** Configure auto-dump: fire every `threshold` events (null to disable). */
+export function setAutoDumpThreshold(threshold: number | null): void {
+  _autoDumpThreshold = threshold;
+  _eventsSinceLastDump = 0;
+  if (threshold != null && threshold > 0) {
+    setOnEvent((_size: number) => {
+      _eventsSinceLastDump++;
+      if (_autoDumpThreshold != null && _eventsSinceLastDump >= _autoDumpThreshold && !_dumpInFlight) {
+        _dumpInFlight = true;
+        _eventsSinceLastDump = 0;
+        void doTimelineDump(true).finally(() => { _dumpInFlight = false; });
+      }
+    });
+  } else {
+    setOnEvent(null);
+  }
+}
+
+/**
+ * Apply session log mode from persistent config.
+ * Wires up auto-dump if mode is a number; disables it otherwise.
+ */
+export function applySessionLogConfig(): void {
+  const mode = getSessionLogMode();
+  if (typeof mode === "number") {
+    setAutoDumpThreshold(mode);
+  } else {
+    setAutoDumpThreshold(null);
+  }
+}
+
+/** Current auto-dump threshold (null = disabled). */
+export function getAutoDumpThresholdValue(): number | null {
+  return _autoDumpThreshold;
+}
+
+/**
+ * Unix timestamp (seconds) captured at module load — used to discard stale
+ * built-in commands that were queued before this process started.
+ * Prevents e.g. a lingering `/shutdown` from killing a freshly-started server.
+ */
+const _startupEpoch = Math.floor(Date.now() / 1000);
 
 export function isBuiltInPanelQuery(update: Update): boolean {
   const msgId = update.callback_query?.message?.message_id;
@@ -53,60 +118,53 @@ export function isBuiltInPanelQuery(update: Update): boolean {
  * Step 2 (if Record chosen): auto-dump frequency.
  * The message deletes itself once the user has answered.
  * Called from index.ts after connecting. Safe to call multiple times — only fires once.
+ *
+ * @deprecated Use the persistent config + /session panel instead.
  */
-export async function sendSessionPrefsPrompt(): Promise<void> {
+export function sendSessionPrefsPrompt(): void {
   if (_sessionPrefsAsked) return;
-  const chatId = resolveChat();
-  if (typeof chatId !== "number") return;
   _sessionPrefsAsked = true;
-  const api = getApi();
-  try {
-    const msg = await api.sendMessage(chatId, buildPrefsStep1Text(), {
-      parse_mode: "Markdown",
-      reply_markup: { inline_keyboard: buildPrefsStep1Keyboard() },
-    });
-    _activePanels.set(msg.message_id, "session");
-  } catch { /* ignore */ }
-}
-
-function buildPrefsStep1Text(): string {
-  return (
-    "🎬 *Telegram Bridge MCP — Session Start*\n\n" +
-    "Use /session at any time to view and manage session recording.\n\n" +
-    "Would you like to record this session?"
-  );
-}
-
-function buildPrefsStep1Keyboard(): { text: string; callback_data: string }[][] {
-  return [[
-    { text: "🔴 Record Session", callback_data: "session:prefs:record" },
-    { text: "⬛ Not now",        callback_data: "session:prefs:skip" },
-  ]];
-}
-
-function buildPrefsStep2Text(): string {
-  return (
-    "🎬 *Telegram Bridge MCP — Session Start*\n\n" +
-    "Auto-dump sends the conversation log as a .txt file when the message count" +
-    " hits the threshold, then resets for the next window.\n\n" +
-    "Or choose *Manual* to record without auto-dump — use /session → *Dump* whenever you want a snapshot.\n\n" +
-    "How many messages before auto-dump?"
-  );
-}
-
-function buildPrefsStep2Keyboard(): { text: string; callback_data: string }[][] {
-  return [[
-    { text: "25",       callback_data: "session:auto:25" },
-    { text: "50",       callback_data: "session:auto:50" },
-    { text: "100",      callback_data: "session:auto:100" },
-    { text: "Manual",   callback_data: "session:auto:never" },
-  ]];
 }
 
 /** Built-in command metadata (for merging into set_commands menus). */
 export const BUILT_IN_COMMANDS = [
   { command: "session", description: "Session recording controls" },
+  { command: "version", description: "Show server version and build info" },
+  { command: "shutdown", description: "Shut down the MCP server" },
 ] as const;
+
+const _builtInCommandNames = new Set<string>(BUILT_IN_COMMANDS.map(c => c.command));
+
+/**
+ * Message IDs for bot-sent session infrastructure messages (panel, dump docs,
+ * notices) that should be excluded from the session record dump.
+ * The events still appear in the timeline and flow through dequeue_update —
+ * they just shouldn't show up when recording the session.
+ */
+const _internalMessageIds = new Set<number>();
+
+/** Register a bot-sent message as internal so it is skipped in record dumps. */
+export function markInternalMessage(messageId: number): void {
+  _internalMessageIds.add(messageId);
+}
+
+/**
+ * Returns true if a timeline event is an internal server event (built-in
+ * slash command, session-panel callback, or bot-sent session infrastructure
+ * message) that should be excluded from the session record dump. The event
+ * is still stored in the timeline and visible to dequeue_update — it just
+ * shouldn't pollute the record.
+ */
+export function isInternalTimelineEvent(evt: Omit<TimelineEvent, "_update">): boolean {
+  if (_internalMessageIds.has(evt.id)) return true;
+  if (evt.event === "message" && evt.content.type === "command") {
+    return _builtInCommandNames.has(evt.content.text ?? "");
+  }
+  if (evt.event === "callback" && typeof evt.content.data === "string") {
+    return evt.content.data.startsWith("session:");
+  }
+  return false;
+}
 
 /**
  * Returns true if this update is a built-in command or a callback_query for
@@ -119,9 +177,27 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
     const entities = update.message.entities ?? [];
     const cmd = entities.find(e => e.type === "bot_command" && e.offset === 0);
     if (cmd) {
+      // Ignore commands sent before this process started (prevents e.g. a
+      // queued /shutdown from killing a freshly-restarted server).
+      if ((update.message.date) < _startupEpoch) {
+        process.stderr.write(
+          `[built-in] ignoring stale /${update.message.text.slice(1, cmd.length).split("@")[0]} `
+          + `(msg date ${update.message.date}, startup ${_startupEpoch})\n`,
+        );
+        return true; // consumed — don't forward to agent either
+      }
+
       const raw = update.message.text.slice(1, cmd.length).split("@")[0];
       if (raw === "session") {
         await handleSessionCommand();
+        return true;
+      }
+      if (raw === "version") {
+        await handleVersionCommand();
+        return true;
+      }
+      if (raw === "shutdown") {
+        handleShutdownCommand();
         return true;
       }
     }
@@ -140,6 +216,49 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
+// /version
+// ---------------------------------------------------------------------------
+
+async function handleVersionCommand(): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  const buildTimeDisplay = _mcpBuildTime.replace("T", " ").replace("Z", " UTC");
+  const lines = [
+    "📦 *Telegram Bridge MCP*",
+    "",
+    `*Version:* \`${MCP_VERSION}\``,
+    `*Commit:* \`${_mcpCommit}\``,
+    `*Built:* \`${buildTimeDisplay}\``,
+  ];
+  try {
+    const msg = await getApi().sendMessage(chatId, lines.join("\n"), { parse_mode: "Markdown" });
+    markInternalMessage(msg.message_id);
+  } catch { /* ignore */ }
+}
+
+// ---------------------------------------------------------------------------
+// /shutdown — shuts down the MCP server from Telegram
+// ---------------------------------------------------------------------------
+
+function handleShutdownCommand(): void {
+  stopPoller();
+  const shutdownSequence = (async () => {
+    // Wait for the poll loop to finish (completes in-flight transcriptions)
+    await waitForPollerExit();
+    // Drain any updates received since the last poll iteration
+    await drainPendingUpdates();
+    // Dump session log before shutting down (if not disabled)
+    if (getSessionLogMode() !== null) {
+      try { await doTimelineDump(true); } catch { /* best effort */ }
+    }
+    await sendServiceMessage("⛔️ Shutting down…").catch(() => {});
+  })();
+  const timeout = new Promise<void>((r) => setTimeout(r, 10000));
+  void Promise.race([shutdownSequence, timeout])
+    .finally(() => clearCommandsOnShutdown().finally(() => process.exit(0)));
+}
+
+// ---------------------------------------------------------------------------
 // /session panel
 // ---------------------------------------------------------------------------
 
@@ -155,6 +274,7 @@ async function handleSessionCommand(): Promise<void> {
       reply_markup: { inline_keyboard: keyboard },
     });
     _activePanels.set(msg.message_id, "session");
+    markInternalMessage(msg.message_id);
   } catch { /* ignore */ }
 }
 
@@ -176,50 +296,41 @@ async function handleSessionCallback(
     return;
   }
 
-  // ── Startup questionnaire — step 1 response ───────────────────────────
-  if (data === "session:prefs:record") {
-    // Advance to step 2 by editing the same message
+  // ── Mode switches ─────────────────────────────────────────────────────
+  if (data === "session:disable") {
+    setSessionLogMode(null);
+    applySessionLogConfig();
+  } else if (data === "session:manual") {
+    setSessionLogMode("manual");
+    applySessionLogConfig();
+  } else if (data === "session:autodump") {
+    // Show threshold picker
     try {
-      await api.editMessageText(chatId, panelMsgId, buildPrefsStep2Text(), {
+      await api.editMessageText(chatId, panelMsgId, "� *Auto-dump*\n\nDump the session record every N events:", {
         parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: buildPrefsStep2Keyboard() },
+        reply_markup: { inline_keyboard: [
+          [
+            { text: "10", callback_data: "session:setauto:10" },
+            { text: "25", callback_data: "session:setauto:25" },
+            { text: "50", callback_data: "session:setauto:50" },
+            { text: "100", callback_data: "session:setauto:100" },
+          ],
+          [{ text: "✖ Cancel", callback_data: "session:dismiss" }],
+        ] },
       });
     } catch { /* ignore */ }
     return;
-  }
-
-  if (data === "session:prefs:skip") {
-    _activePanels.delete(panelMsgId);
-    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
-    return;
-  }
-
-  // ── Startup questionnaire — step 2 response (auto-dump frequency) ─────
-  if (data.startsWith("session:auto:")) {
-    _activePanels.delete(panelMsgId);
-    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
-    const val = data.slice("session:auto:".length);
-    if (val !== "off" && val !== "never") {
-      const n = parseInt(val, 10);
-      if (!isNaN(n) && n > 0) {
-        startRecording(Math.max(n * 2, 100));
-        setAutoDump(n, createAutoDumpFn(chatId, api));
-      }
-    } else if (val === "never") {
-      // Record without auto-dump — large rolling buffer, manual dump via /session
-      startRecording(500);
+  } else if (data.startsWith("session:setauto:")) {
+    const n = parseInt(data.slice("session:setauto:".length), 10);
+    if (!isNaN(n) && n > 0) {
+      setSessionLogMode(n);
+      applySessionLogConfig();
     }
-    return;
-  }
-
-  if (data === "session:start") {
-    startRecording(100);
-  } else if (data === "session:stop") {
-    stopRecording();
-    clearRecording();
   } else if (data === "session:dump") {
-    await doSessionDump(chatId, panelMsgId, api);
-    return; // doSessionDump deletes the panel itself
+    _activePanels.delete(panelMsgId);
+    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+    await doTimelineDump(true);
+    return;
   }
 
   // Refresh the panel with new state
@@ -232,121 +343,134 @@ async function handleSessionCallback(
   } catch { /* ignore */ }
 }
 
-function createAutoDumpFn(chatId: number, api: ReturnType<typeof getApi>): () => Promise<void> {
-  return async () => {
-    await doSessionDump(chatId, null, api);
-    clearRecording(); // keep recording + auto-dump active; reset buffer only
+// ---------------------------------------------------------------------------
+// Timeline dump — JSON file sent to Telegram
+// ---------------------------------------------------------------------------
+
+/**
+ * Take a snapshot of the message-store timeline, convert to JSON, and send
+ * as a .json file to Telegram. Used by both manual (/session → Dump) and
+ * auto-dump (threshold reached).
+ *
+ * @param incremental If true, only dump events since last dump (cursor-based).
+ *                    If false (default), dump the full timeline.
+ */
+export async function doTimelineDump(incremental = false): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  const api = getApi();
+
+  let timeline: Array<Record<string, unknown>>;
+  if (incremental) {
+    const result = dumpTimelineSince(_dumpCursor);
+    timeline = result.events.filter(evt => !isInternalTimelineEvent(evt));
+    _dumpCursor = result.nextCursor;
+  } else {
+    timeline = dumpTimeline().filter(evt => !isInternalTimelineEvent(evt));
+    _dumpCursor = timelineSize();
+  }
+
+  if (timeline.length === 0) {
+    if (!incremental) {
+      try {
+        const noEvtMsg = await api.sendMessage(chatId, "🗒 *Session Record*\n_(no events captured)_", {
+          parse_mode: "Markdown",
+        });
+        markInternalMessage(noEvtMsg.message_id);
+      } catch { /* ignore */ }
+    }
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const payload = {
+    generated: now,
+    incremental,
+    event_count: timeline.length,
+    total_timeline: timelineSize(),
+    unique_messages: storeSize(),
+    timeline,
   };
+
+  try {
+    const { InputFile } = await import("grammy");
+    const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf-8");
+    const file = new InputFile(buf, `session-log-${now.replace(/[:.]/g, "-")}.json`);
+    const label = `🗒 Session record · ${timeline.length} events${incremental ? " (incremental)" : ""}`;
+    const msg = await api.sendDocument(chatId, file, { caption: label }) as {
+      message_id: number;
+      document?: { file_id?: string };
+    };
+    markInternalMessage(msg.message_id);
+
+    // Amend caption with file_id so it's recoverable after a crash
+    const fileId = msg.document?.file_id;
+    if (fileId) {
+      try {
+        await api.editMessageCaption(chatId, msg.message_id, {
+          caption: `${label}\nFile ID: \`${fileId}\``,
+          parse_mode: "Markdown",
+        });
+      } catch { /* best effort */ }
+    }
+  } catch {
+    // Fallback: truncated message
+    try {
+      const json = JSON.stringify(payload);
+      const fallbackMsg = await api.sendMessage(chatId, `\`\`\`json\n${json.slice(0, 3900)}\n\`\`\``, {
+        parse_mode: "Markdown",
+      });
+      markInternalMessage(fallbackMsg.message_id);
+    } catch { /* ignore */ }
+  }
 }
 
 function buildSessionPanel(): { text: string; keyboard: { text: string; callback_data: string }[][] } {
-  const recording = isRecording();
-  const count = recordedCount();
-  const max = getMaxUpdates();
-  const autoDump = getAutoDumpThreshold();
+  const recordSize = dumpTimeline().filter(evt => !isInternalTimelineEvent(evt)).length;
+  const mSize = storeSize();
+  const mode = getSessionLogMode();
 
-  const status = recording
-    ? `🔴 Recording · ${count} / ${max} captured${autoDump != null ? ` · auto-dump @${autoDump}` : ""}`
-    : `⬛ Not recording`;
+  const lines = [
+    `🗒 *Session Record*`,
+    `Mode: ${sessionLogLabel()}`,
+    `Timeline: ${recordSize} events · ${mSize} messages`,
+  ];
+  if (typeof mode === "number") {
+    lines.push(`Auto-dump: every ${mode} events (${_eventsSinceLastDump} since last)`);
+  }
 
-  const text = `📼 *Session Recording*\nStatus: ${status}`;
+  const text = lines.join("\n");
 
-  const keyboard = recording
-    ? [
-        [
-          { text: "📤 Dump", callback_data: "session:dump" },
-          { text: "⏹ Stop", callback_data: "session:stop" },
-          { text: "✖ Dismiss", callback_data: "session:dismiss" },
-        ],
-      ]
-    : [
-        [
-          { text: "▶ Start", callback_data: "session:start" },
-          { text: "✖ Dismiss", callback_data: "session:dismiss" },
-        ],
-      ];
+  // Row 1: mode switches
+  const modeButtons: { text: string; callback_data: string }[] = [];
+  if (mode !== null) {
+    modeButtons.push({ text: "⏹ Disable", callback_data: "session:disable" });
+  }
+  if (mode !== "manual") {
+    modeButtons.push({ text: "🫵 Manual", callback_data: "session:manual" });
+  }
+  if (typeof mode !== "number") {
+    modeButtons.push({ text: "⏩ Auto-dump", callback_data: "session:autodump" });
+  } else {
+    modeButtons.push({ text: `⏩ Auto (${mode})`, callback_data: "session:autodump" });
+  }
+
+  // Row 2: actions
+  const actionButtons: { text: string; callback_data: string }[] = [];
+  if (mode !== null && recordSize > 0) {
+    actionButtons.push({ text: "⬇️ Dump record", callback_data: "session:dump" });
+  }
+  actionButtons.push({ text: "✖ Dismiss", callback_data: "session:dismiss" });
+
+  const keyboard = [modeButtons, actionButtons];
 
   return { text, keyboard };
 }
 
-async function doSessionDump(
-  chatId: number,
-  panelMsgId: number | null,
-  api: ReturnType<typeof getApi>,
-): Promise<void> {
-  if (panelMsgId !== null) {
-    _activePanels.delete(panelMsgId);
-    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
-  }
-
-  const entries = getSessionEntries();
-  const sanitized = await sanitizeSessionEntries(entries);
-
-  // Build the log text inline (same format as dump_session_record)
-  const now = new Date().toISOString();
-  const lines: string[] = [
-    "# Session Recording Log",
-    `Generated: ${now}`,
-    `Recording: ${isRecording() ? "active" : "inactive"}`,
-    `Updates: ${entries.length} / ${getMaxUpdates()}`,
-    "",
-    "---",
-    "",
-  ];
-
-  if (sanitized.length === 0) {
-    lines.push("(no updates captured)");
-  } else {
-    sanitized.forEach((u, i) => {
-      const from = String(u.from ?? "user");
-      const fromLabel = from === "bot" ? "[BOT]" : "[USER]";
-      const type = String(u.type ?? "unknown");
-      const msgId = u.message_id != null ? `msg_id: ${u.message_id}` : "";
-
-      if (from === "bot") {
-        lines.push(`[${i + 1}] ${fromLabel} ${u.content_type ?? "unknown"} | ${msgId}`);
-        if (u.text) lines.push(String(u.text));
-      } else if (type === "message") {
-        lines.push(`[${i + 1}] ${fromLabel} message · ${u.content_type ?? "unknown"} | ${msgId}`);
-        if (u.text) lines.push(String(u.text));
-        if (u.caption) lines.push(`Caption: ${u.caption}`);
-        if (u.file_name) lines.push(`File: ${u.file_name}`);
-      } else if (type === "callback_query") {
-        lines.push(`[${i + 1}] ${fromLabel} callback_query | ${msgId}`);
-        if (u.data) lines.push(`data: ${u.data}`);
-      } else {
-        lines.push(`[${i + 1}] ${fromLabel} ${type}`);
-      }
-      lines.push("");
-    });
-  }
-
-  lines.push("---", "End of log");
-  const logText = lines.join("\n");
-
-  // Send as a .txt document if any content, else as a short message
-  if (entries.length === 0) {
-    try {
-      await api.sendMessage(chatId, "📼 *Session Recording*\n_(no updates captured)_", {
-        parse_mode: "Markdown",
-      });
-    } catch { /* ignore */ }
-    return;
-  }
-
-  try {
-    const { InputFile } = await import("grammy");
-    const buf = Buffer.from(logText, "utf-8");
-    const file = new InputFile(buf, `session-${now.replace(/[:.]/g, "-")}.txt`);
-    await api.sendDocument(chatId, file, {
-      caption: `📼 Session dump · ${entries.length} updates`,
-    });
-  } catch {
-    // Fallback: send first 4000 chars as a message
-    try {
-      await api.sendMessage(chatId, `\`\`\`\n${logText.slice(0, 3900)}\n\`\`\``, {
-        parse_mode: "Markdown",
-      });
-    } catch { /* ignore */ }
-  }
+/** For testing only: resets module-scoped state. */
+export function resetBuiltInCommandsForTest(): void {
+  _activePanels.clear();
+  _sessionPrefsAsked = false;
+  setAutoDumpThreshold(null);
+  _dumpCursor = 0;
 }

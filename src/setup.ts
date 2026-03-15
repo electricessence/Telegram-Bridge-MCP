@@ -158,14 +158,12 @@ async function main() {
         console.log(green("  ✓ Code matched!"));
         console.log("");
         console.log(`    User ID  : ${bold(String(userId))}`);
-        console.log(`    Chat ID  : ${bold(String(chatId))}`);
         console.log("");
 
         // 6. Write to .env
         writeEnv({
           BOT_TOKEN: token,
           ALLOWED_USER_ID: String(userId),
-          ALLOWED_CHAT_ID: String(chatId),
         });
 
         console.log(green(`  ✓ Written to ${ENV_PATH}`));
@@ -181,8 +179,7 @@ async function main() {
         console.log(dim(`          "args": ["${resolve(__dirname, "..", "dist", "index.js").replace(/\\/g, "\\\\")}"],`));
         console.log(dim(`          "env": {`));
         console.log(dim(`            "BOT_TOKEN": "${token.slice(0, 8)}…<redacted>",`));
-        console.log(dim(`            "ALLOWED_USER_ID": "${userId}",`));
-        console.log(dim(`            "ALLOWED_CHAT_ID": "${chatId}"`));
+        console.log(dim(`            "ALLOWED_USER_ID": "${userId}"`));
         console.log(dim(`          }`));
         console.log(dim(`        }`));
         console.log(dim(`      }`));
@@ -222,7 +219,7 @@ async function main() {
   process.exit(1);
 }
 
-main().catch((err) => {
-  console.error(red(`\n  ✗ Unexpected error: ${err.message}`));
+main().catch((err: unknown) => {
+  console.error(red(`\n  ✗ Unexpected error: ${err instanceof Error ? err.message : String(err)}`));
   process.exit(1);
 });
