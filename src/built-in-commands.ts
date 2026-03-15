@@ -431,18 +431,10 @@ async function handleVoiceSampleCallback(
 
   const voiceName = data.slice("voice:set:".length);
   setDefaultVoice(voiceName);
-  _activePanels.delete(sampleMsgId);
 
   try {
     await api.answerCallbackQuery(callbackQueryId, {
       text: `Voice set to ${voiceName}`,
-    });
-  } catch { /* ignore */ }
-
-  // Remove the button from the voice sample message
-  try {
-    await api.editMessageReplyMarkup(chatId, sampleMsgId, {
-      reply_markup: { inline_keyboard: [] },
     });
   } catch { /* ignore */ }
 }
