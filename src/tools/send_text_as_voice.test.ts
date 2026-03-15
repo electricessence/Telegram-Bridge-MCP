@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   splitMessage: vi.fn((t: string) => [t]),
   sendVoiceDirect: vi.fn(),
   showTyping: vi.fn(),
+  cancelTyping: vi.fn(),
   isTtsEnabled: vi.fn((): boolean => true),
   stripForTts: vi.fn((t: string) => t),
   synthesizeToOgg: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("../telegram.js", async (importActual) => {
 
 vi.mock("../typing-state.js", () => ({
   showTyping: mocks.showTyping,
+  cancelTyping: mocks.cancelTyping,
 }));
 
 vi.mock("../tts.js", () => ({

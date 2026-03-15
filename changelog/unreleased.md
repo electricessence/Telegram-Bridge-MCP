@@ -48,6 +48,7 @@
 
 - Fixed orphaned `setTimeout` handles in `dequeue_update` and `ask` loop iterations — timer is now cancelled with `clearTimeout` after the `Promise.race` resolves
 - Fixed `snake_case` local variable names in `get_me.ts` — renamed `mcp_commit`/`mcp_build_time` to `mcpCommit`/`mcpBuildTime`; wire-format output field names are unchanged
+- Fixed `send_text_as_voice` leaking typing indicator after voice delivery — `cancelTyping()` is now called in a `finally` block
 
 - Fixed `BUTTON_DATA_INVALID` error code in `edit_message` button label validation — renamed to `BUTTON_LABEL_EXCEEDS_LIMIT` (consistent with `send_choice`)
 - Fixed `edit_message` skipping `validateText` before calling Telegram API — now validates resolved text length/emptiness and returns a structured error

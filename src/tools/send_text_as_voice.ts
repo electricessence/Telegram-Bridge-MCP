@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { toResult, toError, validateText, resolveChat, splitMessage, sendVoiceDirect } from "../telegram.js";
-import { showTyping } from "../typing-state.js";
+import { showTyping, cancelTyping } from "../typing-state.js";
 import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
 
 const DESCRIPTION =
@@ -71,6 +71,8 @@ export function register(server: McpServer) {
           } as const);
         }
         return toError(err);
+      } finally {
+        cancelTyping();
       }
     }
   );
