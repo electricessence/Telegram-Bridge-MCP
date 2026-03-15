@@ -41,7 +41,7 @@ export function register(server: McpServer) {
           ),
       },
     },
-    async ({ intro }) => {
+    async ({ intro }, { signal }) => {
       const chatId = resolveChat();
       if (typeof chatId !== "number") return toError(chatId);
 
@@ -93,6 +93,7 @@ export function register(server: McpServer) {
           chatId,
           confirmSent.message_id,
           CONFIRM_TIMEOUT_S,
+          signal,
         );
 
         if (!result) {

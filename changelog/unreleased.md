@@ -27,6 +27,9 @@
 
 - Added `.min(1)` to `message_id` schema in `append_text`, `delete_message`, `edit_message_text`, `set_reaction`, `update_progress` — rejects `0` at schema level instead of silently failing
 - Added `.min(1)` to `reply_to_message_id` schema in `ask`, `choose`, `confirm`, `notify`, `send_text_as_voice` — consistent with `send_choice` which already had it
+- Fixed per-iteration `AbortSignal` listener accumulation in `pollButtonPress` and `pollButtonOrTextOrVoice` — hoisted `abortPromise` outside loop (mirrors fix already applied to `dequeue_update.ts` and `ask.ts`)
+- Fixed `session_start` not propagating MCP `signal` to `pollButtonPress` — prevents 10-minute orphan wait when the client disconnects mid-confirmation
+- Fixed animation R4 failure path leaving orphaned placeholder message — now attempts best-effort `deleteMessage` before returning `{ intercepted: false }` (mirrors R5 cleanup path)
 
 - Fixed session record dump including internal server events (`/session`, `/version`, `session:*` callbacks, session panel messages, dump documents) — these are still stored in the timeline and visible to `dequeue_update` but filtered from the record JSON
 - Fixed session panel event count and "Dump record" button visibility reflecting raw timeline size instead of filtered record size

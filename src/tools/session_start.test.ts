@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createMockServer, parseResult } from "./test-utils.js";
+import { createMockServer, parseResult, type ToolHandler } from "./test-utils.js";
 import type { ButtonResult } from "./button-helpers.js";
 
 const mocks = vi.hoisted(() => ({
@@ -56,7 +56,7 @@ function makeButtonResult(data: string): ButtonResult {
 }
 
 describe("session_start tool", () => {
-  let call: (args: Record<string, unknown>) => Promise<unknown>;
+  let call: ToolHandler;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,6 +65,19 @@ describe("session_start tool", () => {
     const server = createMockServer();
     register(server);
     call = server.getHandler("session_start");
+  });
+
+  it("passes MCP signal to pollButtonPress", async () => {
+    mocks.pendingCount.mockReturnValue(1);
+    mocks.sendMessage
+      .mockResolvedValueOnce(INTRO_MSG)
+      .mockResolvedValueOnce(CONFIRM_MSG);
+    mocks.pollButtonPress.mockResolvedValue(null);
+
+    const signal = new AbortController().signal;
+    await call({}, { signal });
+
+    expect(mocks.pollButtonPress).toHaveBeenCalledWith(42, 101, 600, signal);
   });
 
   it("sends intro message and returns fresh when no pending", async () => {

@@ -309,7 +309,13 @@ export async function startAnimation(
           );
           process.stderr.write(`[animation] R4 edit succeeded for msg ${messageId}\n`);
         } catch (editErr) {
-          // Animation message was deleted or unavailable
+          // Animation message may still exist if edit failed for a non-deletion reason.
+          // Best-effort delete to avoid leaving an orphaned placeholder (mirrors R5 path).
+          try {
+            await bypassProxy(() => getRawApi().deleteMessage(animChatId, messageId));
+          } catch {
+            // Already gone — expected if edit failed because message was deleted
+          }
           const editMsg = editErr instanceof Error ? editErr.message : String(editErr);
           process.stderr.write(`[animation] R4 edit FAILED for msg ${messageId}: ${editMsg}\n`);
           if (isPersistent) {

@@ -456,7 +456,20 @@ describe("animation-state", () => {
 
       const result = await int.beforeTextSend(123, "text", {});
 
+      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 42); // must clean up even on edit failure
       expect(result).toEqual({ intercepted: false });
+      expect(mocks.clearSendInterceptor).toHaveBeenCalled();
+    });
+
+    it("handles delete failure gracefully after R4 edit failure", async () => {
+      mocks.getHighestMessageId.mockReturnValue(42);
+      mocks.editMessageText.mockRejectedValueOnce(new Error("message to edit not found"));
+      mocks.deleteMessage.mockRejectedValueOnce(new Error("already gone"));
+      const int = await tempAnim(42);
+
+      const result = await int.beforeTextSend(123, "text", {});
+
+      expect(result).toEqual({ intercepted: false }); // cosmetic failure — still clean exit
       expect(mocks.clearSendInterceptor).toHaveBeenCalled();
     });
 

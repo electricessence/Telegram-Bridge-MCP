@@ -143,11 +143,52 @@ describe("button-helpers", () => {
       const result = await pollButtonPress(123, 10, 0.01);
       expect(result).toBeNull();
     });
+    it("returns null when signal is pre-aborted", async () => {
+      mocks.dequeueMatch.mockReturnValue(undefined);
+      mocks.waitForEnqueue.mockImplementation(() => new Promise(() => {})); // never resolves
+      const controller = new AbortController();
+      controller.abort();
+      const result = await pollButtonPress(123, 10, 10, controller.signal);
+      expect(result).toBeNull();
+    });
+
+    it("returns null when signal is aborted during wait", async () => {
+      mocks.dequeueMatch.mockReturnValue(undefined);
+      let resolveEnqueue!: () => void;
+      mocks.waitForEnqueue.mockImplementation(() => new Promise<void>((r) => { resolveEnqueue = r; }));
+      const controller = new AbortController();
+      const resultPromise = pollButtonPress(123, 10, 10, controller.signal);
+      controller.abort();
+      resolveEnqueue();
+      const result = await resultPromise;
+      expect(result).toBeNull();
+    });
   });
 
   // -- pollButtonOrTextOrVoice ---------------------------------------------
 
   describe("pollButtonOrTextOrVoice", () => {
+    it("returns null when signal is pre-aborted", async () => {
+      mocks.dequeueMatch.mockReturnValue(undefined);
+      mocks.waitForEnqueue.mockImplementation(() => new Promise(() => {}));
+      const controller = new AbortController();
+      controller.abort();
+      const result = await pollButtonOrTextOrVoice(123, 10, 10, undefined, controller.signal);
+      expect(result).toBeNull();
+    });
+
+    it("returns null when signal is aborted during wait", async () => {
+      mocks.dequeueMatch.mockReturnValue(undefined);
+      let resolveEnqueue!: () => void;
+      mocks.waitForEnqueue.mockImplementation(() => new Promise<void>((r) => { resolveEnqueue = r; }));
+      const controller = new AbortController();
+      const resultPromise = pollButtonOrTextOrVoice(123, 10, 10, undefined, controller.signal);
+      controller.abort();
+      resolveEnqueue();
+      const result = await resultPromise;
+      expect(result).toBeNull();
+    });
+
     it("returns button result for matching callback", async () => {
       mocks.dequeueMatch.mockImplementation((fn: (e: unknown) => unknown) => {
         return fn({
