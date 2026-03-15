@@ -347,27 +347,15 @@ async function handleVoiceCallback(
 
   if (data === "voice:noop") return;
 
-  // Mode navigation
-  let mode: VoicePanelMode = "main";
-  if (data === "voice:mode:sample") {
-    mode = "sample";
-  } else if (data === "voice:mode:choose") {
-    mode = "choose";
-  } else if (data === "voice:mode:main" || data === "voice:clear") {
-    if (data === "voice:clear") setDefaultVoice(null);
-    mode = "main";
-  } else if (data.startsWith("voice:set:")) {
-    const voiceName = data.slice("voice:set:".length);
-    setDefaultVoice(voiceName);
-    mode = "main"; // Return to main after choosing
+  if (data === "voice:clear") {
+    setDefaultVoice(null);
   } else if (data.startsWith("voice:sample:")) {
     const voiceName = data.slice("voice:sample:".length);
     await sendVoiceSample(chatId, voiceName);
-    mode = "sample"; // Stay in sample mode
   }
 
   // Refresh panel
-  const { text, keyboard } = await buildVoicePanel(mode);
+  const { text, keyboard } = await buildVoicePanel();
   try {
     await api.editMessageText(chatId, panelMsgId, text, {
       parse_mode: "Markdown",
@@ -480,11 +468,7 @@ function groupHeader(key: string): string {
   return LANGUAGE_LABELS[key] ?? key;
 }
 
-type VoicePanelMode = "main" | "sample" | "choose";
-
-async function buildVoicePanel(
-  mode: VoicePanelMode = "main",
-): Promise<{
+async function buildVoicePanel(): Promise<{
   text: string;
   keyboard: InlineButton[][];
 }> {
@@ -506,66 +490,35 @@ async function buildVoicePanel(
   const voices = await resolveVoiceNames();
   const keyboard: InlineButton[][] = [];
 
-  if (mode === "main") {
-    // Main menu — show Sample / Choose buttons
-    if (voices.length > 0) {
-      lines.push("");
-      lines.push(
-        `${voices.length} voices available.`
-      );
-      keyboard.push([
-        {
-          text: "🎧 Sample",
-          callback_data: "voice:mode:sample",
-        },
-        {
-          text: "✓ Choose",
-          callback_data: "voice:mode:choose",
-        },
-      ]);
-    } else {
-      lines.push("");
-      lines.push(
-        "_No voices available. " +
-        "Add a `voices` array to `mcp-config.json` " +
-        "or set `TTS\\_VOICES\\_URL`._"
-      );
-    }
-
-    // Action row
-    const actionRow: InlineButton[] = [];
-    if (currentVoice) {
-      actionRow.push({
-        text: "↩ Reset to default",
-        callback_data: "voice:clear",
-      });
-    }
-    actionRow.push({
-      text: "✖ Dismiss",
-      callback_data: "voice:dismiss",
-    });
-    keyboard.push(actionRow);
-  } else {
-    // Sample or Choose submenu — show grouped voice list
-    const isSample = mode === "sample";
-    const prefix = isSample ? "voice:sample:" : "voice:set:";
+  if (voices.length > 0) {
     lines.push("");
-    lines.push(
-      isSample
-        ? "Tap a voice to hear a sample:"
-        : "Tap a voice to set as default:"
-    );
+    lines.push("Tap a voice to hear a sample:");
 
     buildGroupedVoiceButtons(
-      voices, keyboard, prefix, effective,
+      voices, keyboard, "voice:sample:", effective,
     );
-
-    // Back + dismiss row
-    keyboard.push([
-      { text: "↩ Back", callback_data: "voice:mode:main" },
-      { text: "✖ Dismiss", callback_data: "voice:dismiss" },
-    ]);
+  } else {
+    lines.push("");
+    lines.push(
+      "_No voices available. " +
+      "Add a `voices` array to `mcp-config.json` " +
+      "or set `TTS\\_VOICES\\_URL`._"
+    );
   }
+
+  // Action row
+  const actionRow: InlineButton[] = [];
+  if (currentVoice) {
+    actionRow.push({
+      text: "↩ Reset to default",
+      callback_data: "voice:clear",
+    });
+  }
+  actionRow.push({
+    text: "✖ Dismiss",
+    callback_data: "voice:dismiss",
+  });
+  keyboard.push(actionRow);
 
   return { text: lines.join("\n"), keyboard };
 }
