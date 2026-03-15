@@ -55,6 +55,11 @@
 - Fixed `append_text` returning a plain string to `toError` for `MESSAGE_NOT_TEXT` — now returns a structured `{ code, message }` object so callers get a stable error code
 - Fixed `confirm` callback hook in single-button CTA mode — now ignores callback data that is neither `yes_data` nor a valid `no_data` (prevents calling `ackAndEditSelection` with empty label)
 - Enabled Docker Scout critical/high vulnerability display in `.vscode/settings.json` (was incorrectly disabled)
+- Fixed double space in `send_new_progress.ts` `const EMPTY` declaration
+- Fixed `reply_to_message_id` schema in `send_text` and `send_choice` missing `.min(1)` — invalid IDs (0, negative) now rejected at boundary; replaced truthiness check with explicit `!== undefined`
+- Fixed `message_id` schema in `pin_message` missing `.min(1)` — invalid IDs now rejected at schema level
+- Fixed `ask` returning `{ timed_out: true }` when aborted — now returns `{ timed_out: false, aborted: true }` to distinguish MCP cancellation from deadline expiry
+- Fixed `_clearSlot(fireRestore=true)` with null `restoreEmoji` not clearing the reaction — now correctly calls `setMessageReaction([], [])`
 
 ## Docs
 

@@ -17,6 +17,7 @@ export function register(server: McpServer) {
         message_id: z
         .number()
         .int()
+        .min(1)
         .optional()
         .describe("ID of the message to pin/unpin. Required for pinning. For unpinning, omit to unpin the most recently pinned message."),
       disable_notification: z

@@ -64,6 +64,7 @@ export function register(server: McpServer) {
         reply_to_message_id: z
           .number()
           .int()
+          .min(1)
           .optional()
           .describe("Reply to this message ID"),
       },

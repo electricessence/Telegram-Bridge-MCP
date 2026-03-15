@@ -5,7 +5,7 @@ import { escapeHtml } from "../markdown.js";
 import { applyTopicToTitle } from "../topic-state.js";
 
 const FILLED = "▓";
-const EMPTY  = "░";
+const EMPTY = "░";
 const DEFAULT_WIDTH = 10;
 
 export function renderProgress(

@@ -51,7 +51,7 @@ export function register(server: McpServer) {
         const abortPromise = new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => { r(); }, { once: true }); });
 
         while (Date.now() < deadline) {
-          if (signal.aborted) return toResult({ timed_out: true });
+          if (signal.aborted) return toResult({ timed_out: false, aborted: true });
           const match = dequeueMatch((event: TimelineEvent) => {
             if (event.event === "message" && event.id > sent.message_id) {
               if (event.content.type === "text"
