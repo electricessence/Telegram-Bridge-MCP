@@ -34,6 +34,7 @@
  */
 
 import { pipeline, env } from "@huggingface/transformers";
+import type { VoiceEntry } from "./config.js";
 
 // ---------------------------------------------------------------------------
 // Regex constants for stripForTts — extracted to module level for reuse
@@ -284,10 +285,10 @@ export async function synthesizeToOgg(
  * Kokoro and similar OpenAI-compatible servers). Falls back to
  * `TTS_VOICES_URL` env var if the default endpoint fails.
  *
- * Returns an array of voice name strings, or an empty array
+ * Returns an array of VoiceEntry objects, or an empty array
  * if no listing is available.
  */
-export async function fetchVoiceList(): Promise<string[]> {
+export async function fetchVoiceList(): Promise<VoiceEntry[]> {
   const ttsHost = process.env.TTS_HOST?.replace(RE_TRAILING_SLASH, "");
   if (!ttsHost) return [];
 
@@ -309,17 +310,20 @@ export async function fetchVoiceList(): Promise<string[]> {
 }
 
 /**
- * Extracts voice names from various API response shapes.
+ * Extracts voices from various API response shapes.
  *
  * Handles:
+ *   - `{ voices: [{ voice_id, name, language, gender }] }` (Kokoro-style)
  *   - `{ voices: [{ name: "..." }, ...] }` (common OpenAI-compatible)
  *   - `{ voices: ["name", ...] }` (simple list)
  *   - `["name", ...]` (bare array)
  *   - `{ data: [{ id: "..." }, ...] }` (OpenAI models-style)
  */
-function parseVoiceListResponse(body: unknown): string[] {
+function parseVoiceListResponse(body: unknown): VoiceEntry[] {
   if (Array.isArray(body)) {
-    return body.filter((v): v is string => typeof v === "string");
+    return body
+      .filter((v): v is string => typeof v === "string")
+      .map(name => ({ name }));
   }
   if (typeof body !== "object" || body === null) return [];
 
@@ -327,30 +331,40 @@ function parseVoiceListResponse(body: unknown): string[] {
 
   if (Array.isArray(obj.voices)) {
     return obj.voices
-      .map((v: unknown) => {
-        if (typeof v === "string") return v;
-        if (typeof v === "object" && v !== null) {
-          const o = v as Record<string, unknown>;
-          if (typeof o.name === "string") return o.name;
-          if (typeof o.id === "string") return o.id;
-        }
-        return null;
-      })
-      .filter((v): v is string => v !== null);
+      .map((v: unknown) => voiceObjectToEntry(v))
+      .filter((v): v is VoiceEntry => v !== null);
   }
 
   if (Array.isArray(obj.data)) {
     return obj.data
-      .map((v: unknown) => {
-        if (typeof v === "object" && v !== null) {
-          const o = v as Record<string, unknown>;
-          if (typeof o.id === "string") return o.id;
-          if (typeof o.name === "string") return o.name;
-        }
-        return null;
-      })
-      .filter((v): v is string => v !== null);
+      .map((v: unknown) => voiceObjectToEntry(v))
+      .filter((v): v is VoiceEntry => v !== null);
   }
 
   return [];
+}
+
+/** Convert a single voice item (string or object) to a VoiceEntry. */
+function voiceObjectToEntry(v: unknown): VoiceEntry | null {
+  if (typeof v === "string") return { name: v };
+  if (typeof v !== "object" || v === null) return null;
+
+  const o = v as Record<string, unknown>;
+  // Prefer voice_id (Kokoro), then id (OpenAI), then name
+  const id =
+    (typeof o.voice_id === "string" ? o.voice_id : null) ??
+    (typeof o.id === "string" ? o.id : null) ??
+    (typeof o.name === "string" ? o.name : null);
+  if (!id) return null;
+
+  const entry: VoiceEntry = { name: id };
+  // Capture display name (only if different from the id)
+  const displayName =
+    typeof o.name === "string" ? o.name : undefined;
+  if (displayName && displayName !== id) {
+    entry.description = displayName;
+  }
+  if (typeof o.language === "string") entry.language = o.language;
+  if (typeof o.gender === "string") entry.gender = o.gender;
+  return entry;
 }

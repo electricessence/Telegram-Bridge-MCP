@@ -27,6 +27,8 @@ interface McpConfig {
 export interface VoiceEntry {
   name: string;
   description?: string;
+  language?: string;
+  gender?: string;
 }
 
 // ---------------------------------------------------------------------------

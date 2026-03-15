@@ -279,9 +279,6 @@ function handleShutdownCommand(): void {
 // /voice panel
 // ---------------------------------------------------------------------------
 
-/** Maximum voice buttons per row. */
-const VOICE_BUTTONS_PER_ROW = 3;
-
 /**
  * Resolve available voice names.
  *
@@ -293,9 +290,7 @@ async function resolveVoiceNames(): Promise<VoiceEntry[]> {
   if (configured.length > 0) return configured;
 
   const remote = await fetchVoiceList();
-  if (remote.length > 0) {
-    return remote.map(name => ({ name }));
-  }
+  if (remote.length > 0) return remote;
   return [];
 }
 
@@ -343,6 +338,8 @@ async function handleVoiceCallback(
     try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
     return;
   }
+
+  if (data === "voice:noop") return;
 
   if (data === "voice:clear") {
     setDefaultVoice(null);
@@ -398,6 +395,31 @@ async function sendVoiceSample(
 
 type InlineButton = { text: string; callback_data: string };
 
+/** Display label for a voice entry. */
+function voiceLabel(v: VoiceEntry): string {
+  return v.description ?? v.name;
+}
+
+/** Group key for sorting/sectioning voices. */
+function voiceGroupKey(v: VoiceEntry): string {
+  if (v.language && v.gender) {
+    return `${v.language} ${v.gender}`;
+  }
+  return "other";
+}
+
+/** Human-readable section header for a group key. */
+const LANGUAGE_LABELS: Record<string, string> = {
+  "en-US male": "🇺🇸 American Male",
+  "en-US female": "🇺🇸 American Female",
+  "en-GB male": "🇬🇧 British Male",
+  "en-GB female": "🇬🇧 British Female",
+};
+
+function groupHeader(key: string): string {
+  return LANGUAGE_LABELS[key] ?? key;
+}
+
 async function buildVoicePanel(): Promise<{
   text: string;
   keyboard: InlineButton[][];
@@ -422,28 +444,46 @@ async function buildVoicePanel(): Promise<{
 
   if (voices.length > 0) {
     lines.push("");
-    lines.push("Pick a voice or tap 🎧 to sample:");
+    lines.push("Tap a voice to select, or 🎧 to sample:");
 
-    // Build voice buttons in rows
-    let row: InlineButton[] = [];
+    // Group voices by language/gender
+    const groups = new Map<string, VoiceEntry[]>();
     for (const v of voices) {
-      const isActive = v.name === effective;
-      const label = isActive ? `✓ ${v.name}` : v.name;
-      row.push({ text: label, callback_data: `voice:set:${v.name}` });
-      if (row.length >= VOICE_BUTTONS_PER_ROW) {
-        keyboard.push(row);
-        row = [];
-      }
+      const key = voiceGroupKey(v);
+      const arr = groups.get(key) ?? [];
+      arr.push(v);
+      groups.set(key, arr);
     }
-    if (row.length > 0) keyboard.push(row);
 
-    // Sample row — pick first few for quick sampling
-    const sampleVoices = voices.slice(0, 4);
-    const sampleRow: InlineButton[] = sampleVoices.map(v => ({
-      text: `🎧 ${v.name}`,
-      callback_data: `voice:sample:${v.name}`,
-    }));
-    keyboard.push(sampleRow);
+    for (const [key, members] of groups) {
+      // Section header button (inert)
+      keyboard.push([{
+        text: groupHeader(key),
+        callback_data: "voice:noop",
+      }]);
+
+      // Voice buttons + sample buttons in pairs
+      let row: InlineButton[] = [];
+      for (const v of members) {
+        const isActive = v.name === effective;
+        const label = isActive
+          ? `✓ ${voiceLabel(v)}`
+          : voiceLabel(v);
+        row.push({
+          text: label,
+          callback_data: `voice:set:${v.name}`,
+        });
+        row.push({
+          text: "🎧",
+          callback_data: `voice:sample:${v.name}`,
+        });
+        if (row.length >= 4) {
+          keyboard.push(row);
+          row = [];
+        }
+      }
+      if (row.length > 0) keyboard.push(row);
+    }
   } else {
     lines.push("");
     lines.push(
