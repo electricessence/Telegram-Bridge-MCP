@@ -177,16 +177,22 @@ async function synthesizeLocalToOgg(text: string): Promise<Buffer> {
 // HTTP provider (TTS_HOST or OPENAI_API_KEY)
 // ---------------------------------------------------------------------------
 
-async function synthesizeHttpToOgg(text: string, host: string, apiKey: string | null): Promise<Buffer> {
+async function synthesizeHttpToOgg(
+  text: string,
+  host: string,
+  apiKey: string | null,
+  voice?: string,
+): Promise<Buffer> {
   const model = process.env.TTS_MODEL;
-  const voice = process.env.TTS_VOICE;
+  const envVoice = process.env.TTS_VOICE;
   const fmt = (process.env.TTS_FORMAT ?? "wav").toLowerCase();
   const nativeOgg = fmt === "opus" || fmt === "ogg";
 
   // Apply OpenAI defaults only when using the OpenAI endpoint
   const isOpenAi = host.includes("api.openai.com");
   const resolvedModel = model ?? (isOpenAi ? "tts-1" : undefined);
-  const resolvedVoice = voice ?? (isOpenAi ? "alloy" : undefined);
+  const resolvedVoice =
+    voice ?? envVoice ?? (isOpenAi ? "alloy" : undefined);
 
   const body: Record<string, string> = { input: text, response_format: nativeOgg ? fmt : "wav" };
   if (resolvedModel) body.model = resolvedModel;
@@ -252,14 +258,99 @@ function validateTtsInput(text: string): void {
  *
  * @throws If no provider is configured, input is empty/oversized, or synthesis fails.
  */
-export async function synthesizeToOgg(text: string): Promise<Buffer> {
+export async function synthesizeToOgg(
+  text: string,
+  voice?: string,
+): Promise<Buffer> {
   validateTtsInput(text);
 
   const ttsHost = process.env.TTS_HOST?.replace(RE_TRAILING_SLASH, "");
-  if (ttsHost) return synthesizeHttpToOgg(text, ttsHost, process.env.OPENAI_API_KEY ?? null);
+  if (ttsHost) return synthesizeHttpToOgg(text, ttsHost, process.env.OPENAI_API_KEY ?? null, voice);
 
   const apiKey = process.env.OPENAI_API_KEY;
-  if (apiKey) return synthesizeHttpToOgg(text, "https://api.openai.com", apiKey);
+  if (apiKey) return synthesizeHttpToOgg(text, "https://api.openai.com", apiKey, voice);
 
   return synthesizeLocalToOgg(text);
+}
+
+// ---------------------------------------------------------------------------
+// Voice listing
+// ---------------------------------------------------------------------------
+
+/**
+ * Attempts to fetch available voices from the TTS server.
+ *
+ * Tries `GET {TTS_HOST}/v1/audio/voices` first (common for
+ * Kokoro and similar OpenAI-compatible servers). Falls back to
+ * `TTS_VOICES_URL` env var if the default endpoint fails.
+ *
+ * Returns an array of voice name strings, or an empty array
+ * if no listing is available.
+ */
+export async function fetchVoiceList(): Promise<string[]> {
+  const ttsHost = process.env.TTS_HOST?.replace(RE_TRAILING_SLASH, "");
+  if (!ttsHost) return [];
+
+  const voicesUrl =
+    process.env.TTS_VOICES_URL ?? `${ttsHost}/v1/audio/voices`;
+
+  try {
+    const res = await fetch(voicesUrl, {
+      method: "GET",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+
+    const body: unknown = await res.json();
+    return parseVoiceListResponse(body);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Extracts voice names from various API response shapes.
+ *
+ * Handles:
+ *   - `{ voices: [{ name: "..." }, ...] }` (common OpenAI-compatible)
+ *   - `{ voices: ["name", ...] }` (simple list)
+ *   - `["name", ...]` (bare array)
+ *   - `{ data: [{ id: "..." }, ...] }` (OpenAI models-style)
+ */
+function parseVoiceListResponse(body: unknown): string[] {
+  if (Array.isArray(body)) {
+    return body.filter((v): v is string => typeof v === "string");
+  }
+  if (typeof body !== "object" || body === null) return [];
+
+  const obj = body as Record<string, unknown>;
+
+  if (Array.isArray(obj.voices)) {
+    return obj.voices
+      .map((v: unknown) => {
+        if (typeof v === "string") return v;
+        if (typeof v === "object" && v !== null) {
+          const o = v as Record<string, unknown>;
+          if (typeof o.name === "string") return o.name;
+          if (typeof o.id === "string") return o.id;
+        }
+        return null;
+      })
+      .filter((v): v is string => v !== null);
+  }
+
+  if (Array.isArray(obj.data)) {
+    return obj.data
+      .map((v: unknown) => {
+        if (typeof v === "object" && v !== null) {
+          const o = v as Record<string, unknown>;
+          if (typeof o.id === "string") return o.id;
+          if (typeof o.name === "string") return o.name;
+        }
+        return null;
+      })
+      .filter((v): v is string => v !== null);
+  }
+
+  return [];
 }

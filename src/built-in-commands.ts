@@ -18,6 +18,9 @@ import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { clearCommandsOnShutdown } from "./shutdown.js";
 import { stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
 import { getSessionLogMode, setSessionLogMode, sessionLogLabel } from "./config.js";
+import { getDefaultVoice, setDefaultVoice, getConfiguredVoices } from "./config.js";
+import type { VoiceEntry } from "./config.js";
+import { fetchVoiceList, isTtsEnabled } from "./tts.js";
 
 const require = createRequire(import.meta.url);
 const { version: MCP_VERSION } = require("../package.json") as { version: string };
@@ -40,7 +43,7 @@ import { dumpTimeline, dumpTimelineSince, timelineSize, storeSize, setOnEvent } 
 // ---------------------------------------------------------------------------
 
 /** Maps from message_id → panel type so we can route callback_queries back to us. */
-const _activePanels = new Map<number, "session">();
+const _activePanels = new Map<number, "session" | "voice">();
 
 /** Set to true after sending the startup prefs prompt so we only ask once per process. */
 let _sessionPrefsAsked = false;
@@ -129,6 +132,7 @@ export function sendSessionPrefsPrompt(): void {
 /** Built-in command metadata (for merging into set_commands menus). */
 export const BUILT_IN_COMMANDS = [
   { command: "session", description: "Session recording controls" },
+  { command: "voice", description: "Change the TTS voice" },
   { command: "version", description: "Show server version and build info" },
   { command: "shutdown", description: "Shut down the MCP server" },
 ] as const;
@@ -161,7 +165,7 @@ export function isInternalTimelineEvent(evt: Omit<TimelineEvent, "_update">): bo
     return _builtInCommandNames.has(evt.content.text ?? "");
   }
   if (evt.event === "callback" && typeof evt.content.data === "string") {
-    return evt.content.data.startsWith("session:");
+    return evt.content.data.startsWith("session:") || evt.content.data.startsWith("voice:");
   }
   return false;
 }
@@ -192,6 +196,10 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
         await handleSessionCommand();
         return true;
       }
+      if (raw === "voice") {
+        await handleVoiceCommand();
+        return true;
+      }
       if (raw === "version") {
         await handleVersionCommand();
         return true;
@@ -207,7 +215,16 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
   if (update.callback_query) {
     const msgId = update.callback_query.message?.message_id;
     if (msgId !== undefined && _activePanels.has(msgId)) {
-      await handleSessionCallback(update.callback_query.id, msgId, update.callback_query.data ?? "");
+      const panelType = _activePanels.get(msgId);
+      if (panelType === "voice") {
+        await handleVoiceCallback(
+          update.callback_query.id,
+          msgId,
+          update.callback_query.data ?? "",
+        );
+      } else {
+        await handleSessionCallback(update.callback_query.id, msgId, update.callback_query.data ?? "");
+      }
       return true;
     }
   }
@@ -256,6 +273,198 @@ function handleShutdownCommand(): void {
   const timeout = new Promise<void>((r) => setTimeout(r, 10000));
   void Promise.race([shutdownSequence, timeout])
     .finally(() => clearCommandsOnShutdown().finally(() => process.exit(0)));
+}
+
+// ---------------------------------------------------------------------------
+// /voice panel
+// ---------------------------------------------------------------------------
+
+/** Maximum voice buttons per row. */
+const VOICE_BUTTONS_PER_ROW = 3;
+
+/**
+ * Resolve available voice names.
+ *
+ * Priority: configured voices in mcp-config.json → remote fetch from TTS
+ * server → empty (TTS not available or no listing endpoint).
+ */
+async function resolveVoiceNames(): Promise<VoiceEntry[]> {
+  const configured = getConfiguredVoices();
+  if (configured.length > 0) return configured;
+
+  const remote = await fetchVoiceList();
+  if (remote.length > 0) {
+    return remote.map(name => ({ name }));
+  }
+  return [];
+}
+
+async function handleVoiceCommand(): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  const api = getApi();
+
+  if (!isTtsEnabled()) {
+    try {
+      const msg = await api.sendMessage(
+        chatId,
+        "🔇 TTS is not configured. Set `TTS_HOST` or `OPENAI_API_KEY` to enable voice.",
+        { parse_mode: "Markdown" },
+      );
+      markInternalMessage(msg.message_id);
+    } catch { /* ignore */ }
+    return;
+  }
+
+  const { text, keyboard } = await buildVoicePanel();
+  try {
+    const msg = await api.sendMessage(chatId, text, {
+      parse_mode: "Markdown",
+      reply_markup: { inline_keyboard: keyboard },
+    });
+    _activePanels.set(msg.message_id, "voice");
+    markInternalMessage(msg.message_id);
+  } catch { /* ignore */ }
+}
+
+async function handleVoiceCallback(
+  callbackQueryId: string,
+  panelMsgId: number,
+  data: string,
+): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  const api = getApi();
+
+  try { await api.answerCallbackQuery(callbackQueryId); } catch { /* ignore */ }
+
+  if (data === "voice:dismiss") {
+    _activePanels.delete(panelMsgId);
+    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+    return;
+  }
+
+  if (data === "voice:clear") {
+    setDefaultVoice(null);
+  } else if (data.startsWith("voice:set:")) {
+    const voiceName = data.slice("voice:set:".length);
+    setDefaultVoice(voiceName);
+  } else if (data.startsWith("voice:sample:")) {
+    const voiceName = data.slice("voice:sample:".length);
+    await sendVoiceSample(chatId, voiceName, panelMsgId);
+    return; // Don't refresh the panel for a sample
+  }
+
+  // Refresh panel with new state
+  const { text, keyboard } = await buildVoicePanel();
+  try {
+    await api.editMessageText(chatId, panelMsgId, text, {
+      parse_mode: "Markdown",
+      reply_markup: { inline_keyboard: keyboard },
+    });
+  } catch { /* ignore */ }
+}
+
+async function sendVoiceSample(
+  chatId: number,
+  voiceName: string,
+  _panelMsgId: number,
+): Promise<void> {
+  const { synthesizeToOgg: synthOgg } = await import("./tts.js");
+  const sampleText =
+    `Hi, this is a sample of the ${voiceName} voice. ` +
+    "Hopefully it sounds good to you!";
+  try {
+    const ogg = await synthOgg(sampleText, voiceName);
+    const { sendVoiceDirect: sendVoice } = await import("./telegram.js");
+    const msg = await sendVoice(chatId, ogg, {
+      caption: `🎧 Voice sample: ${voiceName}`,
+      disable_notification: true,
+    });
+    markInternalMessage(msg.message_id);
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    try {
+      const api = getApi();
+      const msg = await api.sendMessage(
+        chatId,
+        `⚠️ Failed to generate sample for \`${voiceName}\`: ${errMsg}`,
+        { parse_mode: "Markdown" },
+      );
+      markInternalMessage(msg.message_id);
+    } catch { /* ignore */ }
+  }
+}
+
+type InlineButton = { text: string; callback_data: string };
+
+async function buildVoicePanel(): Promise<{
+  text: string;
+  keyboard: InlineButton[][];
+}> {
+  const currentVoice = getDefaultVoice();
+  const envVoice = process.env.TTS_VOICE;
+  const effective = currentVoice ?? envVoice ?? "(provider default)";
+
+  const lines = [
+    "🎙 *Voice Selection*",
+    "",
+    `*Current:* \`${effective}\``,
+  ];
+  if (currentVoice) {
+    lines.push(`*Source:* config override`);
+  } else if (envVoice) {
+    lines.push(`*Source:* TTS\\_VOICE env var`);
+  }
+
+  const voices = await resolveVoiceNames();
+  const keyboard: InlineButton[][] = [];
+
+  if (voices.length > 0) {
+    lines.push("");
+    lines.push("Pick a voice or tap 🎧 to sample:");
+
+    // Build voice buttons in rows
+    let row: InlineButton[] = [];
+    for (const v of voices) {
+      const isActive = v.name === effective;
+      const label = isActive ? `✓ ${v.name}` : v.name;
+      row.push({ text: label, callback_data: `voice:set:${v.name}` });
+      if (row.length >= VOICE_BUTTONS_PER_ROW) {
+        keyboard.push(row);
+        row = [];
+      }
+    }
+    if (row.length > 0) keyboard.push(row);
+
+    // Sample row — pick first few for quick sampling
+    const sampleVoices = voices.slice(0, 4);
+    const sampleRow: InlineButton[] = sampleVoices.map(v => ({
+      text: `🎧 ${v.name}`,
+      callback_data: `voice:sample:${v.name}`,
+    }));
+    keyboard.push(sampleRow);
+  } else {
+    lines.push("");
+    lines.push(
+      "_No voice menu available. " +
+      "Add a `voices` array to `mcp-config.json` " +
+      "or set `TTS\\_VOICES\\_URL`._"
+    );
+  }
+
+  // Action row
+  const actionRow: InlineButton[] = [];
+  if (currentVoice) {
+    actionRow.push({
+      text: "↩ Reset to default",
+      callback_data: "voice:clear",
+    });
+  }
+  actionRow.push({ text: "✖ Dismiss", callback_data: "voice:dismiss" });
+  keyboard.push(actionRow);
+
+  return { text: lines.join("\n"), keyboard };
 }
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,10 @@
 ## Added
 
 - Added optional `caption` parameter to `send_text_as_voice` — shown as text below the voice note in Telegram. When a topic is set, it is automatically prepended to the caption.
+- Added optional `voice` parameter to `send_text_as_voice` — overrides the default voice for that specific call. Resolution order: explicit param → config `defaultVoice` → `TTS_VOICE` env var → provider default.
+- Added `/voice` built-in slash command — interactive panel to browse, sample, and set the default TTS voice from Telegram
+- Added `defaultVoice` and `voices` fields to `mcp-config.json` schema for persistent voice configuration
+- Added `fetchVoiceList()` to tts.ts — queries `{TTS_HOST}/v1/audio/voices` or `TTS_VOICES_URL` for available voices
 - Added `mcp-config.example.json` as a reference config template
 - Added async wait etiquette section to `telegram-communication.instructions.md`
 - Added `update_checklist` tool for editing existing checklists in-place (split from `send_new_checklist`)
