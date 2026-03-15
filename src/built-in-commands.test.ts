@@ -257,12 +257,12 @@ describe("built-in-commands", () => {
 
     it("session:dump dumps and deletes panel", async () => {
       const panelId = await createPanel();
-      mocks.dumpTimeline.mockReturnValue([]);
       await handleIfBuiltIn(callbackUpdate(panelId, "session:dump"));
       // Panel deleted
       expect(mocks.deleteMessage).toHaveBeenCalledWith(123, panelId);
-      // Empty dump sends a message
-      expect(mocks.sendMessage).toHaveBeenCalledWith(
+      // Empty incremental dump is silent — no "no events" message, no document sent
+      expect(mocks.sendDocument).not.toHaveBeenCalled();
+      expect(mocks.sendMessage).not.toHaveBeenCalledWith(
         123,
         expect.stringContaining("no events captured"),
         expect.any(Object),

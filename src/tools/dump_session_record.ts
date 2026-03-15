@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, resolveChat, toError } from "../telegram.js";
 import { dumpTimeline, timelineSize, storeSize } from "../message-store.js";
 import { getSessionLogMode } from "../config.js";
+import { advanceDumpCursor } from "../built-in-commands.js";
 
 const DESCRIPTION =
   "Snapshots the conversation timeline as a JSON file and sends it to the Telegram chat " +
@@ -68,6 +69,8 @@ export function register(server: McpServer) {
         const msg = await api.sendDocument(chatId, file, {
           caption: label,
         }) as { message_id: number; document?: { file_id?: string } };
+
+        advanceDumpCursor();
 
         const fileId = msg.document?.file_id;
 

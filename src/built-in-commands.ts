@@ -53,6 +53,11 @@ let _eventsSinceLastDump = 0;
 let _dumpInFlight = false;
 let _dumpCursor = 0;
 
+/** Advance the dump cursor to the current end of timeline. Call after any external dump to prevent redundant re-dumps. */
+export function advanceDumpCursor(): void {
+  _dumpCursor = timelineSize();
+}
+
 /** Configure auto-dump: fire every `threshold` events (null to disable). */
 export function setAutoDumpThreshold(threshold: number | null): void {
   _autoDumpThreshold = threshold;
@@ -208,8 +213,8 @@ function handleShutdownCommand(): void {
     // Drain any updates received since the last poll iteration
     await drainPendingUpdates();
     // Dump session log before shutting down (if not disabled)
-    if (getSessionLogMode() !== null && timelineSize() > 0) {
-      try { await doTimelineDump(); } catch { /* best effort */ }
+    if (getSessionLogMode() !== null) {
+      try { await doTimelineDump(true); } catch { /* best effort */ }
     }
     await sendServiceMessage("⛔️ Shutting down…").catch(() => {});
   })();
@@ -288,7 +293,7 @@ async function handleSessionCallback(
   } else if (data === "session:dump") {
     _activePanels.delete(panelMsgId);
     try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
-    await doTimelineDump();
+    await doTimelineDump(true);
     return;
   }
 
@@ -330,11 +335,13 @@ export async function doTimelineDump(incremental = false): Promise<void> {
   }
 
   if (timeline.length === 0) {
-    try {
-      await api.sendMessage(chatId, "📼 *Session Log*\n_(no events captured)_", {
-        parse_mode: "Markdown",
-      });
-    } catch { /* ignore */ }
+    if (!incremental) {
+      try {
+        await api.sendMessage(chatId, "📼 *Session Log*\n_(no events captured)_", {
+          parse_mode: "Markdown",
+        });
+      } catch { /* ignore */ }
+    }
     return;
   }
 
