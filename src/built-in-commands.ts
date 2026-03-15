@@ -388,7 +388,7 @@ async function sendVoiceSample(
       disable_notification: true,
       reply_markup: {
         inline_keyboard: [[{
-          text: `✓ Use ${displayName}`,
+          text: `🎧 Use ${displayName} voice`,
           callback_data: `voice:set:${voiceName}`,
         }]],
       },
