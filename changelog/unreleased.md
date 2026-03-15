@@ -1,5 +1,9 @@
 # [Unreleased]
 
+## Fixed
+
+- Fixed confirm/choose buttons staying forever after timeout when user sends a text message (#27)
+
 ## Changed
 
 - Replaced VS Code-specific language with client-agnostic terms across README, LOOP-PROMPT, docs, tool descriptions, and pairing wizard output
