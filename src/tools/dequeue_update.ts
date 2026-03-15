@@ -65,7 +65,7 @@ export function register(server: McpServer) {
 
       // Block until something arrives or timeout expires
       const deadline = Date.now() + timeout * 1000;
-      const abortPromise = new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => r(), { once: true }); });
+      const abortPromise = new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => { r(); }, { once: true }); });
       while (Date.now() < deadline) {
         if (signal.aborted) break;
         const remaining = deadline - Date.now();
