@@ -65,6 +65,7 @@
 - Fixed trailing whitespace on blank line 69 in `send_new_progress.test.ts`
 - Fixed `message_id` schema in `update_checklist` and `get_message` missing `.min(1)` — invalid IDs now rejected at schema level
 - Fixed `get_agent_guide` throwing synchronously when `docs/behavior.md` is absent — now returns a structured `GUIDE_NOT_FOUND` error
+- Fixed `percent` schema in `send_new_progress` and `update_progress` accepting floats — added `.int()` to constrain to whole numbers (matches the `Math.round` rendering behavior)
 - Updated `ask` tool `DESCRIPTION` to document all possible return shapes (text, voice, command, timed\_out, aborted)
 - Derived `StepStatus` union type from the Zod status enum in `send_new_checklist.ts` — `STATUS_ICON` and `renderStatus` now use the typed union instead of `string`, making invalid statuses a compile-time error
 

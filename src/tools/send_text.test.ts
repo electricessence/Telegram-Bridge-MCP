@@ -4,6 +4,7 @@ import { createMockServer, parseResult, isError, errorCode } from "./test-utils.
 const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   applyTopicToText: vi.fn((t: string) => t),
+  splitMessage: vi.fn((text: string) => [text]),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -12,6 +13,7 @@ vi.mock("../telegram.js", async (importActual) => {
     ...actual,
     getApi: () => ({ sendMessage: mocks.sendMessage }),
     resolveChat: () => 42,
+    splitMessage: mocks.splitMessage,
   };
 });
 
@@ -29,6 +31,7 @@ describe("send_text tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.sendMessage.mockResolvedValue(BASE_MSG);
+    mocks.splitMessage.mockImplementation((text: string) => [text]);
     const server = createMockServer();
     register(server);
     call = server.getHandler("send_text");
@@ -118,5 +121,22 @@ describe("send_text tool", () => {
     );
     const result = await call({ text: "fail" });
     expect(isError(result)).toBe(true);
+  });
+
+  it("sends multiple messages for split text and returns message_ids with split_count", async () => {
+    mocks.splitMessage.mockReturnValue(["chunk1", "chunk2"]);
+    mocks.sendMessage
+      .mockResolvedValueOnce({ ...BASE_MSG, message_id: 10 })
+      .mockResolvedValueOnce({ ...BASE_MSG, message_id: 11 });
+    const result = await call({ text: "long text", reply_to_message_id: 3 });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.message_ids).toEqual([10, 11]);
+    expect(data.split_count).toBe(2);
+    expect(data.split).toBe(true);
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(2);
+    // reply_parameters only on first chunk
+    expect(mocks.sendMessage.mock.calls[0][2]).toMatchObject({ reply_parameters: { message_id: 3 } });
+    expect((mocks.sendMessage.mock.calls[1][2] as Record<string, unknown>).reply_parameters).toBeUndefined();
   });
 });

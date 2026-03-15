@@ -24,6 +24,7 @@ export function register(server: McpServer) {
           .describe("ID of the progress bar message to update"),
         percent: z
           .number()
+          .int()
           .min(0)
           .max(100)
           .describe("Progress percentage (0–100)"),
