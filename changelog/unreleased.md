@@ -78,4 +78,3 @@
 ## Removed
 
 - Removed `mcp-config.json` from version control (now gitignored; copy from `mcp-config.example.json`)
-
