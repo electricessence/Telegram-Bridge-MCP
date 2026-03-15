@@ -341,19 +341,27 @@ async function handleVoiceCallback(
 
   if (data === "voice:noop") return;
 
-  if (data === "voice:clear") {
-    setDefaultVoice(null);
+  // Mode navigation
+  let mode: VoicePanelMode = "main";
+  if (data === "voice:mode:sample") {
+    mode = "sample";
+  } else if (data === "voice:mode:choose") {
+    mode = "choose";
+  } else if (data === "voice:mode:main" || data === "voice:clear") {
+    if (data === "voice:clear") setDefaultVoice(null);
+    mode = "main";
   } else if (data.startsWith("voice:set:")) {
     const voiceName = data.slice("voice:set:".length);
     setDefaultVoice(voiceName);
+    mode = "main"; // Return to main after choosing
   } else if (data.startsWith("voice:sample:")) {
     const voiceName = data.slice("voice:sample:".length);
-    await sendVoiceSample(chatId, voiceName, panelMsgId);
-    return; // Don't refresh the panel for a sample
+    await sendVoiceSample(chatId, voiceName);
+    mode = "sample"; // Stay in sample mode
   }
 
-  // Refresh panel with new state
-  const { text, keyboard } = await buildVoicePanel();
+  // Refresh panel
+  const { text, keyboard } = await buildVoicePanel(mode);
   try {
     await api.editMessageText(chatId, panelMsgId, text, {
       parse_mode: "Markdown",
@@ -365,7 +373,6 @@ async function handleVoiceCallback(
 async function sendVoiceSample(
   chatId: number,
   voiceName: string,
-  _panelMsgId: number,
 ): Promise<void> {
   const { synthesizeToOgg: synthOgg } = await import("./tts.js");
   const sampleText =
@@ -420,7 +427,11 @@ function groupHeader(key: string): string {
   return LANGUAGE_LABELS[key] ?? key;
 }
 
-async function buildVoicePanel(): Promise<{
+type VoicePanelMode = "main" | "sample" | "choose";
+
+async function buildVoicePanel(
+  mode: VoicePanelMode = "main",
+): Promise<{
   text: string;
   keyboard: InlineButton[][];
 }> {
@@ -442,69 +453,114 @@ async function buildVoicePanel(): Promise<{
   const voices = await resolveVoiceNames();
   const keyboard: InlineButton[][] = [];
 
-  if (voices.length > 0) {
-    lines.push("");
-    lines.push("Tap a voice to select, or 🎧 to sample:");
-
-    // Group voices by language/gender
-    const groups = new Map<string, VoiceEntry[]>();
-    for (const v of voices) {
-      const key = voiceGroupKey(v);
-      const arr = groups.get(key) ?? [];
-      arr.push(v);
-      groups.set(key, arr);
+  if (mode === "main") {
+    // Main menu — show Sample / Choose buttons
+    if (voices.length > 0) {
+      lines.push("");
+      lines.push(
+        `${voices.length} voices available.`
+      );
+      keyboard.push([
+        {
+          text: "🎧 Sample",
+          callback_data: "voice:mode:sample",
+        },
+        {
+          text: "✓ Choose",
+          callback_data: "voice:mode:choose",
+        },
+      ]);
+    } else {
+      lines.push("");
+      lines.push(
+        "_No voices available. " +
+        "Add a `voices` array to `mcp-config.json` " +
+        "or set `TTS\\_VOICES\\_URL`._"
+      );
     }
 
-    for (const [key, members] of groups) {
-      // Section header button (inert)
+    // Action row
+    const actionRow: InlineButton[] = [];
+    if (currentVoice) {
+      actionRow.push({
+        text: "↩ Reset to default",
+        callback_data: "voice:clear",
+      });
+    }
+    actionRow.push({
+      text: "✖ Dismiss",
+      callback_data: "voice:dismiss",
+    });
+    keyboard.push(actionRow);
+  } else {
+    // Sample or Choose submenu — show grouped voice list
+    const isSample = mode === "sample";
+    const prefix = isSample ? "voice:sample:" : "voice:set:";
+    lines.push("");
+    lines.push(
+      isSample
+        ? "Tap a voice to hear a sample:"
+        : "Tap a voice to set as default:"
+    );
+
+    buildGroupedVoiceButtons(
+      voices, keyboard, prefix, effective,
+    );
+
+    // Back + dismiss row
+    keyboard.push([
+      { text: "↩ Back", callback_data: "voice:mode:main" },
+      { text: "✖ Dismiss", callback_data: "voice:dismiss" },
+    ]);
+  }
+
+  return { text: lines.join("\n"), keyboard };
+}
+
+/** Build grouped voice buttons into the keyboard array. */
+function buildGroupedVoiceButtons(
+  voices: VoiceEntry[],
+  keyboard: InlineButton[][],
+  callbackPrefix: string,
+  effective: string,
+): void {
+  const groups = new Map<string, VoiceEntry[]>();
+  for (const v of voices) {
+    const key = voiceGroupKey(v);
+    const arr = groups.get(key) ?? [];
+    arr.push(v);
+    groups.set(key, arr);
+  }
+
+  const hasGroups = groups.size > 1
+    || (groups.size === 1 && !groups.has("other"));
+
+  for (const [key, members] of groups) {
+    if (hasGroups) {
       keyboard.push([{
         text: groupHeader(key),
         callback_data: "voice:noop",
       }]);
-
-      // Voice buttons + sample buttons in pairs
-      let row: InlineButton[] = [];
-      for (const v of members) {
-        const isActive = v.name === effective;
-        const label = isActive
-          ? `✓ ${voiceLabel(v)}`
-          : voiceLabel(v);
-        row.push({
-          text: label,
-          callback_data: `voice:set:${v.name}`,
-        });
-        row.push({
-          text: "🎧",
-          callback_data: `voice:sample:${v.name}`,
-        });
-        if (row.length >= 4) {
-          keyboard.push(row);
-          row = [];
-        }
-      }
-      if (row.length > 0) keyboard.push(row);
     }
-  } else {
-    lines.push("");
-    lines.push(
-      "_No voice menu available. " +
-      "Add a `voices` array to `mcp-config.json` " +
-      "or set `TTS\\_VOICES\\_URL`._"
-    );
-  }
 
-  // Action row
-  const actionRow: InlineButton[] = [];
-  if (currentVoice) {
-    actionRow.push({
-      text: "↩ Reset to default",
-      callback_data: "voice:clear",
-    });
+    const buttonsPerRow = 3;
+    let row: InlineButton[] = [];
+    for (const v of members) {
+      const isActive = v.name === effective;
+      const label = isActive
+        ? `✓ ${voiceLabel(v)}`
+        : voiceLabel(v);
+      row.push({
+        text: label,
+        callback_data: `${callbackPrefix}${v.name}`,
+      });
+      if (row.length >= buttonsPerRow) {
+        keyboard.push(row);
+        row = [];
+      }
+    }
+    if (row.length > 0) keyboard.push(row);
   }
-  actionRow.push({ text: "✖ Dismiss", callback_data: "voice:dismiss" });
-  keyboard.push(actionRow);
-
-  return { text: lines.join("\n"), keyboard };
 }
 
 // ---------------------------------------------------------------------------
