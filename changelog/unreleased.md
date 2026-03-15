@@ -6,6 +6,7 @@
 
 ## Changed
 
+- Improved `/voice` panel empty-state hint to mention built-in fallback and link to Kokoro setup
 - Replaced VS Code-specific language with client-agnostic terms across README, LOOP-PROMPT, docs, tool descriptions, and pairing wizard output
 
 ## Added
