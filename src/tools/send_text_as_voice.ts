@@ -58,7 +58,7 @@ export function register(server: McpServer) {
         if (message_ids.length === 1) {
           return toResult({ message_id: message_ids[0], voice: true });
         }
-        return toResult({ message_ids, chunks: message_ids.length, split: true, voice: true });
+        return toResult({ message_ids, split_count: message_ids.length, split: true, voice: true });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("user restricted receiving of voice note messages")) {

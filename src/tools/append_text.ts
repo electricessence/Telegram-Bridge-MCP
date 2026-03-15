@@ -34,11 +34,13 @@ export function register(server: McpServer) {
 
       // Read current text from the store
       const current = getMessage(message_id, CURRENT);
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (current && current.content.type != null && current.content.type !== "text") {
+      if (!current) {
+        return toError({ code: "MESSAGE_NOT_FOUND" as const, message: `No stored message found for ID ${message_id}.` });
+      }
+      if (current.content.type !== "text") {
         return toError({ code: "MESSAGE_NOT_TEXT" as const, message: "append_text only supports text messages." });
       }
-      const currentText = current?.content.text ?? "";
+      const currentText = current.content.text ?? "";
 
       // Concatenate
       const accumulated = currentText

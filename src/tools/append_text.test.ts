@@ -35,7 +35,7 @@ describe("append_text tool", () => {
   });
 
   it("appends text to existing message with default newline separator", async () => {
-    mocks.getMessage.mockReturnValue({ content: { text: "Line 1" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "Line 1" } });
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     const result = await call({ message_id: 10, text: "Line 2" });
     expect(isError(result)).toBe(false);
@@ -45,7 +45,7 @@ describe("append_text tool", () => {
   });
 
   it("passes accumulated text to editMessageText", async () => {
-    mocks.getMessage.mockReturnValue({ content: { text: "Hello" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "Hello" } });
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     await call({ message_id: 10, text: " World" });
     // The text passed to editMessageText will be MarkdownV2-resolved
@@ -58,7 +58,7 @@ describe("append_text tool", () => {
   });
 
   it("uses custom separator", async () => {
-    mocks.getMessage.mockReturnValue({ content: { text: "A" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "A" } });
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     const result = await call({ message_id: 10, text: "B", separator: " | " });
     const data = parseResult(result);
@@ -66,7 +66,7 @@ describe("append_text tool", () => {
   });
 
   it("handles empty current text (first append)", async () => {
-    mocks.getMessage.mockReturnValue({ content: {} });
+    mocks.getMessage.mockReturnValue({ content: { type: "text" } });
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     const result = await call({ message_id: 10, text: "First chunk" });
     expect(isError(result)).toBe(false);
@@ -74,17 +74,15 @@ describe("append_text tool", () => {
     expect(data.length).toBe("First chunk".length);
   });
 
-  it("handles missing message gracefully (appends to empty)", async () => {
+  it("returns MESSAGE_NOT_FOUND when message is not in store", async () => {
     mocks.getMessage.mockReturnValue(undefined);
-    mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     const result = await call({ message_id: 10, text: "Fresh" });
-    expect(isError(result)).toBe(false);
-    const data = parseResult(result);
-    expect(data.length).toBe("Fresh".length);
+    expect(isError(result)).toBe(true);
+    expect(result.content[0].text).toContain("MESSAGE_NOT_FOUND");
   });
 
   it("calls recordOutgoingEdit with accumulated text", async () => {
-    mocks.getMessage.mockReturnValue({ content: { text: "X" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "X" } });
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     await call({ message_id: 10, text: "Y" });
     expect(mocks.recordOutgoingEdit).toHaveBeenCalledWith(10, "text", "X\nY");
@@ -92,7 +90,7 @@ describe("append_text tool", () => {
 
   it("returns error on API failure", async () => {
     const { GrammyError } = await import("grammy");
-    mocks.getMessage.mockReturnValue({ content: { text: "Old" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "Old" } });
     mocks.editMessageText.mockRejectedValue(
       new GrammyError("e", { ok: false, error_code: 400, description: "Bad Request: message is not modified" }, "editMessageText", {}),
     );
@@ -101,7 +99,7 @@ describe("append_text tool", () => {
   });
 
   it("handles boolean result from editMessageText", async () => {
-    mocks.getMessage.mockReturnValue({ content: { text: "Inline" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "Inline" } });
     mocks.editMessageText.mockResolvedValue(true);
     const result = await call({ message_id: 10, text: "More" });
     expect(isError(result)).toBe(false);
@@ -111,7 +109,7 @@ describe("append_text tool", () => {
   });
 
   it("uses MarkdownV2 parse mode by default", async () => {
-    mocks.getMessage.mockReturnValue({ content: { text: "Text" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "Text" } });
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     await call({ message_id: 10, text: "more" });
     expect(mocks.editMessageText).toHaveBeenCalledWith(
@@ -123,7 +121,7 @@ describe("append_text tool", () => {
   });
 
   it("passes HTML parse_mode when specified", async () => {
-    mocks.getMessage.mockReturnValue({ content: { text: "Text" } });
+    mocks.getMessage.mockReturnValue({ content: { type: "text", text: "Text" } });
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     await call({ message_id: 10, text: "more", parse_mode: "HTML" });
     expect(mocks.editMessageText).toHaveBeenCalledWith(

@@ -73,7 +73,7 @@ export function register(server: McpServer) {
         if (message_ids.length === 1) {
           return toResult({ message_id: message_ids[0] });
         }
-        return toResult({ message_ids, chunks: message_ids.length, split: true });
+        return toResult({ message_ids, split_count: message_ids.length, split: true });
       } catch (err) {
         return toError(err);
       }

@@ -87,8 +87,12 @@ function _clearSlot(fireRestore: boolean): void {
   if (fireRestore) {
     const { chatId, messageId, restoreEmoji } = _slot;
     _slot = null;
-    if (restoreEmoji) void trySetMessageReaction(chatId, messageId, restoreEmoji);
-    // else: no restore target — leave the reaction in place
+    if (restoreEmoji) {
+      void trySetMessageReaction(chatId, messageId, restoreEmoji);
+    } else {
+      // null = remove reaction on restore (consistent with fireTempReactionRestore)
+      void getApi().setMessageReaction(chatId, messageId, []).catch(() => undefined);
+    }
   } else {
     _slot = null;
   }
