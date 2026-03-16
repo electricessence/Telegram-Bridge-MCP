@@ -58,7 +58,7 @@ Things to verify or set up before writing code.
 - [x] **Auth middleware pattern** — per-tool `checkAuth(sid, pin)` via SESSION_AUTH_SCHEMA; bootstrap tools exempt
 - [x] **Message store metadata** — `TimelineEvent.sid` tags outbound messages with session ID
 - [ ] **Tool parameter injection** — prototype adding `sid`/`pin` to all tool schemas
-- [ ] **DM queue design** — how silent DMs are stored and delivered alongside regular dequeue events
+- [ ] **DM queue design** — ~~how silent DMs are stored and delivered alongside regular dequeue events~~ ✅ synthetic `direct_message` events injected directly into target session queue
 - [x] **Routing mode events** — three modes implemented: load_balance (round-robin), cascade (priority), governor (designated)
 - [ ] **Test strategy** — multi-session tests need simulated concurrent tool calls; plan the test harness
 
@@ -89,17 +89,16 @@ Based on the phased plan in [multi-session.md](multi-session.md), here's a more 
 9. ~~Write tests for routing correctness (each mode, reply routing)~~ ✅
 10. ~~`list_sessions` tool — enumerate active sessions~~ ✅
 
-### Phase 3: Direct Messages, Permissions & Muting
+### Phase 3: Direct Messages & Permissions ✅
 
-1. Add DM queue to session objects
-2. Implement `send_direct_message(target_sid, text)` tool
-3. DM authorization flow: `request_dm_access` → operator `confirm` → channel opens
-4. Unidirectional vs bidirectional DM permissions
-5. Self-muting (blocklist/allowlist mode)
-6. Operator force-unmute override
-7. Internal-only control messages (invisible to unrelated sessions)
-8. Ensure "targeted messages override mute" rule is enforced
-9. Write tests for DM delivery, permission flow, mute edge cases
+1. ~~`dm-permissions.ts` — directional permission map (sender→target, operator-gated)~~ ✅
+2. ~~`send_direct_message(target_sid, text)` tool with auth + permission check~~ ✅
+3. ~~`request_dm_access` → operator `confirm` → grants one-way permission~~ ✅
+4. ~~`deliverDirectMessage` in session-queue — inject synthetic event into target queue~~ ✅
+5. ~~`close_session` revokes all DM permissions for the closed session~~ ✅
+6. ~~Write tests for DM delivery, permission flow, access request~~ ✅
+
+> **Muting deferred** — the permission model handles isolation: no permission = no communication. Muting may layer on later if needed.
 
 ### Phase 4: Ambiguity Refinement & Swarm
 

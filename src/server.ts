@@ -41,6 +41,8 @@ import { register as registerCloseSession } from "./tools/close_session.js";
 import { register as registerListSessions } from "./tools/list_sessions.js";
 import { register as registerSendNewProgress } from "./tools/send_new_progress.js";
 import { register as registerUpdateProgress } from "./tools/update_progress.js";
+import { register as registerSendDirectMessage } from "./tools/send_direct_message.js";
+import { register as registerRequestDmAccess } from "./tools/request_dm_access.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -108,6 +110,8 @@ export function createServer(): McpServer {
   registerSessionStart(server);
   registerCloseSession(server);
   registerListSessions(server);
+  registerSendDirectMessage(server);
+  registerRequestDmAccess(server);
   registerDumpSessionRecord(server);
 
   // ── System ─────────────────────────────────────────────────────────────

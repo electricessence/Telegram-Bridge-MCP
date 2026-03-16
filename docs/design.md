@@ -117,6 +117,8 @@ Tools are grouped by abstraction level.
 | `session_start` | Call once at session start. Sends an intro message, checks for pending messages from a previous session, and asks the operator whether to resume or start fresh. Returns `{ sid, pin, sessions_active, action }`. |
 | `close_session` | Close the current session. Requires `sid`/`pin` auth. Removes from active list and cleans up per-session queue and ownership entries. |
 | `list_sessions` | List all active sessions (SID, name, creation time) and the currently active session. No auth required. |
+| `send_direct_message` | Send a direct message to another session (internal only, never appears in Telegram). Requires auth + DM permission from the operator. |
+| `request_dm_access` | Request operator permission to DM another session. Shows a confirmation prompt; on approval, grants one-way sender→target access. |
 | `dump_session_record` | Sends the conversation timeline as a JSON file to the Telegram chat. Returns `{ message_id, event_count, file_id }`. Caption includes the file ID for crash recovery. Accepts optional `limit` (default 100, max 1000). Call only when the operator explicitly requests session history. |
 
 ### Server management
@@ -227,6 +229,8 @@ telegram-bridge-mcp/
 │       ├── session_start.ts
 │       ├── close_session.ts
 │       ├── list_sessions.ts
+│       ├── send_direct_message.ts
+│       ├── request_dm_access.ts
 │       ├── dump_session_record.ts
 │       └── shutdown.ts
 ├── docs/

@@ -11,6 +11,11 @@
 - Added cross-session outbound forwarding — bot messages from one session appear in other sessions' queues
 - Added `routing-mode` module — configurable routing for ambiguous messages (load_balance, cascade, governor)
 - Added `/routing` built-in command — inline panel to view and switch routing mode (load balance / cascade / governor)
+- Added `dm-permissions` module — directional permission map for inter-session DMs (sender→target, operator-gated)
+- Added `send_direct_message` tool — send internal-only messages to another session (requires auth + DM permission)
+- Added `request_dm_access` tool — request operator permission to DM another session via confirmation prompt
+- Added `deliverDirectMessage` in session-queue — synthetic `direct_message` events injected into target queue (negative IDs to avoid collision)
+- `close_session` now revokes all DM permissions for the closed session
 - Added `.npmrc` with `node-linker=hoisted` — flattens `node_modules` for reliable type resolution across transitive deps
 - Added `pnpm patch` files for `@tsdotnet/queue`, `collection-base`, `compare`, `exceptions` — adds `.js` extensions to relative `.d.ts` imports for `moduleResolution: "node16"` compatibility
 

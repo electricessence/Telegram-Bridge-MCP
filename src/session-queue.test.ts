@@ -10,6 +10,7 @@ import {
   routeToSession,
   broadcastOutbound,
   notifySessionWaiters,
+  deliverDirectMessage,
   resetSessionQueuesForTest,
 } from "./session-queue.js";
 import {
@@ -427,6 +428,56 @@ describe("session-queue", () => {
       trackMessageOwner(100, 1);
       removeSessionQueue(99); // doesn't exist
       expect(getMessageOwner(100)).toBe(1); // untouched
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Direct message delivery
+  // -------------------------------------------------------------------------
+
+  describe("deliverDirectMessage", () => {
+    it("delivers a DM to the target session queue", () => {
+      createSessionQueue(1);
+      createSessionQueue(2);
+      const delivered = deliverDirectMessage(1, 2, "hello");
+      expect(delivered).toBe(true);
+
+      const q = getSessionQueue(2);
+      const batch = q?.dequeueBatch() ?? [];
+      expect(batch).toHaveLength(1);
+      expect(batch[0].event).toBe("direct_message");
+      expect(batch[0].content.type).toBe("direct_message");
+      expect(batch[0].content.text).toBe("hello");
+      expect(batch[0].sid).toBe(1);
+    });
+
+    it("returns false when target queue does not exist", () => {
+      createSessionQueue(1);
+      expect(deliverDirectMessage(1, 99, "hi")).toBe(false);
+    });
+
+    it("assigns negative IDs to avoid collision", () => {
+      createSessionQueue(2);
+      deliverDirectMessage(1, 2, "a");
+      deliverDirectMessage(1, 2, "b");
+
+      const q = getSessionQueue(2);
+      const first = q?.dequeueBatch() ?? [];
+      const second = q?.dequeueBatch() ?? [];
+      expect(first).toHaveLength(1);
+      expect(second).toHaveLength(1);
+      expect(first[0].id).toBeLessThan(0);
+      expect(second[0].id).toBeLessThan(0);
+      expect(first[0].id).not.toBe(second[0].id);
+    });
+
+    it("does not enqueue to sender", () => {
+      createSessionQueue(1);
+      createSessionQueue(2);
+      deliverDirectMessage(1, 2, "hi");
+
+      const q1 = getSessionQueue(1);
+      expect(q1?.dequeueBatch()).toHaveLength(0);
     });
   });
 

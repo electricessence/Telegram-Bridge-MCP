@@ -259,6 +259,39 @@ export function notifySessionWaiters(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Direct message delivery (inter-session, internal only)
+// ---------------------------------------------------------------------------
+
+/** Auto-incrementing ID for synthetic DM events. Negative to avoid collisions. */
+let _nextDmId = -1;
+
+/**
+ * Deliver a direct message from one session to another.
+ * Injects a synthetic TimelineEvent into the target session's queue.
+ * Returns false if the target queue does not exist.
+ */
+export function deliverDirectMessage(
+  senderSid: number,
+  targetSid: number,
+  text: string,
+): boolean {
+  const q = _queues.get(targetSid);
+  if (!q) return false;
+
+  const event: TimelineEvent = {
+    id: _nextDmId--,
+    timestamp: new Date().toISOString(),
+    event: "direct_message",
+    from: "bot",
+    content: { type: "direct_message", text },
+    sid: senderSid,
+  };
+
+  q.enqueueMessage(event);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Reset (testing only)
 // ---------------------------------------------------------------------------
 
@@ -266,4 +299,5 @@ export function resetSessionQueuesForTest(): void {
   _queues.clear();
   _messageOwnership.clear();
   _lastRoutedSid = 0;
+  _nextDmId = -1;
 }

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(),
   getActiveSession: vi.fn(),
   setActiveSession: vi.fn(),
+  revokeAllForSession: vi.fn(),
 }));
 
 vi.mock("../session-manager.js", () => ({
@@ -13,6 +14,11 @@ vi.mock("../session-manager.js", () => ({
   validateSession: (...args: unknown[]) => mocks.validateSession(...args),
   getActiveSession: (...args: unknown[]) => mocks.getActiveSession(...args),
   setActiveSession: (...args: unknown[]) => mocks.setActiveSession(...args),
+}));
+
+vi.mock("../dm-permissions.js", () => ({
+  revokeAllForSession: (...args: unknown[]) =>
+    mocks.revokeAllForSession(...args),
 }));
 
 import { register } from "./close_session.js";

@@ -123,10 +123,14 @@ With session IDs and cross-session visibility, you get a team dynamic:
 - **Agent as principal dev** — one session can coordinate others by reading their timeline entries
 - **Parallel work** — multiple sessions work independently, each branded with their topic
 - **Shared context** — any session can look back at what others said
-- **Muting** — a focused session can mute noisy neighbors to concentrate on its task
+- **Muting** — *(deferred)* a focused session could mute noisy neighbors; currently handled by the permission model (no DM permission = no communication)
 - **Fake personas** — each session appears as a different "person" in the chat (topic prefix), but they're all the same bot. Like creating virtual team members.
 
-## Muting
+## Muting (Deferred)
+
+> **Status:** Deferred. The DM permission model handles session isolation — no permission means no communication. Explicit muting may be added later if the cross-session outbound broadcast becomes noisy in practice.
+
+Original design notes preserved for reference:
 
 ### Session Muting
 
@@ -308,7 +312,7 @@ Three axes of control, all operator-mediated:
 
 ### 1. Inbound Muting
 
-Controls what a session sees in its dequeue stream. See [Muting](#muting).
+Controls what a session sees in its dequeue stream. See [Muting (Deferred)](#muting-deferred).
 
 ### 2. DM Authorization
 

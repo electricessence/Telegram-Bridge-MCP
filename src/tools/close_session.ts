@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { toResult } from "../telegram.js";
 import { closeSession, getActiveSession, setActiveSession } from "../session-manager.js";
 import { removeSessionQueue } from "../session-queue.js";
+import { revokeAllForSession } from "../dm-permissions.js";
 import { SESSION_AUTH_SCHEMA, checkAuth } from "../session-auth.js";
 
 const DESCRIPTION =
@@ -25,6 +26,7 @@ export function register(server: McpServer) {
       const closed = closeSession(sid);
       if (closed) {
         removeSessionQueue(sid);
+        revokeAllForSession(sid);
         if (getActiveSession() === sid) setActiveSession(0);
       }
       return toResult({ closed, sid });
