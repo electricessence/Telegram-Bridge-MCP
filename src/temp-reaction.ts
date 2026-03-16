@@ -36,7 +36,7 @@ export async function setTempReaction(
   if (typeof resolved !== "number") return false;
 
   // Cancel any previous pending slot (no restore — caller replaced it)
-  _clearSlot(false);
+  _clearSlot();
 
   // Capture previous reaction before we overwrite it
   const previousEmoji = getBotReaction(messageId) as ReactionEmoji | null;
@@ -71,7 +71,7 @@ export async function setTempReaction(
 export async function fireTempReactionRestore(): Promise<void> {
   if (!_slot) return;
   const { chatId, messageId, restoreEmoji } = _slot;
-  _clearSlot(false);
+  _clearSlot();
 
   if (restoreEmoji) {
     void trySetMessageReaction(chatId, messageId, restoreEmoji);
@@ -81,21 +81,10 @@ export async function fireTempReactionRestore(): Promise<void> {
   }
 }
 
-function _clearSlot(fireRestore: boolean): void {
+function _clearSlot(): void {
   if (!_slot) return;
   if (_slot.timeoutHandle !== null) clearTimeout(_slot.timeoutHandle);
-  if (fireRestore) {
-    const { chatId, messageId, restoreEmoji } = _slot;
-    _slot = null;
-    if (restoreEmoji) {
-      void trySetMessageReaction(chatId, messageId, restoreEmoji);
-    } else {
-      // null = remove reaction on restore (consistent with fireTempReactionRestore)
-      void getApi().setMessageReaction(chatId, messageId, []).catch(() => undefined);
-    }
-  } else {
-    _slot = null;
-  }
+  _slot = null;
 }
 
 /** Returns true if a temporary reaction is currently pending. */

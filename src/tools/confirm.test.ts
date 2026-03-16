@@ -212,4 +212,61 @@ describe("confirm tool", () => {
     hookFn({ content: { data: "confirm_yes", qid: "cq1" } });
     expect(mocks.clearMessageHook).toHaveBeenCalledWith(5);
   });
+
+  it("returns skipped with command when a slash command interrupts", async () => {
+    const commandResult = { kind: "command", message_id: 6, command: "/start", args: "" };
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(commandResult);
+    const result = await call({ text: "Proceed?" });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.skipped).toBe(true);
+    expect(data.command).toBe("/start");
+    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 5, "Proceed?");
+    expect(mocks.clearCallbackHook).toHaveBeenCalledWith(5);
+  });
+
+  it("single-button CTA: hook ignores button presses that don't match yes_data", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_yes"));
+    await call({ text: "Continue?", no_text: "" });
+    const hookFn = mocks.registerCallbackHook.mock.calls[0][1];
+    // Fire hook with a value that isn't yes_data — guard should short-circuit
+    hookFn({ content: { data: "rogue_data", qid: "cq-rogue" } });
+    await new Promise((r) => setTimeout(r, 0));
+    // ackAndEditSelection was NOT called (hook returned early due to CTA guard)
+    expect(mocks.ackAndEditSelection).not.toHaveBeenCalled();
+  });
+
+  it("callback hook handles ackAndEditSelection failures gracefully", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_yes"));
+    await call({ text: "Proceed?" });
+    // Make ackAndEditSelection reject on the next call (simulates network error)
+    mocks.ackAndEditSelection.mockRejectedValueOnce(new Error("network"));
+    const hookFn = mocks.registerCallbackHook.mock.calls[0][1];
+    hookFn({ content: { data: "confirm_yes", qid: "cq1" } });
+    // Wait for the void+catch chain to settle
+    await new Promise((r) => setTimeout(r, 20));
+    // No unhandled rejection — .catch swallowed the error gracefully
+    expect(mocks.ackAndEditSelection).toHaveBeenCalled();
+  });
+
+  it("calls editWithSkipped immediately via onVoiceDetected before poll resolves", async () => {
+    const voiceResult: VoiceResult = { kind: "voice", message_id: 11, text: "do it" };
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockImplementation(async (...args: unknown[]) => {
+      const onVoiceDetected = args[3] as () => void;
+      onVoiceDetected(); // fires immediately — simulates early voice detection
+      return voiceResult;
+    });
+    const result = await call({ text: "Proceed?" });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.skipped).toBe(true);
+    // editWithSkipped called by onVoiceDetected
+    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 5, "Proceed?");
+    // Should NOT be called a second time because editState.done = true
+    expect(mocks.editWithSkipped).toHaveBeenCalledTimes(1);
+  });
 });

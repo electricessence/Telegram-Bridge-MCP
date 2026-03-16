@@ -3,6 +3,7 @@ import { createMockServer, parseResult, isError } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({
   showTyping: vi.fn(),
+  cancelTyping: vi.fn(),
   resolveChat: vi.fn(() => 99),
 }));
 
@@ -13,6 +14,7 @@ vi.mock("../telegram.js", async (importActual) => {
 
 vi.mock("../typing-state.js", () => ({
   showTyping: mocks.showTyping,
+  cancelTyping: mocks.cancelTyping,
 }));
 
 import { register } from "./show_typing.js";
@@ -58,5 +60,28 @@ describe("show_typing tool", () => {
     const result = await call({ timeout_seconds: 30 });
     const data = parseResult(result);
     expect(data.started).toBe(false);
+  });
+
+  it("cancels the indicator when cancel:true and returns cancelled:true if was active", async () => {
+    mocks.cancelTyping.mockReturnValue(true);
+    const result = await call({ cancel: true });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.ok).toBe(true);
+    expect(data.cancelled).toBe(true);
+    expect(mocks.showTyping).not.toHaveBeenCalled();
+  });
+
+  it("returns cancelled:false when cancel:true but indicator was not active", async () => {
+    mocks.cancelTyping.mockReturnValue(false);
+    const result = await call({ cancel: true });
+    const data = parseResult(result);
+    expect(data.cancelled).toBe(false);
+  });
+
+  it("returns error when chat is not configured", async () => {
+    mocks.resolveChat.mockReturnValueOnce({ code: "UNAUTHORIZED_CHAT", message: "no chat" });
+    const result = await call({});
+    expect(isError(result)).toBe(true);
   });
 });

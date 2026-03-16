@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createMockServer, parseResult, type ToolHandler } from "./test-utils.js";
+import { createMockServer, parseResult, isError, type ToolHandler } from "./test-utils.js";
 import type { ButtonResult } from "./button-helpers.js";
 
 const mocks = vi.hoisted(() => ({
@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   setActiveSession: vi.fn(),
   listSessions: vi.fn().mockReturnValue([]),
   getRoutingMode: vi.fn().mockReturnValue("load_balance"),
+  resolveChat: vi.fn(() => 42 as number),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -25,9 +26,9 @@ vi.mock("../telegram.js", async (importActual) => {
       answerCallbackQuery: mocks.answerCallbackQuery,
       editMessageText: mocks.editMessageText,
     }),
-    resolveChat: () => 42,
+    resolveChat: () => mocks.resolveChat(),
   };
-});
+});;
 
 vi.mock("../message-store.js", () => ({
   recordOutgoing: vi.fn(),
@@ -282,5 +283,100 @@ describe("session_start tool", () => {
     await call({ name: "active-test" });
 
     expect(mocks.setActiveSession).toHaveBeenCalledWith(5);
+  });
+
+  // =========================================================================
+  // Multi-session: fellow_sessions / routing_mode
+  // =========================================================================
+
+  it("includes fellow_sessions and routing_mode in fast-path result when sessionsActive > 1", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 4, pin: 444444, name: "scout", sessionsActive: 2 });
+    mocks.listSessions.mockReturnValue([
+      { sid: 3, name: "leader" },
+      { sid: 4, name: "scout" },
+    ]);
+    mocks.getRoutingMode.mockReturnValue("cascade");
+
+    const result = parseResult(await call({ name: "scout" }));
+
+    expect(result.action).toBe("fresh");
+    expect(Array.isArray(result.fellow_sessions)).toBe(true);
+    // Only the OTHER session is in fellow_sessions (not self)
+    const fellows = result.fellow_sessions as Array<{ sid: number }>;
+    expect(fellows.every(s => s.sid !== 4)).toBe(true);
+    expect(fellows.some(s => s.sid === 3)).toBe(true);
+    expect(result.routing_mode).toBe("cascade");
+  });
+
+  it("includes fellow_sessions in resume result when sessionsActive > 1", async () => {
+    mocks.pendingCount.mockReturnValue(3);
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 111111, name: "alpha", sessionsActive: 2 });
+    mocks.listSessions.mockReturnValue([
+      { sid: 1, name: "beta" },
+      { sid: 2, name: "alpha" },
+    ]);
+    mocks.getRoutingMode.mockReturnValue("load_balance");
+    mocks.sendMessage
+      .mockResolvedValueOnce(INTRO_MSG)
+      .mockResolvedValueOnce(CONFIRM_MSG);
+    mocks.pollButtonPress.mockResolvedValue(makeButtonResult("session_resume"));
+
+    const result = parseResult(await call({ name: "alpha" }));
+
+    expect(result.action).toBe("resume");
+    const fellows = result.fellow_sessions as Array<{ sid: number }>;
+    expect(fellows.some(s => s.sid === 1)).toBe(true);
+    expect(fellows.every(s => s.sid !== 2)).toBe(true);
+    expect(result.routing_mode).toBe("load_balance");
+  });
+
+  it("includes fellow_sessions in fresh+discard result when sessionsActive > 1", async () => {
+    mocks.pendingCount.mockReturnValue(2);
+    mocks.createSession.mockReturnValue({ sid: 6, pin: 666666, name: "gamma", sessionsActive: 2 });
+    mocks.listSessions.mockReturnValue([
+      { sid: 5, name: "delta" },
+      { sid: 6, name: "gamma" },
+    ]);
+    mocks.getRoutingMode.mockReturnValue("load_balance");
+    mocks.sendMessage
+      .mockResolvedValueOnce(INTRO_MSG)
+      .mockResolvedValueOnce(CONFIRM_MSG);
+    mocks.pollButtonPress.mockResolvedValue(makeButtonResult("session_fresh"));
+    mocks.dequeue
+      .mockReturnValueOnce({ id: 1 })
+      .mockReturnValueOnce({ id: 2 })
+      .mockReturnValueOnce(undefined);
+
+    const result = parseResult(await call({ name: "gamma" }));
+
+    expect(result.action).toBe("fresh");
+    const fellows = result.fellow_sessions as Array<{ sid: number }>;
+    expect(fellows.some(s => s.sid === 5)).toBe(true);
+    expect(fellows.every(s => s.sid !== 6)).toBe(true);
+    expect(result.routing_mode).toBe("load_balance");
+  });
+
+  it("omits fellow_sessions when only one session is active", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 100001, name: "solo", sessionsActive: 1 });
+
+    const result = parseResult(await call({ name: "solo" }));
+
+    expect(result.fellow_sessions).toBeUndefined();
+    expect(result.routing_mode).toBeUndefined();
+  });
+
+  it("returns an error when the intro message send fails", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.sendMessage.mockRejectedValue(new Error("network error"));
+    const result = await call({});
+    expect(isError(result)).toBe(true);
+  });
+
+  it("returns error when chat is not configured", async () => {
+    mocks.resolveChat.mockReturnValueOnce({ code: "UNAUTHORIZED_CHAT", message: "no chat" } as never);
+    const result = await call({});
+    expect(isError(result)).toBe(true);
   });
 });

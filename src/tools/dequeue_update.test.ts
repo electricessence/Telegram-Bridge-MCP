@@ -6,17 +6,35 @@ const mocks = vi.hoisted(() => ({
   dequeueBatch: vi.fn((): TimelineEvent[] => []),
   pendingCount: vi.fn(),
   waitForEnqueue: vi.fn(),
+  ackVoiceMessage: vi.fn(),
+  getActiveSession: vi.fn(() => 0),
+  getSessionQueue: vi.fn(() => undefined),
+  popCascadePassDeadline: vi.fn(() => undefined as number | undefined),
+  getRoutingMode: vi.fn(() => "load_balance"),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
   const actual = await importActual<typeof import("../telegram.js")>();
-  return { ...actual };
+  return { ...actual, ackVoiceMessage: (...args: unknown[]) => mocks.ackVoiceMessage(...args) };
 });
 
 vi.mock("../message-store.js", () => ({
   dequeueBatch: mocks.dequeueBatch,
   pendingCount: mocks.pendingCount,
   waitForEnqueue: mocks.waitForEnqueue,
+}));
+
+vi.mock("../session-manager.js", () => ({
+  getActiveSession: () => mocks.getActiveSession(),
+}));
+
+vi.mock("../session-queue.js", () => ({
+  getSessionQueue: (...args: unknown[]) => mocks.getSessionQueue(...args),
+  popCascadePassDeadline: (...args: unknown[]) => mocks.popCascadePassDeadline(...args),
+}));
+
+vi.mock("../routing-mode.js", () => ({
+  getRoutingMode: () => mocks.getRoutingMode(),
 }));
 
 import { register } from "./dequeue_update.js";
@@ -39,6 +57,17 @@ function makeReaction(id: number, target: number): TimelineEvent {
     event: "reaction",
     from: "user",
     content: { type: "reaction", target, added: ["👍"], removed: [] },
+    _update: { update_id: id } as never,
+  };
+}
+
+function makeVoiceEvent(id: number): TimelineEvent {
+  return {
+    id,
+    timestamp: new Date().toISOString(),
+    event: "message",
+    from: "user",
+    content: { type: "voice", text: "hello", file_id: "f1", duration: 2 } as never,
     _update: { update_id: id } as never,
   };
 }
@@ -189,5 +218,132 @@ describe("dequeue_update tool", () => {
     expect(data.updates).toHaveLength(2);
     expect(data.updates[0].event).toBe("reaction");
     expect(data.updates[1].event).toBe("reaction");
+  });
+
+  // =========================================================================
+  // Voice ack
+  // =========================================================================
+
+  it("acks voice messages on dequeue", async () => {
+    const evt = makeVoiceEvent(77);
+    mocks.dequeueBatch.mockReturnValueOnce([evt]);
+    await call({ timeout: 0 });
+    expect(mocks.ackVoiceMessage).toHaveBeenCalledWith(77);
+  });
+
+  it("does not call ackVoiceMessage for non-voice events", async () => {
+    const evt = makeEvent(88, "text message");
+    mocks.dequeueBatch.mockReturnValueOnce([evt]);
+    await call({ timeout: 0 });
+    expect(mocks.ackVoiceMessage).not.toHaveBeenCalled();
+  });
+
+  // =========================================================================
+  // Cascade pass_by
+  // =========================================================================
+
+  it("includes pass_by ISO timestamp for cascade events with active SID", async () => {
+    const deadlineMs = 1_700_000_000_000;
+    mocks.getActiveSession.mockReturnValueOnce(5);
+    mocks.getRoutingMode.mockReturnValueOnce("cascade");
+    mocks.popCascadePassDeadline.mockReturnValueOnce(deadlineMs);
+    const evt = makeEvent(20, "routed message");
+    mocks.dequeueBatch.mockReturnValueOnce([evt]);
+    const result = await call({ timeout: 0 });
+    const data = parseResult(result);
+    expect(data.updates[0].pass_by).toBe(new Date(deadlineMs).toISOString());
+  });
+
+  it("omits pass_by when routing mode is not cascade", async () => {
+    mocks.getActiveSession.mockReturnValueOnce(5);
+    mocks.getRoutingMode.mockReturnValueOnce("load_balance");
+    const evt = makeEvent(21, "load balanced");
+    mocks.dequeueBatch.mockReturnValueOnce([evt]);
+    const result = await call({ timeout: 0 });
+    const data = parseResult(result);
+    expect(data.updates[0].pass_by).toBeUndefined();
+  });
+
+  it("omits pass_by when popCascadePassDeadline returns undefined", async () => {
+    mocks.getActiveSession.mockReturnValueOnce(5);
+    mocks.getRoutingMode.mockReturnValueOnce("cascade");
+    mocks.popCascadePassDeadline.mockReturnValueOnce(undefined);
+    const evt = makeEvent(22, "no deadline");
+    mocks.dequeueBatch.mockReturnValueOnce([evt]);
+    const result = await call({ timeout: 0 });
+    const data = parseResult(result);
+    expect(data.updates[0].pass_by).toBeUndefined();
+  });
+
+  // =========================================================================
+  // Session queue path
+  // =========================================================================
+
+  it("routes through session queue when getActiveSession returns a non-zero SID", async () => {
+    const evt = makeEvent(55, "from session queue");
+    const mockSessionQueue = {
+      dequeueBatch: vi.fn(() => [evt] as TimelineEvent[]),
+      pendingCount: vi.fn(() => 0),
+      waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getActiveSession.mockReturnValueOnce(7);
+    mocks.getSessionQueue.mockReturnValueOnce(mockSessionQueue);
+
+    const result = await call({ timeout: 0 });
+    const data = parseResult(result);
+    expect(data.updates[0].id).toBe(55);
+    expect(mockSessionQueue.dequeueBatch).toHaveBeenCalled();
+  });
+
+  it("blocks using session queue waitForEnqueue when session queue is active", async () => {
+    const evt = makeEvent(56, "delayed session event");
+    const mockSessionQueue = {
+      dequeueBatch: vi.fn().mockReturnValueOnce([]).mockReturnValueOnce([evt] as TimelineEvent[]),
+      pendingCount: vi.fn(() => 0),
+      waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getActiveSession.mockReturnValue(7);
+    mocks.getSessionQueue.mockReturnValue(mockSessionQueue);
+
+    const result = await call({ timeout: 1 });
+    const data = parseResult(result);
+    expect(data.updates[0].id).toBe(56);
+    expect(mockSessionQueue.waitForEnqueue).toHaveBeenCalled();
+    mocks.getActiveSession.mockReturnValue(0);
+    mocks.getSessionQueue.mockReturnValue(undefined);
+  });
+
+  it("includes pending count when events arrive after blocking wait", async () => {
+    const evt = makeEvent(66, "arrived after wait");
+    mocks.dequeueBatch.mockReturnValueOnce([]).mockReturnValueOnce([evt]);
+    mocks.pendingCount.mockReturnValue(3);
+    mocks.waitForEnqueue.mockResolvedValue(undefined);
+    const result = await call({ timeout: 1 });
+    const data = parseResult(result);
+    expect(data.updates[0].id).toBe(66);
+    expect(data.pending).toBe(3);
+  });
+
+  // =========================================================================
+  // Abort signal
+  // =========================================================================
+
+  it("stops immediately when signal is already aborted", async () => {
+    mocks.dequeueBatch.mockReturnValue([]);
+    const controller = new AbortController();
+    controller.abort();
+    const result = await call({ timeout: 60 }, { signal: controller.signal });
+    const data = parseResult(result);
+    expect(data.empty).toBe(true);
+  });
+
+  it("stops waiting when signal is aborted while blocking", async () => {
+    mocks.dequeueBatch.mockReturnValue([]);
+    mocks.waitForEnqueue.mockImplementation(() => new Promise(() => {})); // never resolves
+    const controller = new AbortController();
+    void Promise.resolve().then(() => controller.abort());
+    const result = await call({ timeout: 60 }, { signal: controller.signal });
+    const data = parseResult(result);
+    expect(data.empty).toBe(true);
   });
 });

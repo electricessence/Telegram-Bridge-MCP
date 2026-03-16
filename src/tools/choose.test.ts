@@ -244,4 +244,45 @@ describe("choose tool", () => {
     hookFn({ content: { data: "a", qid: "cq1" } });
     expect(mocks.clearMessageHook).toHaveBeenCalledWith(7);
   });
+
+  it("returns skipped with command when a slash command interrupts", async () => {
+    const commandResult = { kind: "command", message_id: 8, command: "/help", args: "fast" };
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(commandResult);
+    const result = await call({ question: "Pick", options: OPTIONS });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.skipped).toBe(true);
+    expect(data.command).toBe("/help");
+    expect(data.args).toBe("fast");
+    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick");
+    expect(mocks.clearCallbackHook).toHaveBeenCalledWith(7);
+  });
+
+  it("calls editWithSkipped immediately via onVoiceDetected before poll resolves", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockImplementation(async (...args: unknown[]) => {
+      const onVoiceDetected = args[3] as () => void;
+      onVoiceDetected();
+      return makeVoiceResult(20, "pick the second one");
+    });
+    const result = await call({ question: "Pick", options: OPTIONS });
+    const data = parseResult(result);
+    expect(data.skipped).toBe(true);
+    expect(data.voice).toBe(true);
+    // editWithSkipped called exactly once (by onVoiceDetected, not again by handler)
+    expect(mocks.editWithSkipped).toHaveBeenCalledTimes(1);
+  });
+
+  it("callback hook handles ackAndEditSelection failures gracefully", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("opt_a"));
+    await call({ question: "Pick", options: OPTIONS });
+    mocks.ackAndEditSelection.mockRejectedValueOnce(new Error("network"));
+    const hookFn = mocks.registerCallbackHook.mock.calls[0][1];
+    hookFn({ content: { data: "opt_a", qid: "cq1" } });
+    await new Promise((r) => setTimeout(r, 20));
+    // No unhandled rejection — .catch swallowed the error gracefully
+    expect(mocks.ackAndEditSelection).toHaveBeenCalled();
+  });
 });

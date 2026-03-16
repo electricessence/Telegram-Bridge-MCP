@@ -115,10 +115,6 @@ export async function showTyping(timeoutSeconds: number, action: TypingAction = 
   }
 
   _timer = setInterval(() => {
-    if (Date.now() >= _deadline) {
-      cancelTyping();
-      return;
-    }
     getApi().sendChatAction(chatId, action).catch(() => {
       cancelTyping();
     });

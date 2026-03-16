@@ -2,6 +2,16 @@
 
 ## Added
 
+- New test files: `config.test.ts` (100% coverage), `rate-limiter.test.ts` (100% coverage)
+- Extended test coverage for `tts.ts`, `typing-state.ts`, `show_typing.ts`, `confirm.ts`, `choose.ts`, `dequeue_update.ts`, `session_start.ts`; total tests 942 → 1030, statements 85.4% → 90.2%, branches 76.6% → 82.4%
+
+## Fixed
+
+- Removed unreachable deadline check inside `setInterval` callback in `typing-state.ts`
+- Simplified `_clearSlot` in `temp-reaction.ts` — removed unused `fireRestore` parameter that was never passed as `true`
+
+## Added
+
 - Added `TwoLaneQueue<T>` class — generic two-lane priority queue extracted from message-store, backed by `@tsdotnet/queue`
 - Added `session-queue` module — per-session queues with message ownership tracking and inbound routing (targeted via reply-to/callback/reaction, ambiguous via broadcast)
 - `session_start` now creates a per-session queue alongside the session
