@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   dequeue: vi.fn(),
   pollButtonPress: vi.fn(),
   ackAndEditSelection: vi.fn(),
+  createSession: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -29,6 +30,10 @@ vi.mock("../message-store.js", () => ({
   recordOutgoing: vi.fn(),
   pendingCount: (...args: unknown[]) => mocks.pendingCount(...args),
   dequeue: (...args: unknown[]) => mocks.dequeue(...args),
+}));
+
+vi.mock("../session-manager.js", () => ({
+  createSession: (...args: unknown[]) => mocks.createSession(...args),
 }));
 
 vi.mock("./button-helpers.js", async (importActual) => {
@@ -62,6 +67,12 @@ describe("session_start tool", () => {
     vi.clearAllMocks();
     mocks.sendMessage.mockResolvedValue(INTRO_MSG);
     mocks.ackAndEditSelection.mockResolvedValue(undefined);
+    mocks.createSession.mockReturnValue({
+      sid: 1,
+      pin: 123456,
+      name: "",
+      sessionsActive: 1,
+    });
     const server = createMockServer();
     register(server);
     call = server.getHandler("session_start");
@@ -90,6 +101,9 @@ describe("session_start tool", () => {
     const sentCall = mocks.sendMessage.mock.calls[0] as unknown[];
     expect(sentCall[0]).toBe(42); // chatId
     expect(result).toEqual({
+      sid: 1,
+      pin: 123456,
+      sessions_active: 1,
       action: "fresh",
       pending: 0,
       intro_message_id: 100,
@@ -126,6 +140,9 @@ describe("session_start tool", () => {
     const result = parseResult(await call({}));
 
     expect(result).toEqual({
+      sid: 1,
+      pin: 123456,
+      sessions_active: 1,
       action: "fresh",
       discarded: 3,
       intro_message_id: 100,
@@ -146,6 +163,9 @@ describe("session_start tool", () => {
     const result = parseResult(await call({}));
 
     expect(result).toEqual({
+      sid: 1,
+      pin: 123456,
+      sessions_active: 1,
       action: "resume",
       pending: 5,
       intro_message_id: 100,
@@ -203,5 +223,37 @@ describe("session_start tool", () => {
       ._rawText as string;
     expect(rawText).toContain("7");
     expect(rawText).toContain("message");
+  });
+
+  it("calls createSession with provided name", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+
+    await call({ name: "worker-bee" });
+
+    expect(mocks.createSession).toHaveBeenCalledWith("worker-bee");
+  });
+
+  it("passes empty string when name is omitted", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+
+    await call({});
+
+    expect(mocks.createSession).toHaveBeenCalledWith("");
+  });
+
+  it("returns session credentials from createSession", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({
+      sid: 3,
+      pin: 719304,
+      name: "scout",
+      sessionsActive: 3,
+    });
+
+    const result = parseResult(await call({ name: "scout" }));
+
+    expect(result.sid).toBe(3);
+    expect(result.pin).toBe(719304);
+    expect(result.sessions_active).toBe(3);
   });
 });

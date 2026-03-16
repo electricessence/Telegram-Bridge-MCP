@@ -37,6 +37,7 @@ import { register as registerGetAgentGuide } from "./tools/get_agent_guide.js";
 import { register as registerDumpSessionRecord } from "./tools/dump_session_record.js";
 import { register as registerShutdownServer } from "./tools/shutdown.js";
 import { register as registerSessionStart } from "./tools/session_start.js";
+import { register as registerCloseSession } from "./tools/close_session.js";
 import { register as registerSendNewProgress } from "./tools/send_new_progress.js";
 import { register as registerUpdateProgress } from "./tools/update_progress.js";
 
@@ -104,6 +105,7 @@ export function createServer(): McpServer {
 
   // ── Session ────────────────────────────────────────────────────────────
   registerSessionStart(server);
+  registerCloseSession(server);
   registerDumpSessionRecord(server);
 
   // ── System ─────────────────────────────────────────────────────────────

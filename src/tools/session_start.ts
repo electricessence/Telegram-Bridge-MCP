@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
 import { dequeue, pendingCount } from "../message-store.js";
+import { createSession } from "../session-manager.js";
 import {
   pollButtonPress,
   ackAndEditSelection,
@@ -19,11 +20,12 @@ const RESUME_LABEL = "\u25B6\uFE0F Resume";
 const CONFIRM_TIMEOUT_S = 600;
 
 const DESCRIPTION =
-  "Call once at the start of every session. Sends an intro " +
-  "message, checks for pending messages from a previous " +
-  "session, and — if any exist — asks the operator whether " +
-  "to resume or start fresh. Returns { action, pending } " +
-  "so the agent knows how to proceed. " +
+  "Call once at the start of every session. Creates a session " +
+  "with a unique ID and PIN, sends an intro message, checks " +
+  "for pending messages from a previous session, and — if any " +
+  "exist — asks the operator whether to resume or start fresh. " +
+  "Returns { sid, pin, sessions_active, action, pending } so " +
+  "the agent knows its identity and how to proceed. " +
   "Call after get_agent_guide and get_me during session setup.";
 
 export function register(server: McpServer) {
@@ -39,11 +41,20 @@ export function register(server: McpServer) {
             "Markdown text for the intro message. " +
             "Defaults to \"ℹ️ Session Start\".",
           ),
+        name: z
+          .string()
+          .default("")
+          .describe(
+            "Human-friendly session name, used as topic prefix. " +
+            "Encouraged when multiple sessions are active.",
+          ),
       },
     },
-    async ({ intro }, { signal }) => {
+    async ({ intro, name }, { signal }) => {
       const chatId = resolveChat();
       if (typeof chatId !== "number") return toError(chatId);
+
+      const session = createSession(name);
 
       try {
         // 1. Send the intro message
@@ -62,6 +73,9 @@ export function register(server: McpServer) {
         const pending = pendingCount();
         if (pending === 0) {
           return toResult({
+            sid: session.sid,
+            pin: session.pin,
+            sessions_active: session.sessionsActive,
             action: "fresh",
             pending: 0,
             intro_message_id: introId,
@@ -99,6 +113,9 @@ export function register(server: McpServer) {
         if (!result) {
           // Extremely unlikely (10 min timeout), treat as fresh
           return toResult({
+            sid: session.sid,
+            pin: session.pin,
+            sessions_active: session.sessionsActive,
             action: "fresh",
             discarded: 0,
             intro_message_id: introId,
@@ -117,6 +134,9 @@ export function register(server: McpServer) {
 
         if (result.data === RESUME_DATA) {
           return toResult({
+            sid: session.sid,
+            pin: session.pin,
+            sessions_active: session.sessionsActive,
             action: "resume",
             pending,
             intro_message_id: introId,
@@ -128,6 +148,9 @@ export function register(server: McpServer) {
         while (dequeue() !== undefined) discarded++;
 
         return toResult({
+          sid: session.sid,
+          pin: session.pin,
+          sessions_active: session.sessionsActive,
           action: "fresh",
           discarded,
           intro_message_id: introId,
