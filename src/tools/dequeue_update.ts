@@ -5,6 +5,8 @@ import {
   dequeueBatch, pendingCount, waitForEnqueue,
   type TimelineEvent,
 } from "../message-store.js";
+import { getActiveSession } from "../session-manager.js";
+import { getSessionQueue } from "../session-queue.js";
 
 /** Auto-salute voice messages on dequeue so the user knows we received them. */
 function ackVoice(event: TimelineEvent): void {
@@ -49,18 +51,40 @@ export function register(server: McpServer) {
       },
     },
     async ({ timeout }, { signal }) => {
+      // Session-aware queue selection: use session queue when active,
+      // fall back to global queue for backward compat (sid 0).
+      const sid = getActiveSession();
+      const sessionQueue = sid > 0 ? getSessionQueue(sid) : undefined;
+
+      function dequeueBatchAny(): TimelineEvent[] {
+        if (sessionQueue) {
+          const items = sessionQueue.dequeueBatch();
+          // Session queue stores raw TimelineEvent (not QueueItem)
+          return items;
+        }
+        return dequeueBatch();
+      }
+
+      function pendingCountAny(): number {
+        return sessionQueue ? sessionQueue.pendingCount() : pendingCount();
+      }
+
+      function waitForEnqueueAny(): Promise<void> {
+        return sessionQueue ? sessionQueue.waitForEnqueue() : waitForEnqueue();
+      }
+
       // Try immediate batch dequeue
-      let batch = dequeueBatch();
+      let batch = dequeueBatchAny();
       if (batch.length > 0) {
         for (const evt of batch) ackVoice(evt);
-        const pending = pendingCount();
+        const pending = pendingCountAny();
         const result: Record<string, unknown> = { updates: compactBatch(batch) };
         if (pending > 0) result.pending = pending;
         return toResult(result);
       }
 
       if (timeout === 0) {
-        return toResult({ empty: true, pending: pendingCount() });
+        return toResult({ empty: true, pending: pendingCountAny() });
       }
 
       // Block until something arrives or timeout expires
@@ -73,23 +97,23 @@ export function register(server: McpServer) {
 
         let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
         await Promise.race([
-          waitForEnqueue(),
+          waitForEnqueueAny(),
           new Promise<void>((r) => { timeoutHandle = setTimeout(r, remaining); }),
           abortPromise,
         ]);
         clearTimeout(timeoutHandle);
 
-        batch = dequeueBatch();
+        batch = dequeueBatchAny();
         if (batch.length > 0) {
           for (const evt of batch) ackVoice(evt);
-          const pending = pendingCount();
+          const pending = pendingCountAny();
           const result: Record<string, unknown> = { updates: compactBatch(batch) };
           if (pending > 0) result.pending = pending;
           return toResult(result);
         }
       }
 
-      return toResult({ empty: true, pending: pendingCount() });
+      return toResult({ empty: true, pending: pendingCountAny() });
     },
   );
 }

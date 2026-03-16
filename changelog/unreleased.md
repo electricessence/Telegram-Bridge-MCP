@@ -2,6 +2,17 @@
 
 ## Added
 
+- Added `TwoLaneQueue<T>` class — generic two-lane priority queue extracted from message-store, backed by `@tsdotnet/queue`
+- Added `session-queue` module — per-session queues with message ownership tracking and inbound routing (targeted via reply-to/callback/reaction, ambiguous via broadcast)
+- `session_start` now creates a per-session queue alongside the session
+- `close_session` now removes the per-session queue on closure
+- `dequeue_update` is now session-aware — reads from session queue when a session is active, falls back to global queue
+
+## Changed
+
+- Restored `@tsdotnet/queue` dependency — replaces hand-rolled `SimpleQueue<T>` inline class; pnpm type-resolution issue from v3.0.0 no longer reproduces
+- Refactored `message-store` to delegate queue operations to `TwoLaneQueue<T>` — inbound events are also routed to per-session queues via `routeToSession`
+
 - Added session manager with incrementing SIDs and 6-digit PINs (crypto.randomInt)
 - Added `SESSION_AUTH_SCHEMA` and `checkAuth()` for tool-level session authentication
 - Added `close_session` tool with auth validation

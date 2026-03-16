@@ -4,6 +4,7 @@ import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
 import { dequeue, pendingCount } from "../message-store.js";
 import { createSession } from "../session-manager.js";
+import { createSessionQueue } from "../session-queue.js";
 import {
   pollButtonPress,
   ackAndEditSelection,
@@ -55,6 +56,7 @@ export function register(server: McpServer) {
       if (typeof chatId !== "number") return toError(chatId);
 
       const session = createSession(name);
+      createSessionQueue(session.sid);
 
       try {
         // 1. Send the intro message

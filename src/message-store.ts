@@ -20,38 +20,8 @@
 import type { Update } from "grammy/types";
 import { recordUpdate, recordBotMessage } from "./session-recording.js";
 import { getActiveSession } from "./session-manager.js";
-
-// ---------------------------------------------------------------------------
-// Simple generic queue (replaces @tsdotnet/queue)
-// ---------------------------------------------------------------------------
-
-class SimpleQueue<T> {
-  private _items: T[] = [];
-
-  enqueue(item: T, maxSize?: number): void {
-    if (maxSize && this._items.length >= maxSize) this._items.shift();
-    this._items.push(item);
-  }
-
-  dequeue(): T | undefined {
-    return this._items.shift();
-  }
-
-  /** Destructive drain — empties the queue, returns all items. */
-  dump(): T[] {
-    const items = this._items;
-    this._items = [];
-    return items;
-  }
-
-  clear(): void {
-    this._items = [];
-  }
-
-  get count(): number {
-    return this._items.length;
-  }
-}
+import { TwoLaneQueue } from "./two-lane-queue.js";
+import { routeToSession, trackMessageOwner, notifySessionWaiters } from "./session-queue.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,9 +88,6 @@ const MAX_TIMELINE = 1000;
 /** Maximum unique message_ids in the index. */
 const MAX_MESSAGES = 500;
 
-/** Maximum items per queue lane — bounds memory for slow consumers. */
-const MAX_QUEUE_SIZE = 5000;
-
 /** Version key for the current (latest) state of a message. */
 export const CURRENT = -1;
 
@@ -151,23 +118,22 @@ export function setOnEvent(callback: ((timelineSize: number) => void) | null): v
   _onEventCallback = callback;
 }
 
-/** Two-lane queue — response lane items drain before message lane. */
-const _responseLane = new SimpleQueue<QueueItem>();
-const _messageLane = new SimpleQueue<QueueItem>();
+/** A queue item is ready unless it's a voice message still waiting for text. */
+function isQueueItemReady(item: QueueItem): boolean {
+  const c = item.event.content;
+  return !(c.type === "voice" && c.text === undefined);
+}
 
-/** Message IDs that have been dequeued by the agent. Used by poller to skip 😴 on already-consumed voice messages. */
-const _consumedMessageIds = new Set<number>();
+/** Two-lane queue — response lane drains before message lane. */
+const _queue = new TwoLaneQueue<QueueItem>({
+  isReady: isQueueItemReady,
+  getId: (item) => item.event.id,
+});
 
 /** Returns true if the given message_id has already been dequeued. */
 export function isMessageConsumed(messageId: number): boolean {
-  return _consumedMessageIds.has(messageId);
+  return _queue.isConsumed(messageId);
 }
-
-/**
- * Listeners waiting for the next enqueue. Resolved when a new item is
- * pushed to either lane. Used by dequeue_update to wait on empty queue.
- */
-let _waiters: Array<() => void> = [];
 
 /**
  * One-shot hooks registered by send_choice for auto-lock. Fired on the first
@@ -207,13 +173,6 @@ function evictIndex(): void {
     const oldest = _insertionOrder.shift();
     if (oldest !== undefined) _index.delete(oldest);
   }
-}
-
-/** Notify any pending dequeue waiters that new data is available. */
-function notifyWaiters(): void {
-  const batch = _waiters;
-  _waiters = [];
-  for (const resolve of batch) resolve();
 }
 
 /** Get or create the version map for a message_id. */
@@ -314,8 +273,8 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
       try { hook(evt); } catch { /* non-fatal */ }
     }
 
-    _responseLane.enqueue({ event: evt }, MAX_QUEUE_SIZE);
-    notifyWaiters();
+    _queue.enqueueResponse({ event: evt });
+    routeToSession(evt, "response");
     return true;
   }
 
@@ -344,8 +303,8 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
     _timeline.push(evt);
     evictTimeline();
     // Reactions don't overwrite the message index — they reference it
-    _responseLane.enqueue({ event: evt }, MAX_QUEUE_SIZE);
-    notifyWaiters();
+    _queue.enqueueResponse({ event: evt });
+    routeToSession(evt, "response");
     return true;
   }
 
@@ -369,7 +328,8 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
       _update: update,
     };
     pushEvent(evt);
-    _messageLane.enqueue({ event: evt }, MAX_QUEUE_SIZE);
+    _queue.enqueueMessage({ event: evt });
+    routeToSession(evt, "message");
 
     // Fire one-shot message hooks for any afterId < this message's id.
     // Non-consuming: the event stays queued for dequeue_update.
@@ -379,8 +339,6 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
         try { hook(); } catch { /* non-fatal */ }
       }
     }
-
-    notifyWaiters();
 
     return true;
   }
@@ -483,6 +441,7 @@ export function recordOutgoing(
     ...(activeSid > 0 && { sid: activeSid }),
   };
   pushEvent(evt);
+  trackMessageOwner(messageId, activeSid);
 }
 
 /**
@@ -568,109 +527,38 @@ export function getBotReaction(messageId: number): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Dequeue — consumption by the agent
+// Dequeue — consumption by the agent (delegates to TwoLaneQueue)
 // ---------------------------------------------------------------------------
 
 /**
  * Returns the next available queue item, response lane first.
- * Skips voice messages that are still waiting for transcription (text is
- * undefined) — they stay queued until patchVoiceText fills them in.
- * Returns undefined if both lanes are empty or only contain pending voice.
+ * Skips voice messages that are still waiting for transcription.
  */
 export function dequeue(): TimelineEvent | undefined {
-  const item = _dequeueReady(_responseLane) ?? _dequeueReady(_messageLane);
-  if (item?.event.id !== undefined) _consumedMessageIds.add(item.event.id);
-  return item?.event;
+  return _queue.dequeue()?.event;
 }
 
 /**
- * Batch dequeue: drain all ready response-lane items (reactions, callbacks)
- * then include up to one ready message-lane item (user message with content).
- * Returns an empty array when nothing is available.
+ * Batch dequeue: drain all ready response-lane items, then up to one
+ * ready message-lane item. Returns empty array if nothing available.
  */
 export function dequeueBatch(): TimelineEvent[] {
-  const batch: TimelineEvent[] = [];
-
-  // Drain response lane (non-content events)
-  let resp: QueueItem | undefined;
-  while ((resp = _dequeueReady(_responseLane)) !== undefined) {
-    _consumedMessageIds.add(resp.event.id);
-    batch.push(resp.event);
-  }
-
-  // Include up to one content event from the message lane
-  const msg = _dequeueReady(_messageLane);
-  if (msg) {
-    _consumedMessageIds.add(msg.event.id);
-    batch.push(msg.event);
-  }
-
-  return batch;
-}
-
-/** Dequeue the first item that is NOT a voice-pending-transcription. */
-function _dequeueReady(lane: SimpleQueue<QueueItem>): QueueItem | undefined {
-  const items = lane.dump();
-  let found: QueueItem | undefined;
-  for (const item of items) {
-    if (!found && _isReady(item)) {
-      found = item;
-      continue; // don't re-enqueue the consumed item
-    }
-    lane.enqueue(item);
-  }
-  return found;
-}
-
-/** A queue item is ready unless it's a voice message still waiting for text. */
-function _isReady(item: QueueItem): boolean {
-  const c = item.event.content;
-  return !(c.type === "voice" && c.text === undefined);
+  return _queue.dequeueBatch().map((item) => item.event);
 }
 
 /**
  * Finds and removes the first queued item matching the predicate.
  * Checks response lane first, then message lane.
- * Used by compound tools (ask, choose, confirm) to consume
- * a specific callback/message from the queue.
  */
 export function dequeueMatch<T>(
   predicate: (event: TimelineEvent) => T | undefined,
 ): T | undefined {
-  return scanAndRemove(_responseLane, predicate)
-    ?? scanAndRemove(_messageLane, predicate);
-}
-
-/** Drain a lane, extract the first match, re-enqueue the rest. */
-function scanAndRemove<T>(
-  lane: SimpleQueue<QueueItem>,
-  predicate: (event: TimelineEvent) => T | undefined,
-): T | undefined {
-  const items = lane.dump();
-  let found: T | undefined;
-  let consumedEventId: number | undefined;
-  for (const item of items) {
-    if (found === undefined) {
-      const result = predicate(item.event);
-      if (result !== undefined) {
-        found = result;
-        consumedEventId = item.event.id;
-        continue; // don't re-enqueue the matched item
-      }
-    }
-    lane.enqueue(item);
-  }
-  if (consumedEventId !== undefined) _consumedMessageIds.add(consumedEventId);
-  // Wake waiters when a match was found — even if the lane is now empty (items
-  // may exist in the other lane). The churn-loop concern only applies to *misses*
-  // (found === undefined), which still skip the notify.
-  if (found !== undefined) notifyWaiters();
-  return found;
+  return _queue.dequeueMatch((item) => predicate(item.event));
 }
 
 /** Number of unconsumed items across both lanes. */
 export function pendingCount(): number {
-  return _responseLane.count + _messageLane.count;
+  return _queue.pendingCount();
 }
 
 /**
@@ -678,14 +566,12 @@ export function pendingCount(): number {
  * Used by dequeue_update to wait when the queue is empty.
  */
 export function waitForEnqueue(): Promise<void> {
-  return new Promise((resolve) => {
-    _waiters.push(resolve);
-  });
+  return _queue.waitForEnqueue();
 }
 
 /** True if at least one dequeue_update call is blocked waiting for data. */
 export function hasPendingWaiters(): boolean {
-  return _waiters.length > 0;
+  return _queue.hasPendingWaiters();
 }
 
 // ---------------------------------------------------------------------------
@@ -790,13 +676,10 @@ export function resetStoreForTest(): void {
   _index = new Map();
   _insertionOrder = [];
   _highestMessageId = 0;
-  _responseLane.clear();
-  _messageLane.clear();
-  _waiters = [];
+  _queue.clear();
   _callbackHooks.clear();
   _messageHooks.clear();
   _botReactionIndex.clear();
-  _consumedMessageIds.clear();
   _onEventCallback = null;
 }
 
@@ -833,5 +716,6 @@ export function patchVoiceText(messageId: number, text: string): void {
   const current = versions.get(CURRENT);
   if (!current || current.content.type !== "voice") return;
   current.content.text = text;
-  notifyWaiters();
+  _queue.notifyWaiters();
+  notifySessionWaiters();
 }
