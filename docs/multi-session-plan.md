@@ -16,7 +16,8 @@ See [multi-session.md](multi-session.md) § *Ambiguity Resolution Protocol*. Thr
 When a new session starts, how does it learn what's already happening?
 
 - `session_start` response includes `sessions_active` count
-- A dedicated `list_sessions` tool (Phase 4)
+- When `sessions_active > 1`, `session_start` also returns `fellow_sessions` (list of other sessions with SID, name, createdAt) and `routing_mode` ✅
+- `list_sessions` tool — enumerate active sessions at any time ✅
 - Timeline scan (expensive, but complete)
 
 ### ~~Persistence Across Restarts~~ → Resolved: Ephemeral
@@ -57,8 +58,8 @@ Things to verify or set up before writing code.
 - [x] **Session closure** — `close_session(sid)` removes from active list, cleans up ownership, resets active session if closing the active one
 - [x] **Auth middleware pattern** — per-tool `checkAuth(sid, pin)` via SESSION_AUTH_SCHEMA; bootstrap tools exempt
 - [x] **Message store metadata** — `TimelineEvent.sid` tags outbound messages with session ID
-- [ ] **Tool parameter injection** — prototype adding `sid`/`pin` to all tool schemas
-- [ ] **DM queue design** — ~~how silent DMs are stored and delivered alongside regular dequeue events~~ ✅ synthetic `direct_message` events injected directly into target session queue
+- [x] **Tool parameter injection** — `sid`/`pin` added to all non-bootstrap tool schemas via `SESSION_AUTH_SCHEMA` ✅
+- [x] **DM queue design** — ~~how silent DMs are stored and delivered alongside regular dequeue events~~ ✅ synthetic `direct_message` events injected directly into target session queue
 - [x] **Routing mode events** — three modes implemented: load_balance (round-robin), cascade (priority), governor (designated)
 - [ ] **Test strategy** — multi-session tests need simulated concurrent tool calls; plan the test harness
 
@@ -100,14 +101,14 @@ Based on the phased plan in [multi-session.md](multi-session.md), here's a more 
 
 > **Muting deferred** — the permission model handles isolation: no permission = no communication. Muting may layer on later if needed.
 
-### Phase 4: Ambiguity Refinement & Swarm (partial ✅)
+### Phase 4: Ambiguity Refinement & Swarm ✅
 
 1. ~~`pass_message` tool for cascade protocol — session forwards ambiguous message to next in SID order~~ ✅
 2. ~~`route_message` tool for governor delegation — governor routes message to specific target session~~ ✅
 3. ~~Governor death recovery: reset routing mode to load_balance and notify operator when governor closes~~ ✅
-4. Cascade timeout tuning (idle vs busy session timeouts)
+4. ~~Cascade timeout tuning — 15 s for idle sessions, 30 s for busy; surfaced as `pass_by` ISO timestamp on dequeued events~~ ✅
 5. ~~`list_sessions` tool — enumerate active sessions with names, topics, status~~ ✅ (Phase 2)
-6. Session directory for new sessions bootstrapping
+6. ~~Session directory for new sessions bootstrapping — `fellow_sessions` + `routing_mode` returned by `session_start` when `sessions_active > 1`~~ ✅
 7. ~~Write tests for cascade edge cases (pass, governor death, mode switching)~~ ✅
 
 ## Quick Wins (Can Do Now)

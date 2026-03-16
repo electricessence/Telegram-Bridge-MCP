@@ -112,7 +112,7 @@ This is where multi-session gets powerful:
 - `session_start` with existing sessions → returns explicit session ID, PIN, active session count. Operator is prompted to select a routing mode (if not already set).
 - **Session closure** — `close_session(sid)` tool. Drains the session's queue, removes it from the active session list, and cleans up resources. If the closed session was the governor, governor mode is dropped and the operator is prompted to select a new routing mode.
 - **Transport disconnect** — queue stops accumulating after a configurable timeout. Session marked inactive but not closed (can reconnect and reclaim).
-- **Session reconnect** — can reclaim its session ID if within the timeout window. PIN must match.
+- **Session reconnect** — *(not yet implemented)* reserved for future: reclaim SID within a timeout window if PIN matches.
 - **MCP restart** — all sessions are invalidated (ephemeral, in-memory only). Agents must call `session_start` again to get new credentials.
 
 ### The Swarm Model
@@ -182,35 +182,27 @@ The simplest mode. Ambiguous messages are distributed via **round-robin** among 
 
 #### 2. Ordered Cascade
 
-Messages are offered to sessions one at a time, in priority order. Each session can **claim** or **pass**.
+Messages are offered to sessions one at a time, in priority order. Each session can **claim** (keep it) or **pass** (forward it to the next).
 
-**Queue building:**
+**Routing:**
 
-1. Collect idle sessions (currently blocked on `dequeue_update`), sorted by ascending session ID.
-2. Append busy sessions (currently executing a tool call), sorted by ascending session ID.
-3. The resulting list is the cascade queue.
+1. Server selects the lowest-SID idle session (one blocked on `dequeue_update`). If no idle sessions exist, picks the lowest SID overall.
+2. The selected session receives the message in its dequeue stream with a `pass_by` ISO timestamp — the deadline to act:
+   - **Idle sessions:** 15 seconds from delivery.
+   - **Busy sessions:** 30 seconds from delivery.
+3. The session either claims the message (simply handles it) or calls `pass_message(message_id)` to forward it to the next session in SID order.
+4. **Last session in the queue MUST claim** — `pass_message` returns an error if called by the last session. This guarantees every message is handled.
+5. The deadline is advisory — the server does not forcibly re-route an unclaimed message after expiry; the deadline is guidance for the agent.
 
-**Cascade flow:**
-
-1. Server sends an `ambiguous_offer` event to the first session in the queue.
-2. The session has a timeout to respond:
-   - **Idle sessions:** 15 seconds (they're waiting, should respond quickly).
-   - **Busy sessions:** 30 seconds (they may be mid-task).
-3. Session responds with `claim` (takes the message) or `pass` (declines).
-4. On `pass` or timeout → offer moves to the next session.
-5. **Last session in the queue MUST claim** — no pass option. This guarantees every message is handled.
-
-**`ambiguous_offer` event shape:**
+**Dequeued event shape (cascade mode):**
 
 ```json
 {
-  "type": "ambiguous_offer",
-  "message_id": 12345,
-  "text": "Can you check the deploy logs?",
-  "position_in_queue": 1,
-  "total_in_queue": 3,
-  "timeout_seconds": 15,
-  "is_last": false
+  "id": 12345,
+  "event": "message",
+  "from": "user",
+  "content": { "type": "text", "text": "Can you check the deploy logs?" },
+  "pass_by": "2026-03-16T11:45:00.000Z"
 }
 ```
 
@@ -245,7 +237,7 @@ See [Governor Pattern](#governor-pattern) for scope and constraints.
 
 Targeted messages bypass the routing mode entirely — they always go to the owning session.
 
-## Governor Pattern
+### Governor Pattern
 
 The governor is a session with a **narrow, well-defined scope**: routing ambiguous messages.
 

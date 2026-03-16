@@ -20,6 +20,8 @@
 - Added `route_message` tool — governor delegates a message to a specific target session (governor mode only)
 - Added `passMessage` and `routeMessage` functions in session-queue — re-deliver events from the message store to another session's queue
 - Added governor death recovery — closing the governor session resets routing mode to load_balance and notifies the operator
+- Added cascade pass-by deadlines — cascade-routed events include a `pass_by` ISO timestamp (15 s for idle sessions, 30 s for busy)
+- Added session directory to `session_start` — when `sessions_active > 1`, response includes `fellow_sessions` (list of other sessions) and `routing_mode`
 - Added `.npmrc` with `node-linker=hoisted` — flattens `node_modules` for reliable type resolution across transitive deps
 - Added `pnpm patch` files for `@tsdotnet/queue`, `collection-base`, `compare`, `exceptions` — adds `.js` extensions to relative `.d.ts` imports for `moduleResolution: "node16"` compatibility
 - Added Claude Code Docker config example to README
