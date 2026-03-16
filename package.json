@@ -42,7 +42,13 @@
       "onnxruntime-node",
       "protobufjs",
       "sharp"
-    ]
+    ],
+    "patchedDependencies": {
+      "@tsdotnet/queue": "patches/@tsdotnet__queue.patch",
+      "@tsdotnet/collection-base": "patches/@tsdotnet__collection-base.patch",
+      "@tsdotnet/compare": "patches/@tsdotnet__compare.patch",
+      "@tsdotnet/exceptions": "patches/@tsdotnet__exceptions.patch"
+    }
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",

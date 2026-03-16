@@ -14,20 +14,6 @@
 
 import Queue from "@tsdotnet/queue";
 
-/**
- * Locally-defined subset of Queue<T> — ESLint's type checker cannot resolve
- * the full inheritance chain (Queue → QueueBase → IterableCollectionBase)
- * through @tsdotnet/collection-base, even with hoisted node_modules.
- * tsc handles it fine via skipLibCheck.
- */
-interface QueueLike<T> {
-  readonly count: number;
-  enqueue(value: T): unknown;
-  dequeue(): T | undefined;
-  consumer(): Iterable<T>;
-  clear(): unknown;
-}
-
 // ---------------------------------------------------------------------------
 // TwoLaneQueue
 // ---------------------------------------------------------------------------
@@ -44,10 +30,8 @@ export interface TwoLaneQueueOptions<T> {
 const DEFAULT_MAX_SIZE = 5000;
 
 export class TwoLaneQueue<T> {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  private readonly _responseLane: QueueLike<T> = new Queue<T>() as QueueLike<T>;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  private readonly _messageLane: QueueLike<T> = new Queue<T>() as QueueLike<T>;
+  private readonly _responseLane = new Queue<T>();
+  private readonly _messageLane = new Queue<T>();
   private readonly _consumedIds = new Set<number>();
   private _waiters: Array<() => void> = [];
   private readonly _maxSize: number;
@@ -186,12 +170,12 @@ export class TwoLaneQueue<T> {
   }
 
   /** Drop the oldest item if the lane is at capacity. */
-  private _capLane(lane: QueueLike<T>): void {
+  private _capLane(lane: Queue<T>): void {
     if (lane.count >= this._maxSize) lane.dequeue();
   }
 
   /** Dequeue the first ready item from a lane, re-enqueue the rest. */
-  private _dequeueReady(lane: QueueLike<T>): T | undefined {
+  private _dequeueReady(lane: Queue<T>): T | undefined {
     const items = [...lane.consumer()];
     let found: T | undefined;
     for (const item of items) {
@@ -206,7 +190,7 @@ export class TwoLaneQueue<T> {
 
   /** Drain a lane, extract the first match, re-enqueue the rest. */
   private _scanAndRemove<R>(
-    lane: QueueLike<T>,
+    lane: Queue<T>,
     predicate: (item: T) => R | undefined,
   ): R | undefined {
     const items = [...lane.consumer()];

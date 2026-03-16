@@ -10,10 +10,11 @@
 - Added cross-session outbound forwarding — bot messages from one session appear in other sessions' queues
 - Added `routing-mode` module — configurable routing for ambiguous messages (load_balance default, cascade/governor stubs for Phase 4)
 - Added `.npmrc` with `node-linker=hoisted` — flattens `node_modules` for reliable type resolution across transitive deps
+- Added `pnpm patch` files for `@tsdotnet/queue`, `collection-base`, `compare`, `exceptions` — adds `.js` extensions to relative `.d.ts` imports for `moduleResolution: "node16"` compatibility
 
 ## Changed
 
-- Restored `@tsdotnet/queue` dependency — replaces hand-rolled `SimpleQueue<T>` inline class; pnpm type-resolution issue from v3.0.0 no longer reproduces
+- Restored `@tsdotnet/queue` dependency — replaces hand-rolled `SimpleQueue<T>` inline class; uses `Queue<T>` directly (no shims) thanks to pnpm patches
 - Refactored `message-store` to delegate queue operations to `TwoLaneQueue<T>` — inbound events are also routed to per-session queues via `routeToSession`
 - Ambiguous inbound messages now use load-balance routing (first idle session) instead of broadcast when multiple sessions are active
 - Fixed lint errors in `close_session` — removed unnecessary `async` and type assertions

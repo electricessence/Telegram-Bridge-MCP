@@ -4,6 +4,20 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@tsdotnet/collection-base':
+    hash: c1ef9aad847cbad75e05a01a803afd692fbbb3bc153089e053608421519b4647
+    path: patches/@tsdotnet__collection-base.patch
+  '@tsdotnet/compare':
+    hash: 1e82a226dd66a2eed6c84746003936356125895de0fb81273df2520d4ac7982a
+    path: patches/@tsdotnet__compare.patch
+  '@tsdotnet/exceptions':
+    hash: 875c9cbe79df074a5194f205e9325c3ab6e1d06c90ab9139a8159aa820d4ce82
+    path: patches/@tsdotnet__exceptions.patch
+  '@tsdotnet/queue':
+    hash: 1374815e19b6913c61510eae5157bb80062fbf03d1f324149e3f51bd47c12ce5
+    path: patches/@tsdotnet__queue.patch
+
 importers:
 
   .:
@@ -16,7 +30,7 @@ importers:
         version: 1.27.1(zod@4.3.6)
       '@tsdotnet/queue':
         specifier: ^1.2.17
-        version: 1.2.17
+        version: 1.2.17(patch_hash=1374815e19b6913c61510eae5157bb80062fbf03d1f324149e3f51bd47c12ce5)
       audio-decode:
         specifier: ^2.2.3
         version: 2.2.3
@@ -2120,29 +2134,29 @@ snapshots:
 
   '@thi.ng/errors@2.6.3': {}
 
-  '@tsdotnet/collection-base@2.1.9':
+  '@tsdotnet/collection-base@2.1.9(patch_hash=c1ef9aad847cbad75e05a01a803afd692fbbb3bc153089e053608421519b4647)':
     dependencies:
       '@tsdotnet/common-interfaces': 1.0.6
-      '@tsdotnet/compare': 1.7.4
-      '@tsdotnet/exceptions': 1.2.5
+      '@tsdotnet/compare': 1.7.4(patch_hash=1e82a226dd66a2eed6c84746003936356125895de0fb81273df2520d4ac7982a)
+      '@tsdotnet/exceptions': 1.2.5(patch_hash=875c9cbe79df074a5194f205e9325c3ab6e1d06c90ab9139a8159aa820d4ce82)
       tslib: 2.8.1
 
   '@tsdotnet/common-interfaces@1.0.6': {}
 
-  '@tsdotnet/compare@1.7.4':
+  '@tsdotnet/compare@1.7.4(patch_hash=1e82a226dd66a2eed6c84746003936356125895de0fb81273df2520d4ac7982a)':
     dependencies:
       '@tsdotnet/common-interfaces': 1.0.6
       '@tsdotnet/type': 1.2.7
       tslib: 2.8.1
 
-  '@tsdotnet/exceptions@1.2.5':
+  '@tsdotnet/exceptions@1.2.5(patch_hash=875c9cbe79df074a5194f205e9325c3ab6e1d06c90ab9139a8159aa820d4ce82)':
     dependencies:
       tslib: 2.8.1
 
-  '@tsdotnet/queue@1.2.17':
+  '@tsdotnet/queue@1.2.17(patch_hash=1374815e19b6913c61510eae5157bb80062fbf03d1f324149e3f51bd47c12ce5)':
     dependencies:
-      '@tsdotnet/collection-base': 2.1.9
-      '@tsdotnet/exceptions': 1.2.5
+      '@tsdotnet/collection-base': 2.1.9(patch_hash=c1ef9aad847cbad75e05a01a803afd692fbbb3bc153089e053608421519b4647)
+      '@tsdotnet/exceptions': 1.2.5(patch_hash=875c9cbe79df074a5194f205e9325c3ab6e1d06c90ab9139a8159aa820d4ce82)
       tslib: 2.8.1
 
   '@tsdotnet/type@1.2.7':
