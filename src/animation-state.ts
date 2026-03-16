@@ -92,6 +92,7 @@ interface AnimationState {
   intervalMs: number;
   timeoutMs: number;
   frameIndex: number;
+  dispatchCount: number;     // counts actual API dispatches; interval doubles every 20
   cycleTimer: ReturnType<typeof setInterval> | null;
   timeoutTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -147,6 +148,17 @@ async function cycleFrame(): Promise<void> {
     _state = null;
     _savedForResume = null;
     clearSendInterceptor();
+    return;
+  }
+  // Backoff: every 20 dispatches, double the interval
+  _state.dispatchCount++;
+  if (_state.dispatchCount % 20 === 0) {
+    _state.intervalMs = _state.intervalMs * 2;
+    if (_state.cycleTimer) {
+      clearInterval(_state.cycleTimer);
+      _state.cycleTimer = setInterval(() => void cycleFrame(), _state.intervalMs);
+      unrefTimer(_state.cycleTimer);
+    }
   }
 }
 
@@ -241,6 +253,7 @@ export async function startAnimation(
     intervalMs: Math.max(intervalMs, 1000), // Telegram rate limit floor
     timeoutMs: Math.min(timeoutSeconds, 600) * 1000,
     frameIndex: 0,
+    dispatchCount: 0,
     cycleTimer: null,
     timeoutTimer: null,
   };
