@@ -8,6 +8,7 @@ import {
   trackMessageOwner,
   getMessageOwner,
   routeToSession,
+  broadcastOutbound,
   notifySessionWaiters,
   resetSessionQueuesForTest,
 } from "./session-queue.js";
@@ -231,6 +232,47 @@ describe("session-queue", () => {
       await p1;
       await p2;
       // If we got here, both resolved
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Cross-session outbound forwarding
+  // -------------------------------------------------------------------------
+
+  describe("broadcastOutbound", () => {
+    it("forwards to all sessions except the sender", () => {
+      createSessionQueue(1);
+      createSessionQueue(2);
+      createSessionQueue(3);
+      const evt = makeEvent({ id: 500, event: "sent", from: "bot" as const });
+      broadcastOutbound(evt, 1);
+      expect(getSessionQueue(1)?.pendingCount()).toBe(0);
+      expect(getSessionQueue(2)?.pendingCount()).toBe(1);
+      expect(getSessionQueue(3)?.pendingCount()).toBe(1);
+    });
+
+    it("no-ops when only one session exists", () => {
+      createSessionQueue(1);
+      const evt = makeEvent({ id: 501, event: "sent", from: "bot" as const });
+      broadcastOutbound(evt, 1);
+      expect(getSessionQueue(1)?.pendingCount()).toBe(0);
+    });
+
+    it("no-ops when no sessions exist", () => {
+      const evt = makeEvent({ id: 502, event: "sent", from: "bot" as const });
+      // Should not throw
+      broadcastOutbound(evt, 1);
+    });
+
+    it("wakes waiters on receiving sessions", async () => {
+      createSessionQueue(1);
+      createSessionQueue(2);
+      const q2 = getSessionQueue(2);
+      const waiter = q2?.waitForEnqueue();
+      const evt = makeEvent({ id: 503, event: "sent", from: "bot" as const });
+      broadcastOutbound(evt, 1);
+      await waiter;
+      // waiter resolved → enqueue woke it
     });
   });
 

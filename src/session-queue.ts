@@ -139,6 +139,24 @@ function resolveTargetSession(event: TimelineEvent): number {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-session outbound forwarding
+// ---------------------------------------------------------------------------
+
+/**
+ * Forward an outbound bot event to all sessions *except* the sender.
+ * Lets other sessions see what the sending session sent. Enqueued
+ * to the response lane (high priority) since it's a status update,
+ * not user input that blocks on processing.
+ */
+export function broadcastOutbound(event: TimelineEvent, senderSid: number): void {
+  if (_queues.size <= 1) return;
+  for (const [sid, q] of _queues) {
+    if (sid === senderSid) continue;
+    q.enqueueResponse(event);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Voice patch forwarding
 // ---------------------------------------------------------------------------
 

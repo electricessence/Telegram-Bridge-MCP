@@ -7,6 +7,7 @@
 - `session_start` now creates a per-session queue alongside the session
 - `close_session` now removes the per-session queue on closure
 - `dequeue_update` is now session-aware — reads from session queue when a session is active, falls back to global queue
+- Added cross-session outbound forwarding — bot messages from one session appear in other sessions' queues
 
 ## Changed
 

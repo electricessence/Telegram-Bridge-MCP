@@ -21,7 +21,7 @@ import type { Update } from "grammy/types";
 import { recordUpdate, recordBotMessage } from "./session-recording.js";
 import { getActiveSession } from "./session-manager.js";
 import { TwoLaneQueue } from "./two-lane-queue.js";
-import { routeToSession, trackMessageOwner, notifySessionWaiters } from "./session-queue.js";
+import { routeToSession, trackMessageOwner, notifySessionWaiters, broadcastOutbound } from "./session-queue.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -442,6 +442,7 @@ export function recordOutgoing(
   };
   pushEvent(evt);
   trackMessageOwner(messageId, activeSid);
+  if (activeSid > 0) broadcastOutbound(evt, activeSid);
 }
 
 /**
