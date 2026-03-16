@@ -2,4 +2,4 @@
 
 ## Changed
 
-- Animation interval doubles every 20 dispatched frames to reduce Telegram API usage over long-running animations
+- Doubled animation dispatch interval every 20 frames to reduce Telegram API usage over long-running animations
