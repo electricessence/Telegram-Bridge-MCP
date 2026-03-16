@@ -45,11 +45,16 @@ export interface DebugEntry {
 
 const MAX_ENTRIES = 2000;
 const _buffer: DebugEntry[] = [];
-let _enabled = !!process.env["TELEGRAM_MCP_DEBUG"];
+let _enabled = false; // set by initDebugLog() after config loads
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/** Initialize debug logging from config. Call after loadConfig(). */
+export function initDebugLog(configEnabled: boolean): void {
+  _enabled = configEnabled;
+}
 
 /** Whether debug logging is currently active. */
 export function isDebugEnabled(): boolean {
