@@ -27,10 +27,11 @@ const DESCRIPTION =
   "Consume queued updates in a single batch. Non-content events (reactions, " +
   "callbacks) are drained first, then up to one content event (user message " +
   "with text, media, or voice) is appended. Returns `{ updates: [{ id, event, from, content }, ...] }` " +
-  "with optional `pending` (count of remaining queued updates, when > 0), or `{ empty: true }` on timeout. " +
+  "with optional `pending` (count of remaining queued updates, when > 0), or `{ timed_out: true }` when " +
+  "the timeout expires with no updates — call again immediately to keep the loop alive. " +
   "Voice messages arrive pre-transcribed as { type: \"voice\", text: \"...\" }. " +
   "pending > 0 means more updates are queued — call again. " +
-  "Two modes: omit timeout (default 60 s) to block until an update arrives; " +
+  "Two modes: omit timeout (default 300 s) to block until an update arrives; " +
   "pass timeout: 0 for an instant non-blocking poll (use only for startup drain loops).";
 
 export function register(server: McpServer) {
@@ -44,8 +45,8 @@ export function register(server: McpServer) {
           .int()
           .min(0)
           .max(300)
-          .default(60)
-          .describe("Seconds to block when queue is empty. Default 60 blocks until an update arrives (normal loop). Pass 0 for an instant non-blocking poll (drain loops only). Max 300 (5 min)."),
+          .default(300)
+          .describe("Seconds to block when queue is empty. Default 300 (5 min) blocks until an update arrives — optimized for agent listen loops. Pass 0 for an instant non-blocking poll (drain loops only). Max 300."),
       },
     },
     async ({ timeout }, { signal }) => {
@@ -60,7 +61,7 @@ export function register(server: McpServer) {
       }
 
       if (timeout === 0) {
-        return toResult({ empty: true, pending: pendingCount() });
+        return toResult({ timed_out: true, pending: pendingCount() });
       }
 
       // Block until something arrives or timeout expires
@@ -89,7 +90,7 @@ export function register(server: McpServer) {
         }
       }
 
-      return toResult({ empty: true, pending: pendingCount() });
+      return toResult({ timed_out: true, pending: pendingCount() });
     },
   );
 }
