@@ -2,6 +2,10 @@
 
 ## Added
 
+- Governor health-check timer (`src/health-check.ts`) — runs every 60 s; if the governor session has not polled `dequeue_update` within 360 s (max-timeout + buffer), sends the operator a three-option inline keyboard prompt to reroute messages to the next available session, make it the permanent primary, or wait; non-governor unresponsive sessions produce a notification only; recovery (next poll) clears the flagged state and notifies the operator
+- `touchSession(sid)` in `session-manager.ts` — records `lastPollAt` and resets `healthy = true`; called by `dequeue_update` on every poll to serve as a heartbeat
+- `markUnhealthy(sid)`, `isHealthy(sid)`, `getUnhealthySessions(thresholdMs)` in `session-manager.ts` — health state accessors used by the health-check timer
+- `lastPollAt` and `healthy` fields added to the `Session` interface in `session-manager.ts`
 - Auto-grant bidirectional DM on session approval — when `session_start` creates a new session (after operator approval), `grantDm` is called in both directions between the new session and every existing session; operator approval is the trust gate so no separate `request_dm_access` step is needed
 - Session close teardown contract — `close_session` now: (1) drains orphaned queue items and reroutes them to remaining sessions, (2) always sends operator disconnect notification "🤖 {name} has disconnected.", (3) replaces any pending `choose`/`confirm`/`send_choice` callback hooks owned by the closing session with a "Session closed" ack so late button presses are handled gracefully
 - `drainQueue(sid)` in `session-queue.ts` — returns all pending events from a session queue before removal, enabling orphan rerouting on close

@@ -8,6 +8,8 @@ export interface Session {
   pin: number;
   name: string;
   createdAt: string;
+  lastPollAt: number | undefined;
+  healthy: boolean;
 }
 
 /** Public view returned by `listSessions` — no PIN. */
@@ -49,6 +51,8 @@ export function createSession(name = ""): SessionCreateResult {
     pin,
     name,
     createdAt: new Date().toISOString(),
+    lastPollAt: undefined,
+    healthy: true,
   };
   _sessions.set(sid, session);
   dlog("session", `created sid=${sid} name=${JSON.stringify(name)} total=${_sessions.size}`);
@@ -80,6 +84,37 @@ export function listSessions(): SessionInfo[] {
 
 export function activeSessionCount(): number {
   return _sessions.size;
+}
+
+/** Record a heartbeat for a session — called by dequeue_update on every poll. */
+export function touchSession(sid: number): void {
+  const s = _sessions.get(sid);
+  if (!s) return;
+  s.lastPollAt = Date.now();
+  s.healthy = true;
+}
+
+/** Mark a session as unhealthy (called by the health-check timer). */
+export function markUnhealthy(sid: number): void {
+  const s = _sessions.get(sid);
+  if (s) s.healthy = false;
+}
+
+/** Return true if the session is tracked as healthy. */
+export function isHealthy(sid: number): boolean {
+  return _sessions.get(sid)?.healthy ?? false;
+}
+
+/**
+ * Return sessions whose last poll was older than `thresholdMs` ago.
+ * Sessions that have never polled (lastPollAt === undefined) are excluded —
+ * they may legitimately be starting up.
+ */
+export function getUnhealthySessions(thresholdMs: number): SessionInfo[] {
+  const cutoff = Date.now() - thresholdMs;
+  return [..._sessions.values()]
+    .filter(s => s.lastPollAt !== undefined && s.lastPollAt < cutoff)
+    .map(({ sid, name, createdAt }) => ({ sid, name, createdAt }));
 }
 
 // ── Active Session Context ─────────────────────────────────

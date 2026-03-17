@@ -5,7 +5,7 @@ import {
   dequeueBatch, pendingCount, waitForEnqueue,
   type TimelineEvent,
 } from "../message-store.js";
-import { getActiveSession, setActiveSession, activeSessionCount } from "../session-manager.js";
+import { getActiveSession, setActiveSession, activeSessionCount, touchSession } from "../session-manager.js";
 import { getSessionQueue, getMessageOwner } from "../session-queue.js";
 
 /** Auto-salute voice messages on dequeue so the user knows we received them. */
@@ -107,6 +107,9 @@ export function register(server: McpServer) {
       }
 
       resyncActiveSession();
+
+      // Record a heartbeat so the health-check can detect unresponsive sessions.
+      if (sid > 0) touchSession(sid);
 
       function dequeueBatchAny(): TimelineEvent[] {
         if (sessionQueue) {

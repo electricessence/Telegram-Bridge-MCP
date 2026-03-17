@@ -30,7 +30,8 @@ export type DebugCategory =
   | "cascade"
   | "dm"
   | "animation"
-  | "tool";
+  | "tool"
+  | "health";
 
 export interface DebugEntry {
   id: number;           // auto-incrementing sequence number

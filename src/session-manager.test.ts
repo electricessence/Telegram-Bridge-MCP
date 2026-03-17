@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   createSession,
   getSession,
@@ -9,6 +9,10 @@ import {
   activeSessionCount,
   setActiveSession,
   getActiveSession,
+  touchSession,
+  markUnhealthy,
+  isHealthy,
+  getUnhealthySessions,
 } from "./session-manager.js";
 
 beforeEach(() => {
@@ -206,5 +210,106 @@ describe("active session context", () => {
     setActiveSession(5);
     resetSessions();
     expect(getActiveSession()).toBe(0);
+  });
+});
+
+describe("health tracking", () => {
+  it("new sessions start healthy with no lastPollAt", () => {
+    const s = createSession("alpha");
+    expect(isHealthy(s.sid)).toBe(true);
+    const raw = getSession(s.sid);
+    expect(raw?.lastPollAt).toBeUndefined();
+  });
+
+  describe("touchSession", () => {
+    it("records lastPollAt and keeps session healthy", () => {
+      const before = Date.now();
+      const s = createSession("alpha");
+      touchSession(s.sid);
+      const raw = getSession(s.sid);
+      expect(raw?.lastPollAt).toBeGreaterThanOrEqual(before);
+      expect(isHealthy(s.sid)).toBe(true);
+    });
+
+    it("restores healthy flag after markUnhealthy", () => {
+      const s = createSession("alpha");
+      markUnhealthy(s.sid);
+      expect(isHealthy(s.sid)).toBe(false);
+      touchSession(s.sid);
+      expect(isHealthy(s.sid)).toBe(true);
+    });
+
+    it("is a no-op for unknown sid", () => {
+      expect(() => { touchSession(999); }).not.toThrow();
+    });
+  });
+
+  describe("markUnhealthy / isHealthy", () => {
+    it("markUnhealthy makes isHealthy return false", () => {
+      const s = createSession("alpha");
+      markUnhealthy(s.sid);
+      expect(isHealthy(s.sid)).toBe(false);
+    });
+
+    it("isHealthy returns false for unknown sid", () => {
+      expect(isHealthy(999)).toBe(false);
+    });
+
+    it("markUnhealthy is a no-op for unknown sid", () => {
+      expect(() => { markUnhealthy(999); }).not.toThrow();
+    });
+  });
+
+  describe("getUnhealthySessions", () => {
+    it("excludes sessions that have never polled", () => {
+      createSession("alpha");
+      expect(getUnhealthySessions(0)).toHaveLength(0);
+    });
+
+    it("returns sessions whose lastPollAt is before the cutoff", () => {
+      vi.useFakeTimers();
+      const s = createSession("alpha");
+      touchSession(s.sid);
+      // Advance past threshold
+      vi.advanceTimersByTime(400_000);
+      const unhealthy = getUnhealthySessions(360_000);
+      expect(unhealthy).toHaveLength(1);
+      expect(unhealthy[0].sid).toBe(s.sid);
+      vi.useRealTimers();
+    });
+
+    it("excludes sessions that polled recently", () => {
+      vi.useFakeTimers();
+      const s = createSession("alpha");
+      touchSession(s.sid);
+      vi.advanceTimersByTime(100_000); // well within threshold
+      expect(getUnhealthySessions(360_000)).toHaveLength(0);
+      vi.useRealTimers();
+    });
+
+    it("does not expose PINs", () => {
+      vi.useFakeTimers();
+      const s = createSession("alpha");
+      touchSession(s.sid);
+      vi.advanceTimersByTime(400_000);
+      const result = getUnhealthySessions(360_000);
+      const first = result[0] as Record<string, unknown>;
+      expect(first.pin).toBeUndefined();
+      vi.useRealTimers();
+    });
+
+    it("only returns sessions that exceed the threshold", () => {
+      vi.useFakeTimers();
+      const a = createSession("alpha");
+      const b = createSession("beta");
+      touchSession(a.sid);
+      vi.advanceTimersByTime(200_000);
+      touchSession(b.sid); // beta just polled
+      vi.advanceTimersByTime(200_000); // alpha is now 400s old, beta 200s
+      const unhealthy = getUnhealthySessions(360_000);
+      expect(unhealthy).toHaveLength(1);
+      expect(unhealthy[0].sid).toBe(a.sid);
+      vi.useRealTimers();
+    });
   });
 });

@@ -4,7 +4,7 @@ import { toResult, toError } from "../telegram.js";
 import { getDebugLog, debugLogSize, isDebugEnabled, setDebugEnabled, type DebugCategory } from "../debug-log.js";
 import { requireAuth } from "../session-gate.js";
 
-const CATEGORIES: DebugCategory[] = ["session", "route", "queue", "cascade", "dm", "animation", "tool"];
+const CATEGORIES: DebugCategory[] = ["session", "route", "queue", "cascade", "dm", "animation", "tool", "health"];
 
 const DESCRIPTION =
   "Read the server's debug trace log. Returns recent entries from the in-memory " +

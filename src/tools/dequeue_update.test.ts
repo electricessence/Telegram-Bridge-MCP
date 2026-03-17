@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   activeSessionCount: vi.fn(() => 0),
   getSessionQueue: vi.fn(() => undefined),
   getMessageOwner: vi.fn(() => 0),
+  touchSession: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -29,6 +30,7 @@ vi.mock("../session-manager.js", () => ({
   getActiveSession: () => mocks.getActiveSession(),
   setActiveSession: (...args: unknown[]) => mocks.setActiveSession(...args),
   activeSessionCount: () => mocks.activeSessionCount(),
+  touchSession: (...args: unknown[]) => mocks.touchSession(...args),
 }));
 
 vi.mock("../session-queue.js", () => ({
@@ -615,6 +617,60 @@ describe("dequeue_update tool", () => {
       const result = await call({ timeout: 0 });
       const data = parseResult(result);
       expect(data.updates[0].routing).toBe("ambiguous");
+    });
+  });
+
+  // =========================================================================
+  // Heartbeat — touchSession
+  // =========================================================================
+
+  describe("touchSession heartbeat", () => {
+    it("calls touchSession with the resolved sid when sid > 0 (explicit sid)", async () => {
+      // Must provide a session queue for the explicit-sid path, otherwise
+      // dequeue_update returns SESSION_NOT_FOUND before calling touchSession.
+      const mockSessionQueue = {
+        dequeueBatch: vi.fn(() => [makeEvent(1, "hi")] as TimelineEvent[]),
+        pendingCount: vi.fn(() => 0),
+        waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+      };
+      mocks.activeSessionCount.mockReturnValue(1);
+      mocks.getSessionQueue.mockReturnValueOnce(mockSessionQueue);
+      await call({ timeout: 0, sid: 5 });
+      expect(mocks.touchSession).toHaveBeenCalledWith(5);
+    });
+
+    it("calls touchSession with active session sid when no explicit sid", async () => {
+      mocks.activeSessionCount.mockReturnValue(0);
+      mocks.getActiveSession.mockReturnValue(3);
+      mocks.dequeueBatch.mockReturnValueOnce([makeEvent(1, "hi")]);
+      mocks.pendingCount.mockReturnValue(0);
+      await call({ timeout: 0 });
+      expect(mocks.touchSession).toHaveBeenCalledWith(3);
+    });
+
+    it("does not call touchSession when sid is 0", async () => {
+      mocks.activeSessionCount.mockReturnValue(0);
+      mocks.getActiveSession.mockReturnValue(0);
+      mocks.dequeueBatch.mockReturnValueOnce([]);
+      await call({ timeout: 0 });
+      expect(mocks.touchSession).not.toHaveBeenCalled();
+    });
+
+    it("calls touchSession on blocking wait path before returning batch", async () => {
+      // Must provide a session queue for the explicit-sid path.
+      const evt = makeEvent(10, "delayed");
+      const mockSessionQueue = {
+        dequeueBatch: vi.fn()
+          .mockReturnValueOnce([] as TimelineEvent[])
+          .mockReturnValueOnce([evt] as TimelineEvent[]),
+        pendingCount: vi.fn(() => 0),
+        waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+      };
+      mocks.activeSessionCount.mockReturnValue(1);
+      mocks.getSessionQueue.mockReturnValue(mockSessionQueue);
+      await call({ timeout: 1, sid: 7 });
+      expect(mocks.touchSession).toHaveBeenCalledWith(7);
+      mocks.getSessionQueue.mockReturnValue(undefined);
     });
   });
 });

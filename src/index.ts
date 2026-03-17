@@ -8,6 +8,7 @@ import { getSecurityConfig, getApi, resolveChat, installOutboundProxy, sendServi
 import { clearCommandsOnShutdown } from "./shutdown.js";
 import { BUILT_IN_COMMANDS, applySessionLogConfig, doTimelineDump } from "./built-in-commands.js";
 import { startPoller, stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
+import { startHealthCheck } from "./health-check.js";
 import { createOutboundProxy } from "./outbound-proxy.js";
 import { loadConfig, getSessionLogMode, sessionLogLabel, isDebugConfig } from "./config.js";
 import { timelineSize } from "./message-store.js";
@@ -88,6 +89,9 @@ void (async () => {
 
 startPoller();
 process.stderr.write("[info] background poller started\n");
+
+startHealthCheck();
+process.stderr.write("[info] health check started\n");
 
 // Best-effort startup notification — bypasses proxy (operational, not agent content)
 const logStatus = sessionLogLabel();
