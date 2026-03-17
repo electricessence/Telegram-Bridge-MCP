@@ -65,6 +65,7 @@
 - Added active session context (`setActiveSession`/`getActiveSession`) for tool-call scoping
 - Improved `/voice` panel empty-state hint to mention built-in fallback and link to Kokoro setup
 - Replaced VS Code-specific language with client-agnostic terms across README, LOOP-PROMPT, docs, tool descriptions, and pairing wizard output
+- Reordered `multi-session-test-script.md` — targeted routing (reply-to, callback) is now Phase 1; session lifecycle moved to Phase 2; cascade and governor merged into Phase 3 (ambiguous routing); added close/rejoin and reply-to-S2 tests
 
 ## Fixed
 
