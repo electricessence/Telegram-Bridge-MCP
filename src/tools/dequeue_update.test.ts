@@ -386,6 +386,54 @@ describe("dequeue_update tool", () => {
     expect(mocks.setActiveSession).toHaveBeenCalledWith(3);
   });
 
+  it("re-syncs setActiveSession after blocking wait with explicit sid", async () => {
+    const evt = makeEvent(80, "after wait");
+    const mockSessionQueue = {
+      dequeueBatch: vi.fn().mockReturnValueOnce([]).mockReturnValueOnce([evt] as TimelineEvent[]),
+      pendingCount: vi.fn(() => 0),
+      waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getActiveSession.mockReturnValue(1);
+    mocks.getSessionQueue.mockImplementation((sid: number) =>
+      sid === 5 ? mockSessionQueue : undefined,
+    );
+
+    const result = await call({ sid: 5, timeout: 1 });
+    const data = parseResult(result);
+    expect(data.updates).toBeDefined();
+    // setActiveSession should have been called at least twice (start + return)
+    const calls = mocks.setActiveSession.mock.calls.filter(
+      (c: unknown[]) => c[0] === 5,
+    );
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("re-syncs setActiveSession on abort with explicit sid", async () => {
+    const mockSessionQueue = {
+      dequeueBatch: vi.fn(() => [] as TimelineEvent[]),
+      pendingCount: vi.fn(() => 0),
+      waitForEnqueue: vi.fn(() => new Promise(() => {})), // never resolves
+    };
+    mocks.getActiveSession.mockReturnValue(1);
+    mocks.getSessionQueue.mockImplementation((sid: number) =>
+      sid === 4 ? mockSessionQueue : undefined,
+    );
+
+    const controller = new AbortController();
+    void Promise.resolve().then(() => { controller.abort(); });
+    const result = await call({ sid: 4, timeout: 60 }, { signal: controller.signal });
+    const data = parseResult(result);
+    expect(data.empty).toBe(true);
+    // resync must fire even on abort path
+    expect(mocks.setActiveSession).toHaveBeenCalledWith(4);
+  });
+
+  it("does not call setActiveSession on SESSION_NOT_FOUND error path", async () => {
+    mocks.getSessionQueue.mockReturnValue(undefined);
+    await call({ sid: 99 });
+    expect(mocks.setActiveSession).not.toHaveBeenCalled();
+  });
+
   // =========================================================================
   // Abort signal
   // =========================================================================
