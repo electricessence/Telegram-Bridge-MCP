@@ -6,6 +6,10 @@ const mocks = vi.hoisted(() => ({
   dequeueMatch: vi.fn(),
   waitForEnqueue: vi.fn(),
   ackVoiceMessage: vi.fn(),
+  sessionQueue: {
+    dequeueMatch: vi.fn(),
+    waitForEnqueue: vi.fn(),
+  },
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -21,6 +25,11 @@ vi.mock("../telegram.js", async (importActual) => {
 vi.mock("../message-store.js", () => ({
   dequeueMatch: mocks.dequeueMatch,
   waitForEnqueue: mocks.waitForEnqueue,
+}));
+
+vi.mock("../session-queue.js", () => ({
+  getSessionQueue: (sid: number) =>
+    sid === 1 ? mocks.sessionQueue : undefined,
 }));
 
 import {
@@ -325,6 +334,79 @@ describe("button-helpers", () => {
       await pollButtonOrTextOrVoice(123, 10, 1, onVoiceDetected);
 
       expect(onVoiceDetected).toHaveBeenCalledOnce();
+    });
+  });
+
+  // -- session-aware polling -----------------------------------------------
+
+  describe("session-aware polling", () => {
+    beforeEach(() => {
+      mocks.sessionQueue.dequeueMatch.mockReset();
+      mocks.sessionQueue.waitForEnqueue.mockReset();
+    });
+
+    it("pollButtonPress uses session queue when sid is provided", async () => {
+      mocks.sessionQueue.dequeueMatch.mockImplementation(
+        (fn: (e: unknown) => unknown) =>
+          fn({ event: "callback", content: { target: 10, qid: "q1", data: "yes" } }),
+      );
+      const result = await pollButtonPress(123, 10, 1, undefined, 1);
+      expect(result).toEqual({
+        kind: "button",
+        callback_query_id: "q1",
+        data: "yes",
+        message_id: 10,
+      });
+      expect(mocks.sessionQueue.dequeueMatch).toHaveBeenCalled();
+      expect(mocks.dequeueMatch).not.toHaveBeenCalled();
+    });
+
+    it("pollButtonPress falls back to global when sid is 0", async () => {
+      mocks.dequeueMatch.mockImplementation(
+        (fn: (e: unknown) => unknown) =>
+          fn({ event: "callback", content: { target: 10, qid: "q2", data: "no" } }),
+      );
+      const result = await pollButtonPress(123, 10, 1, undefined, 0);
+      expect(mocks.dequeueMatch).toHaveBeenCalled();
+      expect(mocks.sessionQueue.dequeueMatch).not.toHaveBeenCalled();
+      expect(result?.data).toBe("no");
+    });
+
+    it("pollButtonOrTextOrVoice uses session queue when sid > 0", async () => {
+      mocks.sessionQueue.dequeueMatch.mockImplementation(
+        (fn: (e: unknown) => unknown) =>
+          fn({ event: "message", id: 11, content: { type: "text", text: "hi" } }),
+      );
+      const result = await pollButtonOrTextOrVoice(
+        123, 10, 1, undefined, undefined, 1,
+      );
+      expect(result).toEqual({ kind: "text", message_id: 11, text: "hi" });
+      expect(mocks.sessionQueue.dequeueMatch).toHaveBeenCalled();
+      expect(mocks.dequeueMatch).not.toHaveBeenCalled();
+    });
+
+    it("pollButtonOrTextOrVoice waits on session queue", async () => {
+      mocks.sessionQueue.dequeueMatch.mockReturnValue(undefined);
+      mocks.sessionQueue.waitForEnqueue.mockImplementation(
+        () => new Promise((r) => setTimeout(r, 100)),
+      );
+      const result = await pollButtonOrTextOrVoice(
+        123, 10, 0.01, undefined, undefined, 1,
+      );
+      expect(result).toBeNull();
+      expect(mocks.sessionQueue.waitForEnqueue).toHaveBeenCalled();
+      expect(mocks.waitForEnqueue).not.toHaveBeenCalled();
+    });
+
+    it("pollButtonPress falls back to global for unknown sid", async () => {
+      mocks.dequeueMatch.mockReturnValue(undefined);
+      mocks.waitForEnqueue.mockImplementation(
+        () => new Promise((r) => setTimeout(r, 100)),
+      );
+      // sid=999 has no queue — falls back to global
+      const result = await pollButtonPress(123, 10, 0.01, undefined, 999);
+      expect(mocks.dequeueMatch).toHaveBeenCalled();
+      expect(result).toBeNull();
     });
   });
 });

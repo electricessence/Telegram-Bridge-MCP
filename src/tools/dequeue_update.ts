@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { toResult, ackVoiceMessage } from "../telegram.js";
+import { toResult, toError, ackVoiceMessage } from "../telegram.js";
 import {
   dequeueBatch, pendingCount, waitForEnqueue,
   type TimelineEvent,
@@ -71,6 +71,16 @@ export function register(server: McpServer) {
       // instances share the same server process).
       const sid = explicitSid ?? getActiveSession();
       const sessionQueue = sid > 0 ? getSessionQueue(sid) : undefined;
+
+      // Explicit sid with no queue means the session ended or never existed.
+      if (explicitSid !== undefined && sid > 0 && !sessionQueue) {
+        return toError({
+          code: "SESSION_NOT_FOUND" as const,
+          message:
+            `No session queue for sid=${sid}. ` +
+            `The session may have ended or was never started.`,
+        });
+      }
 
       // Keep active session in sync — set at the start AND re-set before
       // each return so the global is correct when the next tool call dispatches.

@@ -408,4 +408,13 @@ describe("dequeue_update tool", () => {
     const data = parseResult(result);
     expect(data.empty).toBe(true);
   });
+
+  it("returns error when explicit sid has no session queue", async () => {
+    mocks.getSessionQueue.mockReturnValue(undefined);
+    const result = await call({ sid: 42 });
+    expect(isError(result)).toBe(true);
+    const content = (result as { content: { text: string }[] }).content[0];
+    expect(content.text).toContain("SESSION_NOT_FOUND");
+    expect(content.text).toContain("sid=42");
+  });
 });

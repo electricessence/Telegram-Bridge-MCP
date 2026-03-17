@@ -7,6 +7,7 @@ import {
 import { registerCallbackHook, clearCallbackHook, registerMessageHook, clearMessageHook, pendingCount } from "../message-store.js";
 import { getActiveSession } from "../session-manager.js";
 import { getSessionQueue } from "../session-queue.js";
+import { getCallerSid } from "../session-context.js";
 import {
   pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped,
   sendChoiceMessage, type KeyboardOption,
@@ -141,7 +142,10 @@ export function register(server: McpServer) {
           editWithSkipped(chatId, messageId, question).catch(() => {/* non-fatal */});
         };
 
-        const match = await pollButtonOrTextOrVoice(chatId, messageId, timeout_seconds, onVoiceDetected, signal);
+        const match = await pollButtonOrTextOrVoice(
+          chatId, messageId, timeout_seconds,
+          onVoiceDetected, signal, getCallerSid(),
+        );
 
         if (!match) {
           // Timeout — register a message hook so the next user message

@@ -86,6 +86,8 @@
 - Fixed `set_reaction` ignoring `temporary` flag — added explicit `temporary` boolean parameter so reactions auto-revert without requiring `restore_emoji` or `timeout_seconds`
 - Fixed confirm/choose buttons staying forever after timeout when user sends a text message (#27)
 - Fixed pending-updates guard in `confirm`, `ask`, `choose` using global count instead of session-aware count — now checks session queue when active
+- Fixed `confirm`, `choose`, `ask` polling from global queue instead of session queue — blocking tools now dequeue from the per-session queue when a session context exists, preventing cross-session event consumption
+- Fixed `dequeue_update` silently falling back to global queue when explicit `sid` has no session queue — now returns `SESSION_NOT_FOUND` error
 - Fixed animation-state 429 resume timer leak — multiple rate-limit retries no longer create duplicate resume timers
 - Fixed rate-limiter comment claiming 100 ms debounce when actual `MIN_SEND_INTERVAL_MS` is 1000 ms
 - Fixed stale "broadcast for now" comment in session-queue header — routing modes are fully implemented

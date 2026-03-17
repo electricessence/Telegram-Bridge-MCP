@@ -6,6 +6,7 @@ import { applyTopicToText } from "../topic-state.js";
 import { dequeueMatch, waitForEnqueue, pendingCount, type TimelineEvent } from "../message-store.js";
 import { getActiveSession } from "../session-manager.js";
 import { getSessionQueue } from "../session-queue.js";
+import { getCallerSid } from "../session-context.js";
 
 const DESCRIPTION =
   "Sends a question to a chat and waits until the user replies. " +
@@ -77,24 +78,30 @@ export function register(server: McpServer) {
 
         // Poll from the store queue for text or voice messages after our question.
         // Voice messages arrive pre-transcribed by the background poller.
+        const pollSid = getCallerSid();
+        const sq = pollSid > 0
+          ? getSessionQueue(pollSid)
+          : undefined;
         const deadline = Date.now() + timeout_seconds * 1000;
         const abortPromise = new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => { r(); }, { once: true }); });
 
         while (Date.now() < deadline) {
           if (signal.aborted) return toResult({ timed_out: false, aborted: true });
-          const match = dequeueMatch((event: TimelineEvent) => {
+          const matchFn = (event: TimelineEvent) => {
             if (event.event === "message" && event.id > sent.message_id) {
               if (event.content.type === "text"
                 || event.content.type === "command") {
                 return event;
               }
-              // Don't consume voice until transcription is complete (two-phase recording)
               if (event.content.type === "voice" && event.content.text) {
                 return event;
               }
             }
             return undefined;
-          });
+          };
+          const match = sq
+            ? sq.dequeueMatch(matchFn)
+            : dequeueMatch(matchFn);
 
           if (match) {
             if (match.content.type === "voice") {
@@ -126,7 +133,7 @@ export function register(server: McpServer) {
 
           let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
           await Promise.race([
-            waitForEnqueue(),
+            sq ? sq.waitForEnqueue() : waitForEnqueue(),
             new Promise<void>((r) => { timeoutHandle = setTimeout(r, Math.min(remaining, 5000)); }),
             abortPromise,
           ]);
