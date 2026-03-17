@@ -1,5 +1,10 @@
 # Multi-Session Communication
 
+> **⚠️ SUPERSEDED** — This was the original brainstorming document. Load-balance, cascade,
+> and pass\_message modes have been removed. The current design uses governor-only routing.
+> See [multi-session-protocol.md](multi-session-protocol.md) and [behavior.md](behavior.md)
+> for the current spec.
+
 > Working document — brainstorming and design notes for multi-session / multi-agent communication through a single Telegram Bridge MCP instance.
 
 ## Critical Constraint: One MCP Instance Per Bot Token

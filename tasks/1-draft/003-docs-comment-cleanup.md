@@ -1,5 +1,8 @@
 # Task 003 — Docs and Comment Cleanup (PR Review)
 
+> **Note:** Items 3A and 3C may already be resolved after the routing-mode collapse
+> (task 200) and changelog cleanup. Review before working.
+
 ## Problems
 
 Five low-severity documentation/comment issues from PR #40 review.

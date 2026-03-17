@@ -1,5 +1,9 @@
 # Multi-Session — What's Next
 
+> **⚠️ SUPERSEDED** — Planning companion to the original brainstorming doc. References
+> load-balance, cascade, and pass\_message which have been removed. Current task tracking
+> lives in `tasks/`.
+
 > Handoff / planning companion to [multi-session.md](multi-session.md).
 > Tracks open discussions, next actions, and implementation readiness.
 

@@ -1,5 +1,8 @@
 # Task 004 — Manual Test Script Rewrite
 
+> **Note:** References to load-balance, cascade, and pass\_message are stale
+> (removed in task 200). Phase 3 needs rewriting for governor-only routing.
+
 ## Problem
 
 `docs/multi-session-test-script.md` has reply-check (targeted routing) buried
