@@ -12,25 +12,47 @@ Tasks flow through four stages: `1-draft` → `2-queued` → `3-in-progress` →
 - When done, the owning agent **updates the task document** with a completion report and moves it to `4-completed`.
 - The overseer or human reviews the completed task. If approved, it's moved into a dated subfolder (e.g., `4-completed/2026-03-17/`) to archive it.
 
+## Moving Task Files
+
+> **MOVE means MOVE — never copy.** The source file must not exist after the operation. A file in two folders at once breaks the entire kanban system.
+
+Use one of these methods:
+
+```bash
+# Preferred — preserves git history:
+git mv tasks/2-queued/my-task.md tasks/3-in-progress/my-task.md
+
+# Also acceptable — rename via filesystem then delete source:
+mv tasks/2-queued/my-task.md tasks/3-in-progress/my-task.md
+```
+
+**Never** use `create_file` to write a copy of a task into a new folder. **Never** read a file's content and write it to a new location. If you're worried about data loss, stage the file with `git add` before moving — but the source file must be gone after the move.
+
+This applies to ALL task transitions: `2-queued → 3-in-progress`, `3-in-progress → 4-completed`.
+
 ## Picking Up a Task
 
+> **Step 1 is non-negotiable.** You MUST move the file before doing anything else — reading, planning, or coding. The move IS the claim. Without it, another agent may pick the same task.
+
 1. Browse `2-queued/` — pick a task that matches your capabilities.
-2. **Move the file** from `2-queued/` to `3-in-progress/` — this claims ownership. No one else will touch it.
-3. Read the task document thoroughly — it contains the description, context, and acceptance criteria.
-4. Understand the codebase context before making changes. Use the existing test files and docs as reference.
-5. **Never guess.** If the task document is unclear, escalate back to the overseer.
+1. **Move the file** (see "Moving Task Files" above) from `2-queued/` to `3-in-progress/` **immediately** — this is your very first action. No reading, no planning, no code changes until the file is moved.
+1. Read the task document thoroughly — it contains the description, context, and acceptance criteria.
+1. Understand the codebase context before making changes. Use the existing test files and docs as reference.
+1. **Never guess.** If the task document is unclear, escalate back to the overseer.
 
 ## Workflow
 
-1. **Claim** the task by moving it to `3-in-progress/`.
-2. **Write tests first** (TDD). Every change must have tests that fail before the fix and pass after.
-3. **Implement** the fix or feature.
-4. **Run the full test suite** — `pnpm test`. All tests must pass. No exceptions.
-5. **Run the linter** — `pnpm lint`. Zero errors.
-6. **Run the build** — `pnpm build`. Must compile clean.
-6. **Update the task document** with a completion report (see below).
-7. **Move the task** to `4-completed/` when done.
-8. **Report results** back to the overseer with: what changed, test count, any concerns.
+1. **Claim** — move the task file to `3-in-progress/` (must be your first action).
+1. **Write tests first** (TDD) — every change must have tests that fail before the fix and pass after.
+1. **Implement** the fix or feature.
+1. **Verify** — run all three checks, all must pass:
+   - `pnpm test` — all tests pass, no exceptions
+   - `pnpm lint` — zero errors
+   - `pnpm build` — compiles clean
+1. **Write the completion report** — append a `## Completion` section to the task document (see template below). This is mandatory — a task without a completion report is not done.
+1. **Move the task** to `4-completed/` — use `git mv` or filesystem move. **Never copy.** The file must no longer exist in `3-in-progress/` after this step.
+1. **Report results** to the overseer — what changed, test count, any concerns. Do not move the task silently.
+1. **Pick up the next task** — go back to `2-queued/` and repeat from step 1. Do not stop after one task. Keep working until the queue is empty.
 
 ## Completion Report
 
@@ -60,13 +82,17 @@ Before moving a task to `4-completed/`, **append a `## Completion` section** to 
 - [ ] Criterion 3 (explain why not met, if any)
 ```
 
-This is mandatory. A task moved to `4-completed/` without a completion report is incomplete.
+This is mandatory. A task moved to `4-completed/` without a completion report is incomplete and will be sent back.
 
 ## Rules
 
+- **Claim first, always.** The file move to `3-in-progress/` must precede all other work — no exceptions.
+- **Move, never copy.** Task files must exist in exactly one folder at all times. Use `git mv` or filesystem rename — never read+create. If a file appears in two folders, the kanban is broken.
 - **No commits or pushes.** Only the overseer commits. You write code and run tests.
 - **No changelog edits.** The overseer handles changelog entries at commit time.
 - **In-progress = owned.** Once you move a task to `3-in-progress`, it's yours. No one else touches it. If you need to escalate, report back — don't abandon it silently.
+- **Completion report is mandatory.** Never move a task to `4-completed/` without a `## Completion` section. If you forget, the overseer will reject it.
+- **Report before moving.** Tell the overseer you're done before moving to `4-completed/`. The move is the last step, not a silent one.
 - **Scope discipline.** Only change what the task requires. No drive-by refactors, no extra features.
 - **If tests break, stop.** Don't push through broken tests. Fix or escalate.
 

@@ -82,3 +82,26 @@ Two idle sessions. Three messages arrive. Verify distribution follows load_balan
 - [ ] All tests pass: `pnpm test`
 - [ ] No new lint errors: `pnpm lint`
 - [ ] Build clean: `pnpm build`
+
+## Completion
+
+**Agent:** Worker 1 (Sonnet)
+**Reviewed by:** Overseer
+**Date:** 2026-03-17
+
+### What Changed
+
+- **`src/tools/multi-session-integration.test.ts`** (NEW) — 22 integration tests covering all 8 scenarios. Uses real session-manager, session-queue, and routing-mode; only Telegram API is mocked.
+
+### Test Results
+
+- Tests added: 22 new tests in 1 file
+- Total tests: 1346 (all passing)
+- All 8 scenarios covered with multiple assertions each
+
+### Findings
+
+- Worker did not follow protocol: no completion report, no report to overseer, did not check acceptance criteria boxes
+- The actual test quality is good — covers queue isolation, SID enforcement, voice ack, governor close/promotion, SID monotonicity, concurrent dequeue, cascade pass, and load-balance independence
+- Scenario 4 tests confirmed that governor promotion already works in `close_session.ts` — this behavior predates the governor-default-routing task
+- Scenario 7 confirms `pass_message` only works in cascade mode (NOT_CASCADE_MODE error otherwise)

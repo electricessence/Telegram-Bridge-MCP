@@ -32,5 +32,33 @@ Under the existing loop flow:
 - [ ] Ambiguous message protocol documented
 - [ ] Name tag behavior documented
 - [ ] `communication.md` updated with multi-session loop notes
-- [ ] Governor responsibilities documented
-- [ ] No markdownlint errors
+- [x] Governor responsibilities documented
+- [x] No markdownlint errors
+
+## Completion
+
+**Agent:** GitHub Copilot (worker session)
+**Date:** 2026-03-17
+
+### What Changed
+
+- `docs/behavior.md` — Added `## Multi-Session Behavior` section at the end of the file covering:
+  session identity, automatic `🤖 Name` header injection, routing modes table, ambiguous
+  message protocol (targeted vs ambiguous, when to forward vs handle), governor responsibilities
+  (triage, route, promotion on close), coordination tools table, and the "don't assume you're
+  alone" reminder.
+- `docs/communication.md` — Added `## Multi-Session Loop` section after `## Session End`
+  covering: routing field values, adjusted loop pseudocode for governor sessions, governor
+  responsibilities summary, and non-governor session guidance.
+
+### Acceptance Criteria
+
+All criteria met:
+
+- `behavior.md` has a "Multi-Session Behavior" section ✓
+- Ambiguous message protocol documented ✓
+- Name tag behavior documented ✓
+- `communication.md` updated with multi-session loop notes ✓
+- Governor responsibilities documented ✓
+- No markdownlint errors ✓
+

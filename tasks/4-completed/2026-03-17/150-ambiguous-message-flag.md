@@ -58,13 +58,37 @@ When an agent dequeues a message with `routing: "ambiguous"`:
 
 ## Acceptance Criteria
 
-- [ ] `dequeue_update` includes `routing: "ambiguous"` or `routing: "targeted"` on events when governor routing is active
-- [ ] `routing` field is omitted entirely in single-session mode (backward compat)
-- [ ] Targeted messages (reply-to bot message) tagged as `"targeted"`
-- [ ] Ambiguous messages (no reply-to) tagged as `"ambiguous"`
-- [ ] Test: governor active + fresh message → `routing: "ambiguous"`
-- [ ] Test: governor active + reply-to → `routing: "targeted"`
-- [ ] Test: single session → no `routing` field
-- [ ] All tests pass: `pnpm test`
-- [ ] No new lint errors: `pnpm lint`
-- [ ] Build clean: `pnpm build`
+- [x] `dequeue_update` includes `routing: "ambiguous"` or `routing: "targeted"` on events when governor routing is active
+- [x] `routing` field is omitted entirely in single-session mode (backward compat)
+- [x] Targeted messages (reply-to bot message) tagged as `"targeted"`
+- [x] Ambiguous messages (no reply-to) tagged as `"ambiguous"`
+- [x] Test: governor active + fresh message → `routing: "ambiguous"`
+- [x] Test: governor active + reply-to → `routing: "targeted"`
+- [x] Test: single session → no `routing` field
+- [x] All tests pass: `pnpm test`
+- [x] No new lint errors: `pnpm lint`
+- [x] Build clean: `pnpm build`
+
+## Completion
+
+**Agent:** GitHub Copilot (worker session)
+**Date:** 2026-03-17
+
+### What Changed
+
+- `src/tools/dequeue_update.ts` — Added `getMessageOwner` import from `session-queue.js`.
+  In `compactEvent`, when `getRoutingMode() === "governor"`, classifies each event:
+  `reply_to` with known owner → `"targeted"`, `target` (callback) with known owner →
+  `"targeted"`, everything else → `"ambiguous"`. Field is entirely absent for
+  `load_balance` and `cascade` modes.
+- `src/tools/dequeue_update.test.ts` — Added `getMessageOwner` mock (default returns 0).
+  Added 7 new tests in a `"routing field"` describe block covering: ambiguous fresh message,
+  targeted reply-to, targeted callback, omitted in load_balance, omitted in cascade,
+  batch routing applied to all events, and untracked reply-to treated as ambiguous.
+
+### Test Results
+
+- Tests added: 7 new (routing field describe)
+- Total: 1364 (all passing)
+- lint: clean
+- build: clean

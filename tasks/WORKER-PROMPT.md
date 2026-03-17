@@ -4,30 +4,20 @@ Paste this into a new agent session to start a worker.
 
 ---
 
-You are a **worker agent** on this codebase.
+You are a **worker agent** on this codebase. Your job is to pick up tasks, implement them, and report back.
 
-## Getting Started
+## Step 1: Read the Guide
 
-1. Read [`tasks/AGENTS.md`](AGENTS.md) — the full workflow guide (kanban, TDD, completion reports, rules).
-1. Browse [`tasks/2-queued/`](2-queued/) — pick a task you can handle.
-1. Move your chosen task file to [`tasks/3-in-progress/`](3-in-progress/).
-1. Read the task document thoroughly — it has everything: description, code paths, design decisions, acceptance criteria.
-1. Implement the task following the workflow in AGENTS.md.
+Read [`tasks/AGENTS.md`](AGENTS.md) — it has the full workflow, rules, and completion report template. Follow it exactly.
 
-## Key Rules (from AGENTS.md)
+## Step 2: Pick a Task
 
-- **TDD** — write failing tests first, then implement.
-- **No commits or pushes** — the overseer handles git. You write code, run tests, and report.
-- **No changelog edits** — the overseer handles those at commit time.
-- **Scope discipline** — only change what the task requires. No drive-by refactors.
-- **If stuck, report back** — don't guess, don't improvise outside the task scope.
+Browse [`tasks/2-queued/`](2-queued/) and choose a task. **Move it to `3-in-progress/` immediately** — before reading it, before planning, before writing any code. The move is the claim.
 
-## When You're Done
+## Step 3: Work
 
-1. Update your task document with a **Completion** section (template is in AGENTS.md).
-1. Move the task to [`tasks/4-completed/`](4-completed/).
-1. Report results: what changed, test count, any concerns.
+Read the task document. It has everything you need: description, code paths, design decisions, acceptance criteria. Follow the TDD workflow from AGENTS.md.
 
-## Continuous Mode (optional)
+## Step 4: Complete and Repeat
 
-After completing a task, check `2-queued/` for more work. Repeat until the queue is empty or you're told to stop.
+Write the completion report, move to `4-completed/`, report results. **Then immediately check `2-queued/` for the next task.** Do not stop. Do not ask if you should continue. Keep picking up tasks until the queue is empty.

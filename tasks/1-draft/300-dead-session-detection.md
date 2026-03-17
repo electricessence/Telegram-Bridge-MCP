@@ -1,0 +1,47 @@
+# Feature: Dead Session Detection (Heartbeat)
+
+## Type
+
+Feature / Reliability
+
+## Priority
+
+300
+
+## Description
+
+If an agent session stops calling `dequeue_update` (crash, timeout, network loss), the server has no way to know. Messages continue routing to the dead session's queue and pile up forever. The operator sees silence and doesn't know why.
+
+Need a heartbeat mechanism: if a session hasn't polled `dequeue_update` within N seconds, mark it unhealthy. Optionally reroute its messages and notify the operator.
+
+## Current State
+
+- `dequeue_update` is the only polling mechanism. Each call is stateless — the server doesn't track when the last poll happened.
+- `session-queue.ts` tracks per-session queues but has no health/liveness concept.
+- `session-manager.ts` tracks creation time but not last-active time.
+
+## Design Sketch
+
+1. **Track last poll time** — in `dequeue_update` handler, update `session.lastPollAt = Date.now()` on every call.
+2. **Health check interval** — periodic timer (e.g., every 60s) checks all sessions. If `Date.now() - lastPollAt > THRESHOLD`, mark unhealthy.
+3. **Unhealthy behavior** — options:
+   - Reroute messages to governor (safest)
+   - Notify operator: "🤖 Worker appears unresponsive"
+   - Auto-close after extended timeout (aggressive)
+4. **Recovery** — if session resumes polling, automatically mark healthy again.
+
+## Open Questions
+
+- What's the right threshold? 300s (one full dequeue timeout) + buffer?
+- Should unhealthy sessions be auto-closed or just flagged?
+- Should the operator be able to manually kick a session?
+
+## Acceptance Criteria
+
+- [ ] `dequeue_update` records last poll timestamp per session
+- [ ] Health check detects sessions that haven't polled within threshold
+- [ ] Unhealthy sessions trigger operator notification
+- [ ] Messages rerouted away from unhealthy sessions
+- [ ] Recovery: session resumes healthy status on next poll
+- [ ] Tests for health detection, notification, and recovery
+- [ ] All tests pass: `pnpm test`
