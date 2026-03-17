@@ -4,7 +4,6 @@ import { createMockServer, parseResult, isError, type ToolHandler } from "./test
 const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(),
   getSession: vi.fn(),
-  getRoutingMode: vi.fn(),
   getGovernorSid: vi.fn(),
   routeMessage: vi.fn(),
 }));
@@ -15,7 +14,6 @@ vi.mock("../session-manager.js", () => ({
 }));
 
 vi.mock("../routing-mode.js", () => ({
-  getRoutingMode: () => mocks.getRoutingMode(),
   getGovernorSid: () => mocks.getGovernorSid(),
 }));
 
@@ -31,7 +29,6 @@ describe("route_message tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.validateSession.mockReturnValue(true);
-    mocks.getRoutingMode.mockReturnValue("governor");
     mocks.getGovernorSid.mockReturnValue(1);
     mocks.getSession.mockReturnValue({
       sid: 2, pin: 111111, name: "worker",
@@ -52,8 +49,8 @@ describe("route_message tool", () => {
     expect(parseResult(result).code).toBe("AUTH_FAILED");
   });
 
-  it("rejects when not in governor mode", async () => {
-    mocks.getRoutingMode.mockReturnValue("cascade");
+  it("rejects when no governor is active", async () => {
+    mocks.getGovernorSid.mockReturnValue(0);
     const result = await call({
       sid: 1, pin: 123456, message_id: 100, target_sid: 2,
     });

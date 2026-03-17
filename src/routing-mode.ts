@@ -1,35 +1,28 @@
 /**
- * Routing mode state for multi-session ambiguous message dispatch.
+ * Routing state for multi-session ambiguous message dispatch.
  *
- * Three modes:
- *   - load_balance — route to the first idle session (lowest SID wins ties)
- *   - cascade      — offer one-at-a-time in priority order (Phase 4)
- *   - governor     — designate one session as classifier (Phase 4)
+ * The only supported routing model is governor: one designated session
+ * classifies all incoming ambiguous messages and routes them via
+ * route_message. Targeted messages (reply-to / callbacks / reactions
+ * traceable to a specific session) are always delivered directly to
+ * that session without consulting the governor.
  *
- * Default: load_balance (simplest, safest). Stored in-memory only;
- * resets on MCP restart.
+ * Governor state is set automatically when a second session joins.
+ * Stored in-memory only; resets on MCP restart.
  */
 
-export type RoutingMode = "load_balance" | "cascade" | "governor";
-
-let _mode: RoutingMode = "load_balance";
 let _governorSid = 0;
 
 // ---------------------------------------------------------------------------
 // Accessors
 // ---------------------------------------------------------------------------
 
-export function getRoutingMode(): RoutingMode {
-  return _mode;
-}
-
-export function setRoutingMode(mode: RoutingMode, governorSid = 0): void {
-  _mode = mode;
-  _governorSid = mode === "governor" ? governorSid : 0;
-}
-
 export function getGovernorSid(): number {
   return _governorSid;
+}
+
+export function setGovernorSid(sid: number): void {
+  _governorSid = sid;
 }
 
 // ---------------------------------------------------------------------------
@@ -37,6 +30,5 @@ export function getGovernorSid(): number {
 // ---------------------------------------------------------------------------
 
 export function resetRoutingModeForTest(): void {
-  _mode = "load_balance";
   _governorSid = 0;
 }

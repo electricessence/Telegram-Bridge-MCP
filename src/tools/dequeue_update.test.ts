@@ -11,9 +11,8 @@ const mocks = vi.hoisted(() => ({
   setActiveSession: vi.fn(),
   activeSessionCount: vi.fn(() => 0),
   getSessionQueue: vi.fn(() => undefined),
-  popCascadePassDeadline: vi.fn(() => undefined as number | undefined),
   getMessageOwner: vi.fn(() => 0),
-  getRoutingMode: vi.fn(() => "load_balance"),
+  getGovernorSid: vi.fn(() => 0),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -36,12 +35,11 @@ vi.mock("../session-manager.js", () => ({
 vi.mock("../session-queue.js", () => ({
   // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- mock passthrough
   getSessionQueue: (...args: unknown[]) => mocks.getSessionQueue(...(args as [])),
-  popCascadePassDeadline: (...args: unknown[]) => mocks.popCascadePassDeadline(...(args as [])),
   getMessageOwner: (...args: unknown[]) => mocks.getMessageOwner(...(args as [])),
 }));
 
 vi.mock("../routing-mode.js", () => ({
-  getRoutingMode: () => mocks.getRoutingMode(),
+  getGovernorSid: () => mocks.getGovernorSid(),
 }));
 
 import { register } from "./dequeue_update.js";
@@ -343,43 +341,6 @@ describe("dequeue_update tool", () => {
   });
 
   // =========================================================================
-  // Cascade pass_by
-  // =========================================================================
-
-  it("includes pass_by ISO timestamp for cascade events with active SID", async () => {
-    const deadlineMs = 1_700_000_000_000;
-    mocks.getActiveSession.mockReturnValueOnce(5);
-    mocks.getRoutingMode.mockReturnValueOnce("cascade");
-    mocks.popCascadePassDeadline.mockReturnValueOnce(deadlineMs);
-    const evt = makeEvent(20, "routed message");
-    mocks.dequeueBatch.mockReturnValueOnce([evt]);
-    const result = await call({ timeout: 0 });
-    const data = parseResult(result);
-    expect(data.updates[0].pass_by).toBe(new Date(deadlineMs).toISOString());
-  });
-
-  it("omits pass_by when routing mode is not cascade", async () => {
-    mocks.getActiveSession.mockReturnValueOnce(5);
-    mocks.getRoutingMode.mockReturnValueOnce("load_balance");
-    const evt = makeEvent(21, "load balanced");
-    mocks.dequeueBatch.mockReturnValueOnce([evt]);
-    const result = await call({ timeout: 0 });
-    const data = parseResult(result);
-    expect(data.updates[0].pass_by).toBeUndefined();
-  });
-
-  it("omits pass_by when popCascadePassDeadline returns undefined", async () => {
-    mocks.getActiveSession.mockReturnValueOnce(5);
-    mocks.getRoutingMode.mockReturnValueOnce("cascade");
-    mocks.popCascadePassDeadline.mockReturnValueOnce(undefined);
-    const evt = makeEvent(22, "no deadline");
-    mocks.dequeueBatch.mockReturnValueOnce([evt]);
-    const result = await call({ timeout: 0 });
-    const data = parseResult(result);
-    expect(data.updates[0].pass_by).toBeUndefined();
-  });
-
-  // =========================================================================
   // Session queue path
   // =========================================================================
 
@@ -596,7 +557,7 @@ describe("dequeue_update tool", () => {
     }
 
     it("adds routing: ambiguous for fresh message in governor mode", async () => {
-      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getGovernorSid.mockReturnValue(1);
       mocks.getMessageOwner.mockReturnValue(0); // no owner → ambiguous
       const evt = makeEvent(10, "hello");
       mocks.dequeueBatch.mockReturnValueOnce([evt]);
@@ -606,7 +567,7 @@ describe("dequeue_update tool", () => {
     });
 
     it("adds routing: targeted for reply-to message in governor mode", async () => {
-      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getGovernorSid.mockReturnValue(1);
       mocks.getMessageOwner.mockImplementation((msgId: number) => msgId === 50 ? 1 : 0);
       const evt = makeReplyEvent(10, 50);
       mocks.dequeueBatch.mockReturnValueOnce([evt]);
@@ -616,7 +577,7 @@ describe("dequeue_update tool", () => {
     });
 
     it("adds routing: targeted for callback event in governor mode", async () => {
-      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getGovernorSid.mockReturnValue(1);
       mocks.getMessageOwner.mockImplementation((msgId: number) => msgId === 60 ? 2 : 0);
       const cbEvt: TimelineEvent = {
         id: 11,
@@ -632,8 +593,8 @@ describe("dequeue_update tool", () => {
       expect(data.updates[0].routing).toBe("targeted");
     });
 
-    it("omits routing field in load_balance mode", async () => {
-      mocks.getRoutingMode.mockReturnValue("load_balance");
+    it("omits routing field when no governor is set", async () => {
+      mocks.getGovernorSid.mockReturnValue(0);
       const evt = makeEvent(12, "hi");
       mocks.dequeueBatch.mockReturnValueOnce([evt]);
       const result = await call({ timeout: 0 });
@@ -641,17 +602,8 @@ describe("dequeue_update tool", () => {
       expect(data.updates[0].routing).toBeUndefined();
     });
 
-    it("omits routing field in cascade mode", async () => {
-      mocks.getRoutingMode.mockReturnValue("cascade");
-      const evt = makeEvent(13, "hi");
-      mocks.dequeueBatch.mockReturnValueOnce([evt]);
-      const result = await call({ timeout: 0 });
-      const data = parseResult(result);
-      expect(data.updates[0].routing).toBeUndefined();
-    });
-
     it("adds routing to all events in a batch", async () => {
-      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getGovernorSid.mockReturnValue(1);
       mocks.getMessageOwner.mockReturnValue(0); // all ambiguous
       const evt1 = makeEvent(14, "first");
       const evt2 = makeEvent(15, "second");
@@ -662,9 +614,9 @@ describe("dequeue_update tool", () => {
       expect(data.updates[1].routing).toBe("ambiguous");
     });
 
-    it("omits routing when reply_to target has no known owner (untracked message)", async () => {
+    it("treats reply to untracked message as ambiguous", async () => {
       // Reply to a message we don't track → treated as ambiguous (owner=0)
-      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getGovernorSid.mockReturnValue(1);
       mocks.getMessageOwner.mockReturnValue(0); // untracked → 0
       const evt = makeReplyEvent(16, 999);
       mocks.dequeueBatch.mockReturnValueOnce([evt]);

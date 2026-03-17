@@ -77,7 +77,7 @@
 - Updated pending guard description in blocking tools to document the reply-to exception
 - Restored `@tsdotnet/queue` dependency — replaces hand-rolled `SimpleQueue<T>` inline class; uses `Queue<T>` directly (upstream 1.3.x ships `.js` extensions in `.d.ts` files natively)
 - Refactored `message-store` to delegate queue operations to `TwoLaneQueue<T>` — inbound events are also routed to per-session queues via `routeToSession`
-- Ambiguous inbound messages now use load-balance routing (round-robin among idle sessions) instead of broadcast when multiple sessions are active
+- Ambiguous inbound messages now broadcast to all sessions by default (no governor) — removed round-robin load-balance routing
 - Implemented cascade routing mode — always prefers lowest-SID idle session (priority hierarchy), falls back to lowest SID
 - Implemented governor routing mode — routes ambiguous messages to the designated governor session only
 - Fixed lint errors in `close_session` — removed unnecessary `async` and type assertions
@@ -118,3 +118,12 @@
 - Fixed multi-session.md overstating auth coverage — clarified that only session-management tools require `sid`/`pin`
 - Fixed identity-gate test bugs — corrected four test files: `get_debug_log` telegram mock now spreads actual module so `toError` is available; `send_text_as_voice` was missing `isError`/`errorCode` imports; `send_new_checklist` and `send_new_progress` identity-gate describe blocks were nested inside wrong outer describe (wrong variable in scope); `send_new_checklist` gate tests were missing required `title` arg, causing ZodError before the handler ran and leaving unconsumed `mockReturnValueOnce` state that corrupted subsequent `update_checklist` tests
 - Fixed missing branch coverage in 6 tool files (`delete_message`, `edit_message_text`, `send_choice`, `send_new_checklist`, `send_new_progress`, `update_progress`) — added resolveChat error, validateText failure, boolean API result, and button label limit tests; branch coverage 82.43% → 83.27%
+
+## Removed
+
+- Removed `load_balance` and `cascade` routing modes — ambiguous messages now broadcast to all sessions by default (no governor) or route only to the governor session when one is set
+- Removed `pass_message` tool — cascade-mode message passing is no longer supported
+- Removed `/routing` built-in command and routing inline panel — routing is now implicit (governor vs. broadcast)
+- Removed `setRoutingMode`, `getRoutingMode`, `RoutingMode` type from `routing-mode.ts`; replaced by `setGovernorSid` / `getGovernorSid`
+- Removed `popCascadePassDeadline`, `passMessage`, `pickRoundRobin`, `pickCascade` from `session-queue.ts`
+- Removed `routing_mode` field from `session_start` response

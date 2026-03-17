@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  getRoutingMode,
-  setRoutingMode,
+  setGovernorSid,
   getGovernorSid,
   resetRoutingModeForTest,
 } from "./routing-mode.js";
@@ -11,36 +10,30 @@ describe("routing-mode", () => {
     resetRoutingModeForTest();
   });
 
-  it("defaults to load_balance", () => {
-    expect(getRoutingMode()).toBe("load_balance");
+  it("defaults to no governor (0)", () => {
+    expect(getGovernorSid()).toBe(0);
   });
 
-  it("sets and gets routing mode", () => {
-    setRoutingMode("cascade");
-    expect(getRoutingMode()).toBe("cascade");
-  });
-
-  it("tracks governor SID when in governor mode", () => {
-    setRoutingMode("governor", 3);
-    expect(getRoutingMode()).toBe("governor");
+  it("sets and gets governor SID", () => {
+    setGovernorSid(3);
     expect(getGovernorSid()).toBe(3);
   });
 
-  it("clears governor SID when switching away from governor", () => {
-    setRoutingMode("governor", 3);
-    setRoutingMode("load_balance");
+  it("updates governor SID", () => {
+    setGovernorSid(1);
+    setGovernorSid(5);
+    expect(getGovernorSid()).toBe(5);
+  });
+
+  it("clears governor SID when set to 0", () => {
+    setGovernorSid(3);
+    setGovernorSid(0);
     expect(getGovernorSid()).toBe(0);
   });
 
-  it("ignores governor SID for non-governor modes", () => {
-    setRoutingMode("cascade", 5);
-    expect(getGovernorSid()).toBe(0);
-  });
-
-  it("resets to defaults", () => {
-    setRoutingMode("governor", 2);
+  it("resets to default (no governor)", () => {
+    setGovernorSid(2);
     resetRoutingModeForTest();
-    expect(getRoutingMode()).toBe("load_balance");
     expect(getGovernorSid()).toBe(0);
   });
 });

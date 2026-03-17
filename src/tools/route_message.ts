@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { toResult, toError } from "../telegram.js";
 import { SESSION_AUTH_SCHEMA, checkAuth } from "../session-auth.js";
-import { getRoutingMode, getGovernorSid } from "../routing-mode.js";
+import { getGovernorSid } from "../routing-mode.js";
 import { getSession } from "../session-manager.js";
 import { routeMessage } from "../session-queue.js";
 
@@ -35,10 +35,10 @@ export function register(server: McpServer) {
       const authErr = checkAuth(sid, pin);
       if (authErr) return authErr;
 
-      if (getRoutingMode() !== "governor") {
+      if (getGovernorSid() === 0) {
         return toError({
           code: "NOT_GOVERNOR_MODE",
-          message: "route_message is only available in governor routing mode",
+          message: "route_message is only available when a governor session is active",
         });
       }
 

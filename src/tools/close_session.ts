@@ -3,7 +3,7 @@ import { getApi, toResult, sendServiceMessage, resolveChat } from "../telegram.j
 import { closeSession, getSession, getActiveSession, setActiveSession, listSessions } from "../session-manager.js";
 import { removeSessionQueue, drainQueue, deliverDirectMessage, routeToSession } from "../session-queue.js";
 import { revokeAllForSession } from "../dm-permissions.js";
-import { getGovernorSid, setRoutingMode } from "../routing-mode.js";
+import { getGovernorSid, setGovernorSid } from "../routing-mode.js";
 import { SESSION_AUTH_SCHEMA, checkAuth } from "../session-auth.js";
 import { replaceSessionCallbackHooks } from "../message-store.js";
 
@@ -48,24 +48,24 @@ export function register(server: McpServer) {
       if (remaining.length === 1) {
         // 2 → 1: single-session mode restored — always reset routing
         const last = remaining[0];
-        setRoutingMode("load_balance");
+        setGovernorSid(0);
         sendServiceMessage(
           wasGovernor
             ? "⚠️ Governor session closed. Single-session mode restored."
             : "ℹ️ Session closed. Single-session mode restored.",
         ).catch(() => {});
-        deliverDirectMessage(0, last.sid, "📢 Single-session mode restored. Routing reset to load balance.");
+        deliverDirectMessage(0, last.sid, "📢 Single-session mode restored. Governor cleared.");
       } else if (wasGovernor) {
         if (remaining.length === 0) {
           // Last session (was governor): reset routing
-          setRoutingMode("load_balance");
+          setGovernorSid(0);
           sendServiceMessage(
-            "⚠️ Governor session closed. Routing mode reset to *load_balance*.",
+            "⚠️ Governor session closed. No sessions remain.",
           ).catch(() => {});
         } else {
           // Governor closes with 2+ remaining: promote lowest-SID
           const next = remaining[0];
-          setRoutingMode("governor", next.sid);
+          setGovernorSid(next.sid);
           const label = next.name || `Session ${next.sid}`;
           sendServiceMessage(
             `⚠️ Governor session closed. 🤖 ${label} promoted to governor.`,

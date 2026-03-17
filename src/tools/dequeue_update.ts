@@ -6,8 +6,8 @@ import {
   type TimelineEvent,
 } from "../message-store.js";
 import { getActiveSession, setActiveSession, activeSessionCount } from "../session-manager.js";
-import { getSessionQueue, popCascadePassDeadline, getMessageOwner } from "../session-queue.js";
-import { getRoutingMode } from "../routing-mode.js";
+import { getSessionQueue, getMessageOwner } from "../session-queue.js";
+import { getGovernorSid } from "../routing-mode.js";
 
 /** Auto-salute voice messages on dequeue so the user knows we received them. */
 function ackVoice(event: TimelineEvent): void {
@@ -18,13 +18,9 @@ function ackVoice(event: TimelineEvent): void {
 /** Strip _update and timestamp for the compact dequeue format. */
 function compactEvent(event: TimelineEvent, sid: number): Record<string, unknown> {
   const { _update: _, timestamp: __, ...rest } = event;
+  void sid; // reserved for future per-session metadata
   const result: Record<string, unknown> = rest;
-  const mode = getRoutingMode();
-  if (sid > 0 && mode === "cascade") {
-    const deadline = popCascadePassDeadline(sid, event.id);
-    if (deadline !== undefined) result.pass_by = new Date(deadline).toISOString();
-  }
-  if (mode === "governor") {
+  if (getGovernorSid() > 0) {
     const replyTo = event.content.reply_to;
     const target = event.content.target;
     const isTargeted =

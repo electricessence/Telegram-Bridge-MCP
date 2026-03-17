@@ -21,8 +21,6 @@ import { getSessionLogMode, setSessionLogMode, sessionLogLabel } from "./config.
 import { getDefaultVoice, setDefaultVoice, getConfiguredVoices } from "./config.js";
 import type { VoiceEntry } from "./config.js";
 import { fetchVoiceList, isTtsEnabled } from "./tts.js";
-import { getRoutingMode, setRoutingMode, type RoutingMode } from "./routing-mode.js";
-import { activeSessionCount } from "./session-manager.js";
 
 
 const require = createRequire(import.meta.url);
@@ -46,7 +44,7 @@ import { dumpTimeline, dumpTimelineSince, timelineSize, storeSize, setOnEvent } 
 // ---------------------------------------------------------------------------
 
 /** Maps from message_id → panel type so we can route callback_queries back to us. */
-const _activePanels = new Map<number, "session" | "voice" | "voice-sample" | "routing">();
+const _activePanels = new Map<number, "session" | "voice" | "voice-sample">();
 
 /** Set to true after sending the startup prefs prompt so we only ask once per process. */
 let _sessionPrefsAsked = false;
@@ -136,7 +134,6 @@ export function sendSessionPrefsPrompt(): void {
 export const BUILT_IN_COMMANDS = [
   { command: "session", description: "Session recording controls" },
   { command: "voice", description: "Change the TTS voice" },
-  { command: "routing", description: "Message routing mode for multi-session" },
   { command: "version", description: "Show server version and build info" },
   { command: "shutdown", description: "Shut down the MCP server" },
 ] as const;
@@ -204,10 +201,6 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
         await handleVoiceCommand();
         return true;
       }
-      if (raw === "routing") {
-        await handleRoutingCommand();
-        return true;
-      }
       if (raw === "version") {
         await handleVersionCommand();
         return true;
@@ -232,12 +225,6 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
         );
       } else if (panelType === "voice-sample") {
         await handleVoiceSampleCallback(
-          update.callback_query.id,
-          msgId,
-          update.callback_query.data ?? "",
-        );
-      } else if (panelType === "routing") {
-        await handleRoutingCallback(
           update.callback_query.id,
           msgId,
           update.callback_query.data ?? "",
@@ -653,120 +640,6 @@ function buildFlatVoiceButtons(
     }
   }
   if (row.length > 0) keyboard.push(row);
-}
-
-// ---------------------------------------------------------------------------
-// /routing panel
-// ---------------------------------------------------------------------------
-
-const ROUTING_MODE_LABELS: Record<RoutingMode, { icon: string; label: string; desc: string }> = {
-  load_balance: {
-    icon: "⚖",
-    label: "Load Balance",
-    desc: "Round-robin among idle sessions — fair distribution",
-  },
-  cascade: {
-    icon: "🔽",
-    label: "Cascade",
-    desc: "Lowest-SID session gets priority — overflow to others",
-  },
-  governor: {
-    icon: "👑",
-    label: "Governor",
-    desc: "One designated session classifies all incoming messages",
-  },
-};
-
-function buildRoutingPanel(): { text: string; keyboard: Array<Array<{ text: string; callback_data: string }>> } {
-  const mode = getRoutingMode();
-  const sessions = activeSessionCount();
-  const { icon, label, desc } = ROUTING_MODE_LABELS[mode];
-
-  const lines = [
-    "🔀 *Routing Mode*",
-    "",
-    `Current: ${icon} *${label}*`,
-    `_${desc}_`,
-    "",
-    `Active sessions: ${sessions}`,
-  ];
-
-  const text = lines.join("\n");
-
-  const modeButtons: Array<{ text: string; callback_data: string }> = [];
-  for (const [key, meta] of Object.entries(ROUTING_MODE_LABELS)) {
-    if (key !== mode) {
-      modeButtons.push({
-        text: `${meta.icon} ${meta.label}`,
-        callback_data: `routing:set:${key}`,
-      });
-    }
-  }
-
-  const keyboard = [
-    modeButtons,
-    [{ text: "✖ Dismiss", callback_data: "routing:dismiss" }],
-  ];
-
-  return { text, keyboard };
-}
-
-async function handleRoutingCommand(): Promise<void> {
-  await sendRoutingPanel();
-}
-
-/**
- * Sends the routing-mode selection panel to the operator.
- * Exported so session_start can trigger it when the 2nd session joins.
- */
-export async function sendRoutingPanel(): Promise<void> {
-  const chatId = resolveChat();
-  if (typeof chatId !== "number") return;
-  const api = getApi();
-
-  const { text, keyboard } = buildRoutingPanel();
-  try {
-    const msg = await api.sendMessage(chatId, text, {
-      parse_mode: "Markdown",
-      reply_markup: { inline_keyboard: keyboard },
-    });
-    _activePanels.set(msg.message_id, "routing");
-    markInternalMessage(msg.message_id);
-  } catch { /* ignore */ }
-}
-
-async function handleRoutingCallback(
-  callbackQueryId: string,
-  panelMsgId: number,
-  data: string,
-): Promise<void> {
-  const chatId = resolveChat();
-  if (typeof chatId !== "number") return;
-  const api = getApi();
-
-  try { await api.answerCallbackQuery(callbackQueryId); } catch { /* ignore */ }
-
-  if (data === "routing:dismiss") {
-    _activePanels.delete(panelMsgId);
-    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
-    return;
-  }
-
-  if (data.startsWith("routing:set:")) {
-    const newMode = data.slice("routing:set:".length);
-    if (newMode === "load_balance" || newMode === "cascade" || newMode === "governor") {
-      setRoutingMode(newMode);
-    }
-  }
-
-  // Refresh panel
-  const { text, keyboard } = buildRoutingPanel();
-  try {
-    await api.editMessageText(chatId, panelMsgId, text, {
-      parse_mode: "Markdown",
-      reply_markup: { inline_keyboard: keyboard },
-    });
-  } catch { /* ignore */ }
 }
 
 // ---------------------------------------------------------------------------

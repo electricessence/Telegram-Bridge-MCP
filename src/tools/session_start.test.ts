@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   listSessions: vi.fn().mockReturnValue([]),
   activeSessionCount: vi.fn().mockReturnValue(0),
   getRoutingMode: vi.fn().mockReturnValue("load_balance"),
-  setRoutingMode: vi.fn(),
+  setGovernorSid: vi.fn(),
   resolveChat: vi.fn(() => 42 as number),
   registerCallbackHook: vi.fn(),
   clearCallbackHook: vi.fn(),
@@ -50,8 +50,7 @@ vi.mock("../session-manager.js", () => ({
 }));
 
 vi.mock("../routing-mode.js", () => ({
-  getRoutingMode: () => mocks.getRoutingMode(),
-  setRoutingMode: (...args: unknown[]) => mocks.setRoutingMode(...args),
+  setGovernorSid: (...args: unknown[]) => mocks.setGovernorSid(...args),
 }));
 
 vi.mock("../session-queue.js", () => ({
@@ -74,7 +73,6 @@ describe("session_start tool", () => {
     mocks.answerCallbackQuery.mockResolvedValue(true);
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.listSessions.mockReturnValue([]);
-    mocks.getRoutingMode.mockReturnValue("load_balance");
     mocks.createSession.mockReturnValue({
       sid: 1,
       pin: 123456,
@@ -271,7 +269,7 @@ describe("session_start tool", () => {
   // Multi-session: fellow_sessions / routing_mode
   // =========================================================================
 
-  it("includes fellow_sessions and routing_mode in fast-path result when sessionsActive > 1", async () => {
+  it("includes fellow_sessions in fast-path result when sessionsActive > 1", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(1);
     mocks.createSession.mockReturnValue({ sid: 4, pin: 444444, name: "scout", sessionsActive: 2 });
@@ -284,7 +282,6 @@ describe("session_start tool", () => {
       { sid: 3, name: "leader" },
       { sid: 4, name: "scout" },
     ]);
-    mocks.getRoutingMode.mockReturnValue("cascade");
     mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
       void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
     });
@@ -300,7 +297,6 @@ describe("session_start tool", () => {
     const fellows = result.fellow_sessions as Array<{ sid: number }>;
     expect(fellows.every(s => s.sid !== 4)).toBe(true);
     expect(fellows.some(s => s.sid === 3)).toBe(true);
-    expect(result.routing_mode).toBe("cascade");
   });
 
   it("includes fellow_sessions when auto-draining with multiple sessions", async () => {
@@ -316,7 +312,6 @@ describe("session_start tool", () => {
       { sid: 5, name: "delta" },
       { sid: 6, name: "gamma" },
     ]);
-    mocks.getRoutingMode.mockReturnValue("load_balance");
     mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
       void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
     });
@@ -335,7 +330,6 @@ describe("session_start tool", () => {
     const fellows = result.fellow_sessions as Array<{ sid: number }>;
     expect(fellows.some(s => s.sid === 5)).toBe(true);
     expect(fellows.every(s => s.sid !== 6)).toBe(true);
-    expect(result.routing_mode).toBe("load_balance");
   });
 
   it("omits fellow_sessions when only one session is active", async () => {
@@ -345,7 +339,6 @@ describe("session_start tool", () => {
     const result = parseResult(await call({ name: "solo" }));
 
     expect(result.fellow_sessions).toBeUndefined();
-    expect(result.routing_mode).toBeUndefined();
   });
 
   it("returns an error and rolls back session when the intro message send fails", async () => {
@@ -439,42 +432,16 @@ describe("session_start tool", () => {
 
     await call({ name: "Worker" });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("governor", 1);
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(1);
   });
 
-  it("does not set routing mode when first session starts", async () => {
+  it("does not set governor SID when first session starts", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 100001, name: "", sessionsActive: 1 });
 
     await call({});
 
-    expect(mocks.setRoutingMode).not.toHaveBeenCalled();
-  });
-
-  it("routing_mode in result reflects governor after auto-activation", async () => {
-    mocks.pendingCount.mockReturnValue(0);
-    mocks.activeSessionCount.mockReturnValue(1);
-    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", sessionsActive: 2 });
-    // Collision check
-    mocks.listSessions.mockReturnValueOnce([
-      { sid: 1, name: "Primary", createdAt: "2026-03-17" },
-    ]);
-    // allSessions
-    mocks.listSessions.mockReturnValue([
-      { sid: 1, name: "Primary", createdAt: "2026-03-17" },
-      { sid: 2, name: "Worker", createdAt: "2026-03-17" },
-    ]);
-    mocks.getRoutingMode.mockReturnValue("governor");
-    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
-      void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
-    });
-    mocks.sendMessage
-      .mockResolvedValueOnce({ message_id: 50 })
-      .mockResolvedValue(INTRO_MSG);
-
-    const result = parseResult(await call({ name: "Worker" }));
-
-    expect(result.routing_mode).toBe("governor");
+    expect(mocks.setGovernorSid).not.toHaveBeenCalled();
   });
 
   it("selects lowest SID as governor when gap exists", async () => {
@@ -499,7 +466,7 @@ describe("session_start tool", () => {
 
     await call({ name: "Late" });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("governor", 3);
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(3);
   });
 
   it("does not auto-activate governor when third or later session joins", async () => {
@@ -526,7 +493,7 @@ describe("session_start tool", () => {
 
     await call({ name: "Third" });
 
-    expect(mocks.setRoutingMode).not.toHaveBeenCalled();
+    expect(mocks.setGovernorSid).not.toHaveBeenCalled();
   });
 
   // =========================================================================

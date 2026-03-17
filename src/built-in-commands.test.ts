@@ -34,9 +34,6 @@ const mocks = vi.hoisted(() => ({
   timelineSize: vi.fn((): number => 0),
   storeSize: vi.fn((): number => 0),
   setOnEvent: vi.fn(),
-  getRoutingMode: vi.fn((): string => "load_balance"),
-  setRoutingMode: vi.fn(),
-  activeSessionCount: vi.fn((): number => 0),
 }));
 
 vi.mock("./telegram.js", () => ({
@@ -89,14 +86,6 @@ vi.mock("./message-store.js", () => ({
   setOnEvent: mocks.setOnEvent,
 }));
 
-vi.mock("./routing-mode.js", () => ({
-  getRoutingMode: mocks.getRoutingMode,
-  setRoutingMode: mocks.setRoutingMode,
-}));
-
-vi.mock("./session-manager.js", () => ({
-  activeSessionCount: mocks.activeSessionCount,
-}));
 
 import {
   handleIfBuiltIn,
@@ -160,11 +149,10 @@ describe("built-in-commands", () => {
 
   // -- BUILT_IN_COMMANDS constant ------------------------------------------
 
-  it("exports /session, /voice, /routing, /version, and /shutdown command metadata", () => {
+  it("exports /session, /voice, /version, and /shutdown command metadata", () => {
     expect(BUILT_IN_COMMANDS).toEqual([
       { command: "session", description: "Session recording controls" },
       { command: "voice", description: "Change the TTS voice" },
-      { command: "routing", description: "Message routing mode for multi-session" },
       { command: "version", description: "Show server version and build info" },
       { command: "shutdown", description: "Shut down the MCP server" },
     ]);
@@ -625,65 +613,5 @@ describe("built-in-commands", () => {
     });
   });
 
-  // -- /routing command ---------------------------------------------------
-
-  describe("/routing command", () => {
-    it("sends routing panel with current mode", async () => {
-      mocks.getRoutingMode.mockReturnValue("load_balance");
-      mocks.activeSessionCount.mockReturnValue(2);
-      mocks.sendMessage.mockResolvedValueOnce({ message_id: 800 });
-
-      const handled = await handleIfBuiltIn(cmdUpdate("/routing"));
-      expect(handled).toBe(true);
-      expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
-      const args = mocks.sendMessage.mock.calls[0] as unknown[];
-      expect(args[1]).toContain("Load Balance");
-      expect(args[1]).toContain("Active sessions: 2");
-    });
-
-    it("shows other modes as buttons (not the current one)", async () => {
-      mocks.getRoutingMode.mockReturnValue("cascade");
-      mocks.activeSessionCount.mockReturnValue(1);
-      mocks.sendMessage.mockResolvedValueOnce({ message_id: 801 });
-
-      await handleIfBuiltIn(cmdUpdate("/routing"));
-      const args = mocks.sendMessage.mock.calls[0] as unknown[];
-      const opts = args[2] as Record<string, unknown>;
-      const markup = opts.reply_markup as { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
-      const modeButtons = markup.inline_keyboard[0];
-      // cascade is active, so load_balance and governor should appear
-      expect(modeButtons).toHaveLength(2);
-      expect(modeButtons.some((b: { callback_data: string }) => b.callback_data === "routing:set:load_balance")).toBe(true);
-      expect(modeButtons.some((b: { callback_data: string }) => b.callback_data === "routing:set:governor")).toBe(true);
-    });
-  });
-
-  describe("routing panel callbacks", () => {
-    async function openRoutingPanel(): Promise<number> {
-      mocks.getRoutingMode.mockReturnValue("load_balance");
-      mocks.activeSessionCount.mockReturnValue(2);
-      mocks.sendMessage.mockResolvedValueOnce({ message_id: 810 });
-      await handleIfBuiltIn(cmdUpdate("/routing"));
-      return 810;
-    }
-
-    it("routing:dismiss deletes the panel", async () => {
-      const msgId = await openRoutingPanel();
-      await handleIfBuiltIn(callbackUpdate(msgId, "routing:dismiss"));
-      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, msgId);
-    });
-
-    it("routing:set:cascade switches to cascade mode", async () => {
-      const msgId = await openRoutingPanel();
-      await handleIfBuiltIn(callbackUpdate(msgId, "routing:set:cascade"));
-      expect(mocks.setRoutingMode).toHaveBeenCalledWith("cascade");
-      expect(mocks.editMessageText).toHaveBeenCalled();
-    });
-
-    it("routing:set:governor switches to governor mode", async () => {
-      const msgId = await openRoutingPanel();
-      await handleIfBuiltIn(callbackUpdate(msgId, "routing:set:governor"));
-      expect(mocks.setRoutingMode).toHaveBeenCalledWith("governor");
-    });
-  });
 });
+

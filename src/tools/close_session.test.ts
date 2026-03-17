@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   listSessions: vi.fn().mockReturnValue([]),
   revokeAllForSession: vi.fn(),
   getGovernorSid: vi.fn(),
-  setRoutingMode: vi.fn(),
+  setGovernorSid: vi.fn(),
   sendServiceMessage: vi.fn(),
   deliverDirectMessage: vi.fn(),
   drainQueue: vi.fn().mockReturnValue([]),
@@ -47,7 +47,7 @@ vi.mock("../dm-permissions.js", () => ({
 
 vi.mock("../routing-mode.js", () => ({
   getGovernorSid: () => mocks.getGovernorSid(),
-  setRoutingMode: (...args: unknown[]) => mocks.setRoutingMode(...args),
+  setGovernorSid: (...args: unknown[]) => mocks.setGovernorSid(...args),
 }));
 
 vi.mock("../telegram.js", async (importOriginal) => {
@@ -141,23 +141,23 @@ describe("close_session tool", () => {
     expect(mocks.setActiveSession).not.toHaveBeenCalled();
   });
 
-  it("resets routing mode when governor session closes", async () => {
+  it("clears governor SID when governor session closes", async () => {
     mocks.getGovernorSid.mockReturnValue(1);
 
     await call({ sid: 1, pin: 123456 });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("load_balance");
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(0);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
       expect.stringContaining("Governor session closed"),
     );
   });
 
-  it("does not reset routing mode when non-governor closes", async () => {
+  it("does not change governor SID when non-governor closes", async () => {
     mocks.getGovernorSid.mockReturnValue(5);
 
     await call({ sid: 1, pin: 123456 });
 
-    expect(mocks.setRoutingMode).not.toHaveBeenCalled();
+    expect(mocks.setGovernorSid).not.toHaveBeenCalled();
     // disconnect notification is always sent, but no routing-change message
     expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(1);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
@@ -182,19 +182,19 @@ describe("close_session tool", () => {
 
     await call({ sid: 1, pin: 123456 });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("governor", 2);
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(2);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
       expect.stringContaining("promoted to governor"),
     );
   });
 
-  it("resets routing to load_balance when governor closes with no remaining sessions", async () => {
+  it("clears governor SID when governor closes with no remaining sessions", async () => {
     mocks.getGovernorSid.mockReturnValue(1);
     mocks.listSessions.mockReturnValue([]); // no sessions remain
 
     await call({ sid: 1, pin: 123456 });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("load_balance");
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(0);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
       expect.stringContaining("Governor session closed"),
     );
@@ -209,7 +209,7 @@ describe("close_session tool", () => {
 
     await call({ sid: 2, pin: 123456 });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("governor", 3);
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(3);
   });
 
   it("uses session name in promotion message when 2+ remain", async () => {
@@ -244,7 +244,7 @@ describe("close_session tool", () => {
   // 2 → 1 teardown: single-session mode restoration
   // =========================================================================
 
-  it("resets routing to load_balance when dropping from 2 to 1 session (governor closes)", async () => {
+  it("clears governor SID when dropping from 2 to 1 session (governor closes)", async () => {
     mocks.getGovernorSid.mockReturnValue(1);
     mocks.listSessions.mockReturnValue([
       { sid: 2, name: "Worker", createdAt: "2026-03-17" },
@@ -252,13 +252,13 @@ describe("close_session tool", () => {
 
     await call({ sid: 1, pin: 123456 });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("load_balance");
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(0);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
       expect.stringContaining("Single-session mode restored"),
     );
   });
 
-  it("resets routing to load_balance when dropping from 2 to 1 session (non-governor closes)", async () => {
+  it("clears governor SID when dropping from 2 to 1 session (non-governor closes)", async () => {
     mocks.getGovernorSid.mockReturnValue(1); // session 1 is governor, we're closing session 2
     mocks.listSessions.mockReturnValue([
       { sid: 1, name: "Primary", createdAt: "2026-03-17" },
@@ -266,7 +266,7 @@ describe("close_session tool", () => {
 
     await call({ sid: 2, pin: 123456 });
 
-    expect(mocks.setRoutingMode).toHaveBeenCalledWith("load_balance");
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(0);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
       expect.stringContaining("Single-session mode restored"),
     );
@@ -296,7 +296,7 @@ describe("close_session tool", () => {
     expect(mocks.deliverDirectMessage).not.toHaveBeenCalled();
   });
 
-  it("does not reset routing or deliver DM when 3 sessions remain after close", async () => {
+  it("does not change governor SID or deliver DM when 3 sessions remain after close", async () => {
     mocks.getGovernorSid.mockReturnValue(0); // no governor
     mocks.listSessions.mockReturnValue([
       { sid: 2, name: "A", createdAt: "2026-03-17" },
@@ -306,7 +306,7 @@ describe("close_session tool", () => {
 
     await call({ sid: 1, pin: 123456 });
 
-    expect(mocks.setRoutingMode).not.toHaveBeenCalled();
+    expect(mocks.setGovernorSid).not.toHaveBeenCalled();
     // Only the disconnect notification is sent — no routing-change message
     expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(1);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(

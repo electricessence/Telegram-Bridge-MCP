@@ -14,7 +14,7 @@ import {
   resetSessionQueuesForTest,
 } from "./session-queue.js";
 import {
-  setRoutingMode,
+  setGovernorSid,
   resetRoutingModeForTest,
 } from "./routing-mode.js";
 
@@ -159,77 +159,19 @@ describe("session-queue", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Routing — ambiguous (load balance, default mode = round-robin)
+  // Routing — ambiguous (governor)
   // -------------------------------------------------------------------------
 
-  describe("ambiguous routing (load balance)", () => {
-    it("routes to the only idle session", () => {
+  describe("ambiguous routing", () => {
+    it("broadcasts to all sessions when no governor is set", () => {
       createSessionQueue(1);
       createSessionQueue(2);
-      // Make session 2 idle (waiting on dequeue)
-      void getSessionQueue(2)?.waitForEnqueue();
       routeToSession(makeEvent(), "message");
-      expect(getSessionQueue(1)?.pendingCount()).toBe(0);
-      expect(getSessionQueue(2)?.pendingCount()).toBe(1);
-    });
-
-    it("round-robins among idle sessions", () => {
-      createSessionQueue(1);
-      createSessionQueue(2);
-      createSessionQueue(3);
-      void getSessionQueue(1)?.waitForEnqueue();
-      void getSessionQueue(2)?.waitForEnqueue();
-      void getSessionQueue(3)?.waitForEnqueue();
-
-      // First message → session 1 (lowest SID, round-robin starts fresh)
-      routeToSession(makeEvent({ id: 10 }), "message");
       expect(getSessionQueue(1)?.pendingCount()).toBe(1);
-      expect(getSessionQueue(2)?.pendingCount()).toBe(0);
-      expect(getSessionQueue(3)?.pendingCount()).toBe(0);
-
-      // Second message → session 2 (next idle after SID 1)
-      routeToSession(makeEvent({ id: 11 }), "message");
       expect(getSessionQueue(2)?.pendingCount()).toBe(1);
-
-      // Third message → session 3
-      routeToSession(makeEvent({ id: 12 }), "message");
-      expect(getSessionQueue(3)?.pendingCount()).toBe(1);
-
-      // Fourth message wraps back to session 1
-      routeToSession(makeEvent({ id: 13 }), "message");
-      expect(getSessionQueue(1)?.pendingCount()).toBe(2);
     });
 
-    it("skips non-idle sessions in round-robin", () => {
-      createSessionQueue(1);
-      createSessionQueue(2);
-      createSessionQueue(3);
-      // Only sessions 1 and 3 are idle
-      void getSessionQueue(1)?.waitForEnqueue();
-      void getSessionQueue(3)?.waitForEnqueue();
-
-      routeToSession(makeEvent({ id: 10 }), "message");
-      expect(getSessionQueue(1)?.pendingCount()).toBe(1); // first idle
-
-      routeToSession(makeEvent({ id: 11 }), "message");
-      expect(getSessionQueue(3)?.pendingCount()).toBe(1); // next idle (skips 2)
-
-      routeToSession(makeEvent({ id: 12 }), "message");
-      expect(getSessionQueue(1)?.pendingCount()).toBe(2); // wraps back to 1
-    });
-
-    it("falls back to round-robin among all sessions when none is idle", () => {
-      createSessionQueue(3);
-      createSessionQueue(5);
-      routeToSession(makeEvent(), "message");
-      expect(getSessionQueue(3)?.pendingCount()).toBe(1);
-      expect(getSessionQueue(5)?.pendingCount()).toBe(0);
-
-      routeToSession(makeEvent({ id: 11 }), "message");
-      expect(getSessionQueue(5)?.pendingCount()).toBe(1);
-    });
-
-    it("routes to the only session regardless of idle state", () => {
+    it("routes to the only session when no governor is set", () => {
       createSessionQueue(1);
       routeToSession(makeEvent({ id: 10 }), "message");
       expect(getSessionQueue(1)?.pendingCount()).toBe(1);
@@ -238,63 +180,9 @@ describe("session-queue", () => {
     it("no-ops when no session queues exist", () => {
       routeToSession(makeEvent(), "message");
     });
-  });
 
-  // -------------------------------------------------------------------------
-  // Routing — ambiguous (cascade mode = priority hierarchy)
-  // -------------------------------------------------------------------------
-
-  describe("ambiguous routing (cascade)", () => {
-    it("always routes to lowest-SID idle session", () => {
-      setRoutingMode("cascade");
-      createSessionQueue(1);
-      createSessionQueue(2);
-      void getSessionQueue(1)?.waitForEnqueue();
-      void getSessionQueue(2)?.waitForEnqueue();
-
-      // First message → session 1 (lowest SID, cascade priority)
-      routeToSession(makeEvent({ id: 10 }), "message");
-      expect(getSessionQueue(1)?.pendingCount()).toBe(1);
-      expect(getSessionQueue(2)?.pendingCount()).toBe(0);
-
-      // Session 1's waiter is consumed. Renew it (simulates dequeue loop).
-      void getSessionQueue(1)?.waitForEnqueue();
-
-      // Second message → still session 1 (lowest SID preferred)
-      routeToSession(makeEvent({ id: 11 }), "message");
-      expect(getSessionQueue(1)?.pendingCount()).toBe(2);
-      expect(getSessionQueue(2)?.pendingCount()).toBe(0);
-    });
-
-    it("falls back to next idle session when primary is busy", () => {
-      setRoutingMode("cascade");
-      createSessionQueue(1);
-      createSessionQueue(2);
-      // Only session 2 is idle
-      void getSessionQueue(2)?.waitForEnqueue();
-
-      routeToSession(makeEvent(), "message");
-      expect(getSessionQueue(1)?.pendingCount()).toBe(0);
-      expect(getSessionQueue(2)?.pendingCount()).toBe(1);
-    });
-
-    it("falls back to lowest SID when no sessions are idle", () => {
-      setRoutingMode("cascade");
-      createSessionQueue(3);
-      createSessionQueue(5);
-      routeToSession(makeEvent(), "message");
-      expect(getSessionQueue(3)?.pendingCount()).toBe(1);
-      expect(getSessionQueue(5)?.pendingCount()).toBe(0);
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Routing — ambiguous (governor mode)
-  // -------------------------------------------------------------------------
-
-  describe("ambiguous routing (governor)", () => {
     it("routes to the governor session", () => {
-      setRoutingMode("governor", 2);
+      setGovernorSid(2);
       createSessionQueue(1);
       createSessionQueue(2);
       routeToSession(makeEvent(), "message");
@@ -303,7 +191,7 @@ describe("session-queue", () => {
     });
 
     it("broadcasts when governor session has no queue", () => {
-      setRoutingMode("governor", 99);
+      setGovernorSid(99);
       createSessionQueue(1);
       createSessionQueue(2);
       routeToSession(makeEvent(), "message");

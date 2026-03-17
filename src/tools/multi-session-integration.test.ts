@@ -73,8 +73,7 @@ import {
   resetSessionQueuesForTest,
 } from "../session-queue.js";
 import {
-  setRoutingMode,
-  getRoutingMode,
+  setGovernorSid,
   getGovernorSid,
   resetRoutingModeForTest,
 } from "../routing-mode.js";
@@ -87,7 +86,6 @@ import { resetDmPermissionsForTest } from "../dm-permissions.js";
 import { register as registerDequeue } from "./dequeue_update.js";
 import { register as registerSendText } from "./send_text.js";
 import { register as registerCloseSession } from "./close_session.js";
-import { register as registerPassMessage } from "./pass_message.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -300,51 +298,49 @@ describe("multi-session tool integration", () => {
   // Scenario 4: Session close resets governor routing
   // -------------------------------------------------------------------------
   describe("scenario 4: session close resets governor routing", () => {
-    it("closing governor session resets routing to load_balance when 1 session remains (2→1 teardown)", async () => {
+    it("closing governor session clears governor when 1 session remains (2→1 teardown)", async () => {
       const { sid: sid1, pin: pin1 } = createSession(); createSessionQueue(sid1);
       const { sid: sid2 } = createSession(); createSessionQueue(sid2);
-      setRoutingMode("governor", sid1);
+      setGovernorSid(sid1);
 
-      expect(getRoutingMode()).toBe("governor");
       expect(getGovernorSid()).toBe(sid1);
 
       const server = createMockServer();
       registerCloseSession(server);
       await server.getHandler("close_session")({ sid: sid1, pin: pin1 });
 
-      // 2→1 teardown: single-session mode restored, not governor promotion
-      expect(getRoutingMode()).toBe("load_balance");
+      // 2→1 teardown: single-session mode restored, governor cleared
+      expect(getGovernorSid()).toBe(0);
     });
 
-    it("closing governor session resets routing to load_balance when no sessions remain", async () => {
+    it("closing governor session clears governor when no sessions remain", async () => {
       const { sid: sid1, pin: pin1 } = createSession(); createSessionQueue(sid1);
-      setRoutingMode("governor", sid1);
+      setGovernorSid(sid1);
 
       const server = createMockServer();
       registerCloseSession(server);
       await server.getHandler("close_session")({ sid: sid1, pin: pin1 });
 
-      expect(getRoutingMode()).toBe("load_balance");
       expect(getGovernorSid()).toBe(0);
     });
 
-    it("closing a non-governor session resets routing when 1 session remains (2→1 teardown)", async () => {
+    it("closing a non-governor session clears governor when 1 session remains (2→1 teardown)", async () => {
       const { sid: sid1, pin: _pin1 } = createSession(); createSessionQueue(sid1);
       const { sid: sid2, pin: pin2 } = createSession(); createSessionQueue(sid2);
-      setRoutingMode("governor", sid1);
+      setGovernorSid(sid1);
 
       const server = createMockServer();
       registerCloseSession(server);
       await server.getHandler("close_session")({ sid: sid2, pin: pin2 });
 
-      // 2→1 teardown: routing resets regardless of which session closed
-      expect(getRoutingMode()).toBe("load_balance");
+      // 2→1 teardown: governor cleared regardless of which session closed
+      expect(getGovernorSid()).toBe(0);
     });
 
-    it("close_session with wrong pin returns AUTH_FAILED and leaves routing intact", async () => {
+    it("close_session with wrong pin returns AUTH_FAILED and leaves governor intact", async () => {
       const { sid: sid1 } = createSession(); createSessionQueue(sid1);
       const { sid: sid2 } = createSession(); createSessionQueue(sid2);
-      setRoutingMode("governor", sid1);
+      setGovernorSid(sid1);
 
       const server = createMockServer();
       registerCloseSession(server);
@@ -352,7 +348,7 @@ describe("multi-session tool integration", () => {
 
       expect(isError(result)).toBe(true);
       expect(errorCode(result)).toBe("AUTH_FAILED");
-      expect(getRoutingMode()).toBe("governor");
+      expect(getGovernorSid()).toBe(sid1);
     });
   });
 
@@ -438,73 +434,9 @@ describe("multi-session tool integration", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Scenario 7: Cross-session message passing (cascade mode)
+  // Scenario 7: Queue independence
   // -------------------------------------------------------------------------
-  describe("scenario 7: cross-session message passing", () => {
-    it("pass_message delivers event to next session in cascade order", async () => {
-      const { sid: sid1, pin: pin1 } = createSession(); createSessionQueue(sid1);
-      const { sid: sid2 } = createSession(); createSessionQueue(sid2);
-      setRoutingMode("cascade");
-
-      const event = makeEvent();
-      mockGetMessage.mockReturnValue(event);
-
-      const server = createMockServer();
-      registerPassMessage(server);
-      const result = await server.getHandler("pass_message")({
-        sid: sid1, pin: pin1, message_id: event.id,
-      });
-
-      expect(isError(result)).toBe(false);
-      expect(parseTool(result)).toMatchObject({ forwarded_to: sid2 });
-
-      // sid2 now has the event; sid1 does not
-      const q2items = getSessionQueue(sid2)!.dequeueBatch();
-      expect(q2items).toHaveLength(1);
-      expect(q2items[0].id).toBe(event.id);
-    });
-
-    it("pass_message fails when last session has nowhere to pass", async () => {
-      const { sid: sid1, pin: pin1 } = createSession(); createSessionQueue(sid1);
-      // only one session — no next session in cascade
-      setRoutingMode("cascade");
-
-      const event = makeEvent();
-      mockGetMessage.mockReturnValue(event);
-
-      const server = createMockServer();
-      registerPassMessage(server);
-      const result = await server.getHandler("pass_message")({
-        sid: sid1, pin: pin1, message_id: event.id,
-      });
-
-      expect(isError(result)).toBe(true);
-      expect(errorCode(result)).toBe("PASS_FAILED");
-    });
-
-    it("pass_message fails outside cascade mode", async () => {
-      const { sid: sid1, pin: pin1 } = createSession(); createSessionQueue(sid1);
-      const { sid: sid2 } = createSession(); createSessionQueue(sid2);
-      // default routing: load_balance
-
-      const event = makeEvent();
-      mockGetMessage.mockReturnValue(event);
-
-      const server = createMockServer();
-      registerPassMessage(server);
-      const result = await server.getHandler("pass_message")({
-        sid: sid1, pin: pin1, message_id: event.id,
-      });
-
-      expect(isError(result)).toBe(true);
-      expect(errorCode(result)).toBe("NOT_CASCADE_MODE");
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Scenario 8: Load-balance queue independence
-  // -------------------------------------------------------------------------
-  describe("scenario 8: load-balance queue independence", () => {
+  describe("scenario 7: queue independence", () => {
     it("messages enqueued to different sessions are received independently", async () => {
       const { sid: sid1 } = createSession(); createSessionQueue(sid1);
       const { sid: sid2 } = createSession(); createSessionQueue(sid2);

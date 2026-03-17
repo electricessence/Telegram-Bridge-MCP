@@ -6,7 +6,7 @@ import type { TimelineEvent } from "../message-store.js";
 import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-store.js";
 import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverDirectMessage } from "../session-queue.js";
-import { getRoutingMode, setRoutingMode } from "../routing-mode.js";
+import { setGovernorSid } from "../routing-mode.js";
 
 const DEFAULT_INTRO = "ℹ️ Session Start";
 const APPROVAL_TIMEOUT_MS = 60_000;
@@ -190,7 +190,7 @@ export function register(server: McpServer) {
           if (session.sessionsActive === 2) {
             // Auto-activate governor: lowest-SID session (the first one) becomes governor
             const lowestSid = Math.min(...allSessions.map(s => s.sid));
-            setRoutingMode("governor", lowestSid);
+            setGovernorSid(lowestSid);
             // Notify existing sessions that a new session has joined
             const joinerLabel = effectiveName || `Session ${session.sid}`;
             for (const fellow of allSessions.filter(s => s.sid !== session.sid)) {
@@ -201,7 +201,6 @@ export function register(server: McpServer) {
               );
             }
           }
-          res.routing_mode = getRoutingMode();
         }
         return toResult(res);
       } catch (err) {

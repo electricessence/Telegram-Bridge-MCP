@@ -46,7 +46,6 @@ import { register as registerSendNewProgress } from "./tools/send_new_progress.j
 import { register as registerUpdateProgress } from "./tools/update_progress.js";
 import { register as registerSendDirectMessage } from "./tools/send_direct_message.js";
 import { register as registerRequestDmAccess } from "./tools/request_dm_access.js";
-import { register as registerPassMessage } from "./tools/pass_message.js";
 import { register as registerRouteMessage } from "./tools/route_message.js";
 import { register as registerGetDebugLog } from "./tools/get_debug_log.js";
 
@@ -160,7 +159,6 @@ export function createServer(): McpServer {
   registerListSessions(server);
   registerSendDirectMessage(server);
   registerRequestDmAccess(server);
-  registerPassMessage(server);
   registerRouteMessage(server);
   registerDumpSessionRecord(server);
   registerGetDebugLog(server);
