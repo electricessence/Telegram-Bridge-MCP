@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   waitForEnqueue: vi.fn(),
   ackVoiceMessage: vi.fn(),
   getActiveSession: vi.fn(() => 0),
+  setActiveSession: vi.fn(),
   getSessionQueue: vi.fn(() => undefined),
   popCascadePassDeadline: vi.fn(() => undefined as number | undefined),
   getRoutingMode: vi.fn(() => "load_balance"),
@@ -26,6 +27,7 @@ vi.mock("../message-store.js", () => ({
 
 vi.mock("../session-manager.js", () => ({
   getActiveSession: () => mocks.getActiveSession(),
+  setActiveSession: (...args: unknown[]) => mocks.setActiveSession(...args),
 }));
 
 vi.mock("../session-queue.js", () => ({
@@ -344,6 +346,8 @@ describe("dequeue_update tool", () => {
     // getSessionQueue was called with the explicit sid, not the active one
     expect(mocks.getSessionQueue).toHaveBeenCalledWith(3);
     expect(mockSessionQueue.dequeueBatch).toHaveBeenCalled();
+    // setActiveSession called to keep outbound attribution correct
+    expect(mocks.setActiveSession).toHaveBeenCalledWith(3);
   });
 
   it("falls back to getActiveSession when sid param is omitted", async () => {
@@ -362,6 +366,23 @@ describe("dequeue_update tool", () => {
     const data = parseResult(result);
     expect(data.updates[0].id).toBe(71);
     expect(mocks.getSessionQueue).toHaveBeenCalledWith(5);
+    // setActiveSession not called when sid is omitted
+    expect(mocks.setActiveSession).not.toHaveBeenCalled();
+  });
+
+  it("skips setActiveSession when explicit sid matches active", async () => {
+    mocks.getActiveSession.mockReturnValue(3);
+    const mockSessionQueue = {
+      dequeueBatch: vi.fn(() => [] as TimelineEvent[]),
+      pendingCount: vi.fn(() => 0),
+      waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getSessionQueue.mockImplementation((sid: number) =>
+      sid === 3 ? mockSessionQueue : undefined,
+    );
+
+    await call({ sid: 3, timeout: 0 });
+    expect(mocks.setActiveSession).not.toHaveBeenCalled();
   });
 
   // =========================================================================

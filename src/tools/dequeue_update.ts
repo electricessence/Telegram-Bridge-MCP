@@ -5,7 +5,7 @@ import {
   dequeueBatch, pendingCount, waitForEnqueue,
   type TimelineEvent,
 } from "../message-store.js";
-import { getActiveSession } from "../session-manager.js";
+import { getActiveSession, setActiveSession } from "../session-manager.js";
 import { getSessionQueue, popCascadePassDeadline } from "../session-queue.js";
 import { getRoutingMode } from "../routing-mode.js";
 
@@ -71,6 +71,12 @@ export function register(server: McpServer) {
       // instances share the same server process).
       const sid = explicitSid ?? getActiveSession();
       const sessionQueue = sid > 0 ? getSessionQueue(sid) : undefined;
+
+      // Keep active session in sync so subsequent outbound tool calls
+      // (send_text, notify, etc.) attribute messages to the correct SID.
+      if (explicitSid !== undefined && explicitSid !== getActiveSession()) {
+        setActiveSession(explicitSid);
+      }
 
       function dequeueBatchAny(): TimelineEvent[] {
         if (sessionQueue) {

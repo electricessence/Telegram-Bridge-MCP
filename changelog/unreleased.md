@@ -71,6 +71,7 @@
 ## Fixed
 
 - Fixed `dequeue_update` using global `_activeSessionId` when multiple sessions share the same server process — added optional `sid` parameter; when provided, the correct session queue is used directly instead of relying on last-writer-wins global state
+- Fixed `dequeue_update` not syncing `_activeSessionId` when explicit `sid` is provided — subsequent outbound tool calls (`send_text`, `notify`, etc.) were misattributing messages to the wrong session, causing outbound broadcasts to echo back to the sender
 - Removed unreachable deadline check inside `setInterval` callback in `typing-state.ts`
 - Simplified `_clearSlot` in `temp-reaction.ts` — removed unused `fireRestore` parameter that was never passed as `true`
 - Fixed `session_start` never calling `setActiveSession` — per-session queues were created but never activated in production
