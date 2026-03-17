@@ -58,8 +58,10 @@ User sends a fresh message → routed to governor (SID 1). Governor dequeues wit
 | Tool group | Auth required |
 | --- | --- |
 | `session_start`, `shutdown`, `get_agent_guide`, `get_me`, `list_sessions` | None |
-| All other tools (multi-session active) | `sid` + `pin` |
+| All other tools (multi-session active) | `identity: [sid, pin]` tuple |
 | All other tools (single session) | None (backward compat) |
+
+On the wire: `{ "identity": [1, 809146], ... }` — one field, two numbers, minimal tokens.
 
 ## Task Dependency Chain
 
