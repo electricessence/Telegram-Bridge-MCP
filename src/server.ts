@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { register as registerDequeueUpdate } from "./tools/dequeue_update.js";
+import { register as registerWaitForMessage } from "./tools/wait_for_message.js";
 import { register as registerGetMessage } from "./tools/get_message.js";
 import { register as registerSendText } from "./tools/send_text.js";
 import { register as registerSendMessage } from "./tools/send_message.js";
@@ -58,6 +59,7 @@ export function createServer(): McpServer {
 
   // ── Polling ─────────────────────────────────────────────────────────────
   registerDequeueUpdate(server);
+  registerWaitForMessage(server);
   registerGetMessage(server);
 
   // ── Messaging ───────────────────────────────────────────────────────────

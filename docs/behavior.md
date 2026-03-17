@@ -52,6 +52,27 @@ Normal drain-then-block sequence:
 
 `pending` (included when more updates are queued; omitted when 0) tells you how many items are still waiting. When `pending > 0`, skip straight to another `dequeue_update(timeout: 0)` call instead of blocking.
 
+### `wait_for_message` — simple agent loops
+
+For agents that process one message at a time in a listen loop, `wait_for_message` provides a simpler interface than `dequeue_update`:
+
+```text
+1. call wait_for_message()          — blocks up to 300 s (default)
+2. On message: process it, then go to step 1
+3. On { timed_out: true }: call wait_for_message() again immediately
+```
+
+Returns a flat object with `message_id`, `type`, `text`, `command`, `args`, `caption`, `file_id`, `reply_to_message_id`, and `pending` — no nested `content` structure. Reactions and callbacks are consumed silently; only user messages are returned.
+
+### When to use which polling tool
+
+| Tool | Best for | Returns |
+| --- | --- | --- |
+| `wait_for_message` | Simple agent loops — one message at a time. Models loop reliably on `{ timed_out: true }`. | Flat message fields or `{ timed_out: true }` |
+| `dequeue_update` | Batch processing, drain loops, non-blocking polls, handling reactions/callbacks directly. | `{ updates: [...] }` or `{ empty: true }` |
+
+Both tools coexist — use whichever fits the agent's needs.
+
 ### Looking up prior messages
 
 Use `get_message(message_id)` to retrieve a previously seen message by its ID. Returns text, caption, file metadata, and edit history. Only call for message IDs already known to this agent session (received via `dequeue_update` or sent by the agent).
