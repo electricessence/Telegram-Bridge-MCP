@@ -538,13 +538,36 @@ Governor status transfers automatically when sessions close — the next lowest-
 Good topics: `Refactoring animation state`, `Reviewing PR #40`, `Overseeing v4 branch`
 Bad topics: `Working`, `Agent`, `Session 2`
 
-### Coordination tools
+### Inter-session communication
 
 | Situation | Tool |
 | --- | --- |
 | Forward an operator message to another session | `route_message` |
-| Send a private message directly to another session | `send_direct_message` |
+| Send a private note to another session | `send_direct_message` |
 | Request DM access from another session | `request_dm_access` |
+
+**`route_message`** — Re-delivers an existing message from your queue to another session's queue. The target session sees the original message unchanged with `routing: "targeted"`.
+
+When to use: you are the governor and an ambiguous message clearly belongs to a specific worker.
+
+- Check `fellow_sessions` to confirm the target session exists before routing.
+- Route at most once — do not bounce a message back and forth between sessions.
+- Do not route messages you should handle yourself; governor is always the fallback owner.
+
+**`send_direct_message`** — Sends a new text message directly to another session's queue. The operator never sees it — it is a private inter-agent channel.
+
+When to use: signal task completion, share a result, hand off a subtask.
+
+Examples:
+
+- Worker → governor: "Migration complete. Database is ready."
+- Governor → worker: "Please summarize PR #40 and report back when done."
+
+Etiquette:
+
+- DMs are invisible to the operator. Use `notify` when the operator should see the content.
+- DM access is granted automatically in both directions when sessions are approved — no manual `request_dm_access` call needed in normal flows.
+- Keep DMs brief — use them for signals and handoffs, not large data transfers.
 
 ### Slash commands in multi-session mode
 

@@ -54,6 +54,8 @@ The thinking → working → `show_typing` pipeline gives the operator a live st
 | Build / deploy / error event | `notify` with severity |
 | Multi-step task (3+ steps) | `send_new_checklist` + `pin_message` |
 | Completed work / ready to proceed | `confirm` (single-button CTA, no `no_text`) |
+| Forward user message to another session | `route_message` |
+| Send private note to another session | `send_direct_message` |
 
 ---
 
