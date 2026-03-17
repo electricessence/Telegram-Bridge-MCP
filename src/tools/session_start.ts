@@ -7,6 +7,7 @@ import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-sto
 import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverDirectMessage } from "../session-queue.js";
 import { setGovernorSid } from "../routing-mode.js";
+import { grantDm } from "../dm-permissions.js";
 
 const DEFAULT_INTRO = "ℹ️ Session Start";
 const APPROVAL_TIMEOUT_MS = 60_000;
@@ -154,6 +155,15 @@ export function register(server: McpServer) {
       const session = createSession(effectiveName);
       createSessionQueue(session.sid);
       setActiveSession(session.sid);
+
+      // Auto-grant bidirectional DM between new session and all existing sessions.
+      // Operator approval is the trust gate — no extra request_dm_access needed.
+      if (!isFirstSession) {
+        for (const fellow of listSessions().filter(s => s.sid !== session.sid)) {
+          grantDm(session.sid, fellow.sid);
+          grantDm(fellow.sid, session.sid);
+        }
+      }
 
       try {
         // 1. Send the intro message

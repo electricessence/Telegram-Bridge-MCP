@@ -12,12 +12,12 @@ const mocks = vi.hoisted(() => ({
   setActiveSession: vi.fn(),
   listSessions: vi.fn().mockReturnValue([]),
   activeSessionCount: vi.fn().mockReturnValue(0),
-  getRoutingMode: vi.fn().mockReturnValue("load_balance"),
   setGovernorSid: vi.fn(),
   resolveChat: vi.fn(() => 42 as number),
   registerCallbackHook: vi.fn(),
   clearCallbackHook: vi.fn(),
   deliverDirectMessage: vi.fn(),
+  grantDm: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -57,6 +57,10 @@ vi.mock("../session-queue.js", () => ({
   createSessionQueue: vi.fn(),
   removeSessionQueue: vi.fn(),
   deliverDirectMessage: (...args: unknown[]) => mocks.deliverDirectMessage(...args),
+}));
+
+vi.mock("../dm-permissions.js", () => ({
+  grantDm: (...args: unknown[]) => mocks.grantDm(...args),
 }));
 
 import { register } from "./session_start.js";
@@ -631,33 +635,6 @@ describe("session_start tool", () => {
     expect(mocks.deliverDirectMessage).not.toHaveBeenCalled();
   });
 
-  it("does not notify when 3rd session joins (only fires on 2nd)", async () => {
-    mocks.pendingCount.mockReturnValue(0);
-    mocks.activeSessionCount.mockReturnValue(2);
-    mocks.createSession.mockReturnValue({ sid: 3, pin: 300003, name: "Scout", sessionsActive: 3 });
-    mocks.listSessions
-      .mockReturnValueOnce([
-        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
-        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
-      ])
-      .mockReturnValue([
-        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
-        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
-        { sid: 3, name: "Scout", createdAt: "2026-03-17" },
-      ]);
-    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
-      void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
-    });
-    mocks.sendMessage
-      .mockResolvedValueOnce({ message_id: 50 })
-      .mockResolvedValue(INTRO_MSG);
-
-    await call({ name: "Scout" });
-
-    // sessionsActive === 3, so no announcement DM
-    expect(mocks.deliverDirectMessage).not.toHaveBeenCalled();
-  });
-
   it("announcement includes governor name", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(1);
@@ -681,6 +658,90 @@ describe("session_start tool", () => {
     expect(mocks.deliverDirectMessage).toHaveBeenCalledWith(
       2, 1, expect.stringContaining("Scout has joined"),
     );
+  });
+
+  // =========================================================================
+  // Auto-grant DM on approval (task 250)
+  // =========================================================================
+
+  it("auto-grants bidirectional DM between new session and all existing sessions on approval", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", sessionsActive: 2 });
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }]) // collision check
+      .mockReturnValue([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
+    });
+    mocks.sendMessage
+      .mockResolvedValueOnce({ message_id: 50 })
+      .mockResolvedValue(INTRO_MSG);
+
+    await call({ name: "Worker" });
+
+    expect(mocks.grantDm).toHaveBeenCalledWith(2, 1); // new → existing
+    expect(mocks.grantDm).toHaveBeenCalledWith(1, 2); // existing → new
+    expect(mocks.grantDm).toHaveBeenCalledTimes(2);
+  });
+
+  it("auto-grants DM to all existing sessions when 3rd session joins", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(2);
+    mocks.createSession.mockReturnValue({ sid: 3, pin: 300003, name: "Scout", sessionsActive: 3 });
+    mocks.listSessions
+      .mockReturnValueOnce([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      ])
+      .mockReturnValue([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+        { sid: 3, name: "Scout", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
+    });
+    mocks.sendMessage
+      .mockResolvedValueOnce({ message_id: 50 })
+      .mockResolvedValue(INTRO_MSG);
+
+    await call({ name: "Scout" });
+
+    // Bidirectional with each of the 2 existing sessions = 4 calls
+    expect(mocks.grantDm).toHaveBeenCalledWith(3, 1);
+    expect(mocks.grantDm).toHaveBeenCalledWith(1, 3);
+    expect(mocks.grantDm).toHaveBeenCalledWith(3, 2);
+    expect(mocks.grantDm).toHaveBeenCalledWith(2, 3);
+    expect(mocks.grantDm).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not grant DM when first session starts", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+
+    await call({});
+
+    expect(mocks.grantDm).not.toHaveBeenCalled();
+  });
+
+  it("does not grant DM when session is denied", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }]);
+    mocks.sendMessage.mockResolvedValue({ message_id: 201 });
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_no", qid: "q1" } }); });
+    });
+
+    const result = await call({ name: "Worker" });
+
+    expect(isError(result)).toBe(true);
+    expect(mocks.grantDm).not.toHaveBeenCalled();
   });
 });
 
