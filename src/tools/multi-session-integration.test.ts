@@ -299,13 +299,26 @@ describe("multi-session tool integration", () => {
   // Scenario 4: Session close resets governor routing
   // -------------------------------------------------------------------------
   describe("scenario 4: session close resets governor routing", () => {
-    it("closing governor session resets routing mode to load_balance", async () => {
+    it("closing governor session promotes next-lowest SID when sessions remain", async () => {
       const { sid: sid1, pin: pin1 } = createSession(); createSessionQueue(sid1);
       const { sid: sid2 } = createSession(); createSessionQueue(sid2);
       setRoutingMode("governor", sid1);
 
       expect(getRoutingMode()).toBe("governor");
       expect(getGovernorSid()).toBe(sid1);
+
+      const server = createMockServer();
+      registerCloseSession(server);
+      await server.getHandler("close_session")({ sid: sid1, pin: pin1 });
+
+      // sid2 is now the only remaining session — promoted to governor
+      expect(getRoutingMode()).toBe("governor");
+      expect(getGovernorSid()).toBe(sid2);
+    });
+
+    it("closing governor session resets routing to load_balance when no sessions remain", async () => {
+      const { sid: sid1, pin: pin1 } = createSession(); createSessionQueue(sid1);
+      setRoutingMode("governor", sid1);
 
       const server = createMockServer();
       registerCloseSession(server);

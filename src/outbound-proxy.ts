@@ -15,6 +15,28 @@ import { typingGeneration, cancelTypingIfSameGeneration } from "./typing-state.j
 import { clearPendingTemp } from "./temp-message.js";
 import { recordOutgoing } from "./message-store.js";
 import { fireTempReactionRestore } from "./temp-reaction.js";
+import { getCallerSid } from "./session-context.js";
+import { activeSessionCount, getSession } from "./session-manager.js";
+import { escapeV2 } from "./markdown.js";
+
+// ---------------------------------------------------------------------------
+// Session header injection
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the `🤖 {name}\n` header when 2+ sessions are active
+ * and the current session has a name, otherwise returns `""` or `"🤖 Session {sid}\n"`.
+ * Pass `escape: true` to MarkdownV2-escape the name portion.
+ */
+function buildHeader(escape: boolean): { plain: string; formatted: string } {
+  if (activeSessionCount() < 2) return { plain: "", formatted: "" };
+  const sid = getCallerSid();
+  const session = sid > 0 ? getSession(sid) : undefined;
+  const name = session?.name || (sid > 0 ? `Session ${sid}` : "");
+  if (!name) return { plain: "", formatted: "" };
+  const formatted = escape ? `🤖 ${escapeV2(name)}\n` : `🤖 ${name}\n`;
+  return { plain: `🤖 ${name}\n`, formatted };
+}
 
 // ---------------------------------------------------------------------------
 // Animation interceptor — pluggable slot
@@ -157,19 +179,27 @@ export function createOutboundProxy(realApi: Api): Api {
           const cleanOpts = opts ? { ...opts } : undefined;
           if (cleanOpts) delete cleanOpts._rawText;
 
+          // Session header — prepend "🤖 Name\n" in multi-session mode
+          const isMarkdownV2 = cleanOpts?.parse_mode === "MarkdownV2";
+          const { plain: headerPlain, formatted: headerFormatted } = buildHeader(isMarkdownV2);
+          const finalText = headerFormatted ? headerFormatted + text : text;
+          const finalRawText = rawText !== undefined
+            ? (headerPlain ? headerPlain + rawText : rawText)
+            : undefined;
+
           // Animation promote: edit animation → real content
           if (_interceptor) {
             const savedInterceptor = _interceptor;
-            const result = await _interceptor.beforeTextSend(chatId, text, cleanOpts ?? {});
+            const result = await _interceptor.beforeTextSend(chatId, finalText, cleanOpts ?? {});
             if (result.intercepted) {
               cancelTypingIfSameGeneration(gen);
-              recordOutgoing(result.message_id, "text", rawText ?? text);
+              recordOutgoing(result.message_id, "text", finalRawText ?? finalText);
               return { message_id: result.message_id };
             }
             // Not intercepted — send normally, then let animation restart below
-            const msg = await fn(chatId, text, cleanOpts);
+            const msg = await fn(chatId, finalText, cleanOpts);
             cancelTypingIfSameGeneration(gen);
-            recordOutgoing(msg.message_id, "text", rawText ?? text);
+            recordOutgoing(msg.message_id, "text", finalRawText ?? finalText);
             if (savedInterceptor.afterTextSend) {
               await savedInterceptor.afterTextSend();
             }
@@ -177,9 +207,9 @@ export function createOutboundProxy(realApi: Api): Api {
           }
 
           // Normal send
-          const msg = await fn(chatId, text, cleanOpts);
+          const msg = await fn(chatId, finalText, cleanOpts);
           cancelTypingIfSameGeneration(gen);
-          recordOutgoing(msg.message_id, "text", rawText ?? text);
+          recordOutgoing(msg.message_id, "text", finalRawText ?? finalText);
           return msg;
         };
       }
@@ -199,16 +229,24 @@ export function createOutboundProxy(realApi: Api): Api {
           if (_interceptor) await _interceptor.beforeFileSend();
 
           try {
+            // Inject session header into caption if multi-session active
+            const optsArg = args[2] as Record<string, unknown> | undefined;
+            const { plain: captionHeader } = buildHeader(false);
+            if (captionHeader && optsArg?.caption) {
+              (args[2] as Record<string, unknown>).caption =
+                captionHeader + (optsArg.caption as string);
+            }
+
             const msg = await fn(...args);
             cancelTypingIfSameGeneration(gen);
 
             // Extract caption for recording
-            const optsArg = args[2] as Record<string, unknown> | undefined;
-            const caption = optsArg?.caption as string | undefined;
+            const finalCaption = (args[2] as Record<string, unknown> | undefined)
+              ?.caption as string | undefined;
 
             // Extract file_id from the response (Grammy returns the full Message)
             const fileId = extractFileId(msg, fileContentType);
-            recordOutgoing(msg.message_id, fileContentType, undefined, caption, fileId);
+            recordOutgoing(msg.message_id, fileContentType, undefined, finalCaption, fileId);
 
             return msg;
           } finally {
@@ -226,6 +264,16 @@ export function createOutboundProxy(realApi: Api): Api {
           if (_bypassing) return fn(...args);
           const gen = typingGeneration();
           await fireTempReactionRestore();
+
+          // Inject session header into edit text if multi-session active
+          // args: (chatId, messageId, text, opts?)
+          const editOpts = args[3] as Record<string, unknown> | undefined;
+          const isMarkdownV2Edit = editOpts?.parse_mode === "MarkdownV2";
+          const { formatted: editHeader } = buildHeader(isMarkdownV2Edit);
+          if (editHeader) {
+            args[2] = editHeader + (args[2] as string);
+          }
+
           const result = await fn(...args);
           cancelTypingIfSameGeneration(gen);
           if (_interceptor) _interceptor.onEdit();

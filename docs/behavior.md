@@ -480,3 +480,62 @@ After calling `shutdown` (or the server restarts for any reason):
 1. Drain stale messages: call `dequeue_update(timeout: 0)` in a loop until `pending == 0`
 2. Send a "back online" message via `notify` describing what changed
 3. Return to `dequeue_update` loop
+
+---
+
+## Multi-Session Behavior
+
+When 2+ agent sessions are active simultaneously, additional rules apply.
+
+### Session identity
+
+`session_start` returns a `sid` (session ID), your session `name` (if set), and a `fellow_sessions` list of co-active agents. Use the returned name in your internal context — it is what the operator and other agents use to identify you.
+
+Your outbound messages automatically include a `🤖 YourName` header line injected by the server. You do not need to add it manually.
+
+### Routing modes
+
+The server routes incoming operator messages based on the current routing mode:
+
+| Mode | Behavior |
+| --- | --- |
+| `load_balance` | Messages distributed across sessions. Default for single-session. |
+| `governor` | One session (governor) receives all messages. Active when 2+ sessions exist. |
+| `cascade` | Ordered fallback — first available session handles. |
+
+Governor mode activates automatically when the second session joins. The lowest-SID session becomes governor by default.
+
+### Ambiguous message protocol
+
+`dequeue_update` events include a `routing` field when governor mode is active:
+
+- `"targeted"` — the message was a reply to one of your bot messages. Handle it.
+- `"ambiguous"` — no clear target. Apply conversational context to decide.
+
+**For ambiguous messages:**
+
+1. Consider whether the message is clearly meant for a different session. If yes, use `route_message` to forward.
+2. If unclear, handle it yourself — governor is the fallback owner and it is always OK to handle an ambiguous message.
+3. Never silently discard an ambiguous message.
+
+### Governor responsibilities
+
+If you are the governor (`sid` matches `routing_mode.governor_sid` in `session_start` response):
+
+- You own ambiguous operator messages by default.
+- Triage and route to the appropriate specialist session via `route_message` or `send_direct_message` if needed.
+- Coordinate multi-session workflows.
+
+Governor status transfers automatically when sessions close — the next lowest-SID session is promoted. You may become governor unexpectedly if the previous governor closes.
+
+### Coordination tools
+
+| Situation | Tool |
+| --- | --- |
+| Forward an operator message to another session | `route_message` |
+| Send a private message directly to another session | `send_direct_message` |
+| Request DM access from another session | `request_dm_access` |
+
+### Don't assume you're alone
+
+When `sessions_active > 1`, a parallel agent may be working on related tasks. Avoid redundant work — check `fellow_sessions` and coordinate before acting on shared resources.

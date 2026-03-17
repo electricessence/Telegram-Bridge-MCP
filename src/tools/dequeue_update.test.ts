@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   activeSessionCount: vi.fn(() => 0),
   getSessionQueue: vi.fn(() => undefined),
   popCascadePassDeadline: vi.fn(() => undefined as number | undefined),
+  getMessageOwner: vi.fn(() => 0),
   getRoutingMode: vi.fn(() => "load_balance"),
 }));
 
@@ -36,6 +37,7 @@ vi.mock("../session-queue.js", () => ({
   // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- mock passthrough
   getSessionQueue: (...args: unknown[]) => mocks.getSessionQueue(...(args as [])),
   popCascadePassDeadline: (...args: unknown[]) => mocks.popCascadePassDeadline(...(args as [])),
+  getMessageOwner: (...args: unknown[]) => mocks.getMessageOwner(...(args as [])),
 }));
 
 vi.mock("../routing-mode.js", () => ({
@@ -575,5 +577,100 @@ describe("dequeue_update tool", () => {
     const content = (result as { content: { text: string }[] }).content[0];
     expect(content.text).toContain("SESSION_NOT_FOUND");
     expect(content.text).toContain("sid=42");
+  });
+
+  // =========================================================================
+  // routing field — ambiguous vs targeted
+  // =========================================================================
+
+  describe("routing field", () => {
+    function makeReplyEvent(id: number, replyTo: number): TimelineEvent {
+      return {
+        id,
+        timestamp: new Date().toISOString(),
+        event: "message",
+        from: "user",
+        content: { type: "text", text: "reply", reply_to: replyTo },
+        _update: { update_id: id } as never,
+      };
+    }
+
+    it("adds routing: ambiguous for fresh message in governor mode", async () => {
+      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getMessageOwner.mockReturnValue(0); // no owner → ambiguous
+      const evt = makeEvent(10, "hello");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      const result = await call({ timeout: 0 });
+      const data = parseResult(result);
+      expect(data.updates[0].routing).toBe("ambiguous");
+    });
+
+    it("adds routing: targeted for reply-to message in governor mode", async () => {
+      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getMessageOwner.mockImplementation((msgId: number) => msgId === 50 ? 1 : 0);
+      const evt = makeReplyEvent(10, 50);
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      const result = await call({ timeout: 0 });
+      const data = parseResult(result);
+      expect(data.updates[0].routing).toBe("targeted");
+    });
+
+    it("adds routing: targeted for callback event in governor mode", async () => {
+      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getMessageOwner.mockImplementation((msgId: number) => msgId === 60 ? 2 : 0);
+      const cbEvt: TimelineEvent = {
+        id: 11,
+        timestamp: new Date().toISOString(),
+        event: "callback",
+        from: "user",
+        content: { type: "cb", data: "yes", target: 60 },
+        _update: { update_id: 11 } as never,
+      };
+      mocks.dequeueBatch.mockReturnValueOnce([cbEvt]);
+      const result = await call({ timeout: 0 });
+      const data = parseResult(result);
+      expect(data.updates[0].routing).toBe("targeted");
+    });
+
+    it("omits routing field in load_balance mode", async () => {
+      mocks.getRoutingMode.mockReturnValue("load_balance");
+      const evt = makeEvent(12, "hi");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      const result = await call({ timeout: 0 });
+      const data = parseResult(result);
+      expect(data.updates[0].routing).toBeUndefined();
+    });
+
+    it("omits routing field in cascade mode", async () => {
+      mocks.getRoutingMode.mockReturnValue("cascade");
+      const evt = makeEvent(13, "hi");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      const result = await call({ timeout: 0 });
+      const data = parseResult(result);
+      expect(data.updates[0].routing).toBeUndefined();
+    });
+
+    it("adds routing to all events in a batch", async () => {
+      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getMessageOwner.mockReturnValue(0); // all ambiguous
+      const evt1 = makeEvent(14, "first");
+      const evt2 = makeEvent(15, "second");
+      mocks.dequeueBatch.mockReturnValueOnce([evt1, evt2]);
+      const result = await call({ timeout: 0 });
+      const data = parseResult(result);
+      expect(data.updates[0].routing).toBe("ambiguous");
+      expect(data.updates[1].routing).toBe("ambiguous");
+    });
+
+    it("omits routing when reply_to target has no known owner (untracked message)", async () => {
+      // Reply to a message we don't track → treated as ambiguous (owner=0)
+      mocks.getRoutingMode.mockReturnValue("governor");
+      mocks.getMessageOwner.mockReturnValue(0); // untracked → 0
+      const evt = makeReplyEvent(16, 999);
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      const result = await call({ timeout: 0 });
+      const data = parseResult(result);
+      expect(data.updates[0].routing).toBe("ambiguous");
+    });
   });
 });

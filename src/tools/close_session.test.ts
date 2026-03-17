@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(),
   getActiveSession: vi.fn(),
   setActiveSession: vi.fn(),
+  listSessions: vi.fn().mockReturnValue([]),
   revokeAllForSession: vi.fn(),
   getGovernorSid: vi.fn(),
   setRoutingMode: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("../session-manager.js", () => ({
   validateSession: (...args: unknown[]) => mocks.validateSession(...args),
   getActiveSession: (...args: unknown[]) => mocks.getActiveSession(...args),
   setActiveSession: (...args: unknown[]) => mocks.setActiveSession(...args),
+  listSessions: (...args: unknown[]) => mocks.listSessions(...args),
 }));
 
 vi.mock("../dm-permissions.js", () => ({
@@ -48,6 +50,7 @@ describe("close_session tool", () => {
     mocks.validateSession.mockReturnValue(true);
     mocks.closeSession.mockReturnValue(true);
     mocks.getGovernorSid.mockReturnValue(0);
+    mocks.listSessions.mockReturnValue([]);
     mocks.sendServiceMessage.mockResolvedValue(undefined);
     const server = createMockServer();
     register(server);
@@ -141,5 +144,70 @@ describe("close_session tool", () => {
 
     const result = parseResult(await call({ sid: 1, pin: 123456 }));
     expect(result.closed).toBe(true);
+  });
+
+  it("promotes next-lowest session to governor when governor closes with remaining sessions", async () => {
+    mocks.getGovernorSid.mockReturnValue(1);
+    mocks.listSessions.mockReturnValue([
+      { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      { sid: 3, name: "Scout", createdAt: "2026-03-17" },
+    ]);
+
+    await call({ sid: 1, pin: 123456 });
+
+    expect(mocks.setRoutingMode).toHaveBeenCalledWith("governor", 2);
+    expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
+      expect.stringContaining("promoted to governor"),
+    );
+  });
+
+  it("resets routing to load_balance when governor closes with no remaining sessions", async () => {
+    mocks.getGovernorSid.mockReturnValue(1);
+    mocks.listSessions.mockReturnValue([]); // no sessions remain
+
+    await call({ sid: 1, pin: 123456 });
+
+    expect(mocks.setRoutingMode).toHaveBeenCalledWith("load_balance");
+    expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
+      expect.stringContaining("Governor session closed"),
+    );
+  });
+
+  it("promotes lowest remaining SID when sessions are out-of-order", async () => {
+    mocks.getGovernorSid.mockReturnValue(2);
+    mocks.listSessions.mockReturnValue([
+      { sid: 5, name: "Late", createdAt: "2026-03-17" },
+      { sid: 3, name: "Early", createdAt: "2026-03-17" },
+    ]);
+
+    await call({ sid: 2, pin: 123456 });
+
+    expect(mocks.setRoutingMode).toHaveBeenCalledWith("governor", 3);
+  });
+
+  it("uses session name in promotion message", async () => {
+    mocks.getGovernorSid.mockReturnValue(1);
+    mocks.listSessions.mockReturnValue([
+      { sid: 2, name: "Primary", createdAt: "2026-03-17" },
+    ]);
+
+    await call({ sid: 1, pin: 123456 });
+
+    expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
+      expect.stringContaining("Primary"),
+    );
+  });
+
+  it("uses Session N label when promoted session has no name", async () => {
+    mocks.getGovernorSid.mockReturnValue(1);
+    mocks.listSessions.mockReturnValue([
+      { sid: 2, name: "", createdAt: "2026-03-17" },
+    ]);
+
+    await call({ sid: 1, pin: 123456 });
+
+    expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
+      expect.stringContaining("Session 2"),
+    );
   });
 });

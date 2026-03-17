@@ -213,3 +213,41 @@ On timeout (`{ timed_out: true }`): send a brief `notify` ("Still here — are y
 
 1. Send `notify` (severity: "success") summarizing what was done and what's pending.
 2. Confirm all items are saved/committed as needed.
+
+---
+
+## Multi-Session Loop
+
+When 2+ sessions are active, the loop is the same but the `routing` field on dequeued events guides message ownership.
+
+### Routing field on events
+
+```text
+routing: "targeted"   — reply to one of your messages; handle it
+routing: "ambiguous"  — no clear owner; apply context to decide
+(absent)              — single-session mode; no routing decisions needed
+```
+
+### Adjusted loop for governor sessions
+
+```text
+loop:
+  result = dequeue_update()
+  for each event in result.updates:
+    if event.routing == "targeted":
+      handle normally
+    else if event.routing == "ambiguous":
+      if clearly for another session: route_message(...)
+      else: handle it (governor is fallback owner)
+  goto loop
+```
+
+### Governor responsibilities
+
+The governor session (lowest SID) owns ambiguous traffic by default. If you are governor:
+
+- Triage ambiguous messages and route to the right agent when appropriate.
+- Coordinate multi-session workflows.
+- You may become governor unexpectedly if the previous governor closes.
+
+Non-governor sessions: handle your targeted messages, forward genuinely mis-addressed ones.

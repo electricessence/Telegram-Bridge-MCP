@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   cancelTypingIfSameGeneration: vi.fn(),
   clearPendingTemp: vi.fn(),
   recordOutgoing: vi.fn(),
+  getCallerSid: vi.fn(() => 0),
+  activeSessionCount: vi.fn(() => 1),
+  getSession: vi.fn(() => undefined as { name: string } | undefined),
 }));
 
 vi.mock("./typing-state.js", () => ({
@@ -27,7 +30,12 @@ vi.mock("./message-store.js", () => ({
 }));
 
 vi.mock("./session-context.js", () => ({
-  getCallerSid: () => 0,
+  getCallerSid: () => mocks.getCallerSid(),
+}));
+
+vi.mock("./session-manager.js", () => ({
+  activeSessionCount: () => mocks.activeSessionCount(),
+  getSession: (sid: number) => mocks.getSession(sid),
 }));
 
 import {
@@ -87,6 +95,10 @@ describe("outbound-proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetOutboundProxyForTest();
+    // Default: single-session (no header)
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.getCallerSid.mockReturnValue(0);
+    mocks.getSession.mockReturnValue(undefined);
   });
 
   // -----------------------------------------------------------------------
@@ -405,6 +417,135 @@ describe("outbound-proxy", () => {
 
       expect(first.beforeTextSend).not.toHaveBeenCalled();
       expect(second.beforeTextSend).toHaveBeenCalled();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Session header injection
+  // -----------------------------------------------------------------------
+
+  describe("session header", () => {
+    it("prepends 🤖 Name header in multi-session mode (sendMessage)", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout" });
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendMessage(42, "Hello world");
+
+      const [, sentText] = raw.sendMessage.mock.calls[0] as [number, string, unknown];
+      expect(sentText).toBe("🤖 Scout\nHello world");
+    });
+
+    it("omits header in single-session mode (sendMessage)", async () => {
+      mocks.activeSessionCount.mockReturnValue(1);
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendMessage(42, "Hello world");
+
+      const [, sentText] = raw.sendMessage.mock.calls[0] as [number, string, unknown];
+      expect(sentText).toBe("Hello world");
+    });
+
+    it("escapes MarkdownV2 special chars in name (sendMessage)", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(2);
+      mocks.getSession.mockReturnValue({ name: "Scout_2" });
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendMessage(
+        42, "content", { parse_mode: "MarkdownV2" },
+      );
+
+      const [, sentText] = raw.sendMessage.mock.calls[0] as [number, string, unknown];
+      expect(sentText).toMatch(/🤖 Scout\\_2\n/);
+    });
+
+    it("prepends header to _rawText in multi-session mode", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout" });
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendMessage(
+        42, "encoded text", { _rawText: "original text" },
+      );
+
+      const [, , recordedText] = mocks.recordOutgoing.mock.calls[0] as [number, string, string];
+      expect(recordedText).toBe("🤖 Scout\noriginal text");
+    });
+
+    it("uses 'Session N' as fallback when session has no name", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(3);
+      mocks.getSession.mockReturnValue({ name: "" });
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendMessage(42, "text");
+
+      const [, sentText] = raw.sendMessage.mock.calls[0] as [number, string, unknown];
+      expect(sentText).toBe("🤖 Session 3\ntext");
+    });
+
+    it("prepends header to file caption in multi-session mode (sendPhoto)", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout" });
+
+      const raw = fakeApi();
+      raw.sendPhoto.mockResolvedValue({ message_id: 10, photo: [{ file_id: "f1" }] });
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendPhoto(
+        42, "file_id_123", { caption: "A photo caption" },
+      );
+
+      const [, , opts] = raw.sendPhoto.mock.calls[0] as [number, string, { caption: string }];
+      expect(opts.caption).toBe("🤖 Scout\nA photo caption");
+    });
+
+    it("omits caption header when no caption provided (sendPhoto)", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout" });
+
+      const raw = fakeApi();
+      raw.sendPhoto.mockResolvedValue({ message_id: 10, photo: [{ file_id: "f1" }] });
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendPhoto(42, "file_id_123", {});
+
+      expect(raw.sendPhoto).toHaveBeenCalled();
+      // No caption in opts means nothing was injected
+      const [, , opts] = raw.sendPhoto.mock.calls[0] as [number, string, Record<string, unknown>];
+      expect(opts.caption).toBeUndefined();
+    });
+
+    it("prepends header in editMessageText in multi-session mode", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout" });
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).editMessageText(42, 10, "edited content");
+
+      const [, , editedText] = raw.editMessageText.mock.calls[0] as [number, number, string];
+      expect(editedText).toBe("🤖 Scout\nedited content");
+    });
+
+    it("omits header in editMessageText in single-session mode", async () => {
+      mocks.activeSessionCount.mockReturnValue(1);
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).editMessageText(42, 10, "edited content");
+
+      const [, , editedText] = raw.editMessageText.mock.calls[0] as [number, number, string];
+      expect(editedText).toBe("edited content");
     });
   });
 });

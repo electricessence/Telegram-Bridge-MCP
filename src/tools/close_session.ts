@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { toResult, sendServiceMessage } from "../telegram.js";
-import { closeSession, getActiveSession, setActiveSession } from "../session-manager.js";
+import { closeSession, getActiveSession, setActiveSession, listSessions } from "../session-manager.js";
 import { removeSessionQueue } from "../session-queue.js";
 import { revokeAllForSession } from "../dm-permissions.js";
 import { getGovernorSid, setRoutingMode } from "../routing-mode.js";
@@ -31,12 +31,22 @@ export function register(server: McpServer) {
       revokeAllForSession(sid);
       if (getActiveSession() === sid) setActiveSession(0);
 
-      // Governor death recovery: reset routing mode and notify operator
+      // Governor death recovery: promote next session or fall back to load_balance
       if (sid === getGovernorSid()) {
-        setRoutingMode("load_balance");
-        sendServiceMessage(
-          "⚠️ Governor session closed. Routing mode reset to *load_balance*.",
-        ).catch(() => {});
+        const remaining = listSessions().sort((a, b) => a.sid - b.sid);
+        if (remaining.length > 0) {
+          const next = remaining[0];
+          setRoutingMode("governor", next.sid);
+          const label = next.name || `Session ${next.sid}`;
+          sendServiceMessage(
+            `⚠️ Governor session closed. 🤖 ${label} promoted to governor.`,
+          ).catch(() => {});
+        } else {
+          setRoutingMode("load_balance");
+          sendServiceMessage(
+            "⚠️ Governor session closed. Routing mode reset to *load_balance*.",
+          ).catch(() => {});
+        }
       }
 
       return toResult({ closed: true, sid });
