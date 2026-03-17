@@ -86,3 +86,51 @@ First session is auto-approved with the default name "Primary". Second and subse
 - [ ] All tests pass: `pnpm test`
 - [ ] No new lint errors: `pnpm lint`
 - [ ] Build clean: `pnpm build`
+
+## Work in Progress
+
+**Partial work done — tests written, implementation not started.**
+
+### Test scaffolding added (`src/tools/session_start.test.ts`)
+
+Added mocks and 5 new failing tests covering the approval gate acceptance criteria:
+
+- `activeSessionCount` mock added to the `session-manager.js` mock factory
+- `button-helpers.js` mock added: `pollButtonPress`, `ackAndEditSelection`, `editWithSkipped`
+- `registerCallbackHook`, `clearCallbackHook` added to `message-store.js` mock
+- `pollButtonPress` default mock returns `null` (timeout — no approval)
+
+New tests (all failing — no implementation yet):
+
+1. "first session is auto-approved without operator interaction"
+2. "first session defaults name to 'Primary' when none provided"
+3. "second session requires operator approval and succeeds on approve"
+4. "second session denied by operator → returns error, session not created"
+5. "second session timed out → returns error, session not created"
+6. "second session without a name → immediate error, no approval prompt"
+
+### Implementation plan (for next worker)
+
+All changes go in `src/tools/session_start.ts`:
+
+1. Import `activeSessionCount` from `../session-manager.js`
+2. Import `pollButtonPress`, `ackAndEditSelection`, `editWithSkipped` from `./button-helpers.js`
+3. Import `registerCallbackHook`, `clearCallbackHook` from `../message-store.js`
+4. Before the name-collision check:
+   - `const existingCount = activeSessionCount()`
+   - If `existingCount === 0` and no name provided → use `"Primary"` as default
+   - If `existingCount >= 1` and no name provided → return `toError({ code: "NAME_REQUIRED", ... })`
+5. Replace the name-collision `listSessions()` check: only run it when `existingCount >= 1` (no need for first session)
+6. After collision check (when `existingCount >= 1`):
+   - Send approval prompt via `getApi().sendMessage(chatId, ...)` with Approve/Deny buttons
+   - Register callback hook for button ack: `registerCallbackHook(promptMsgId, ...)`
+   - Call `pollButtonPress(chatId, promptMsgId, 60, signal, 0)` — `sid=0` uses global queue
+   - On timeout (`null`) → `clearCallbackHook(promptMsgId)`, return `toError({ code: "SESSION_TIMEOUT", ... })`
+   - On deny (`data !== "session_approve"`) → `ackAndEditSelection(...)`, return `toError({ code: "SESSION_DENIED", ... })`
+   - On approve → `ackAndEditSelection(...)`, continue to `createSession(name)` as normal
+7. Error codes: `"SESSION_DENIED"`, `"SESSION_TIMEOUT"`, `"NAME_REQUIRED"`
+
+### Key design detail
+
+The approval prompt is sent **before** `createSession()` is called — the session doesn't exist yet. Use `sid=0` (global queue) for `pollButtonPress` so it polls the main message store, not a per-session queue.
+

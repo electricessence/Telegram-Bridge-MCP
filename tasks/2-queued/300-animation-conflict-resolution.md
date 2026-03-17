@@ -48,6 +48,15 @@ The current behavior is fine — agents should be aware that animations are glob
 
 Option A (per-session animation state) is the cleanest. It requires changes to `animation-state.ts` to track animations by SID instead of globally. Typing indicator conflicts are a Telegram limitation and can't be fixed server-side.
 
+## Code Path
+
+1. `src/animation-state.ts` — Currently stores a single global animation. Refactor to use a `Map<number, AnimationState>` keyed by SID. Export `getAnimationState(sid)`, `setAnimationState(sid, state)`, `clearAnimationState(sid)`.
+2. `src/tools/show_animation.ts` — Already receives SID via identity tuple. Pass to animation-state.
+3. `src/tools/cancel_animation.ts` — Same: scope cancel to the calling session's SID.
+4. `src/animation-state.test.ts` — Add tests for per-SID isolation.
+
+The cycling/editing loop in animation-state already uses message IDs — each session will have its own message ID, so concurrent animations naturally target different messages.
+
 ## Acceptance Criteria
 
 - [ ] Animation state tracked per session (not global)
