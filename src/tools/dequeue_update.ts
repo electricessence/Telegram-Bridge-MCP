@@ -5,7 +5,7 @@ import {
   dequeueBatch, pendingCount, waitForEnqueue,
   type TimelineEvent,
 } from "../message-store.js";
-import { getActiveSession, setActiveSession } from "../session-manager.js";
+import { getActiveSession, setActiveSession, activeSessionCount } from "../session-manager.js";
 import { getSessionQueue, popCascadePassDeadline } from "../session-queue.js";
 import { getRoutingMode } from "../routing-mode.js";
 
@@ -66,6 +66,18 @@ export function register(server: McpServer) {
       },
     },
     async ({ timeout, sid: explicitSid }, { signal }) => {
+      // Multi-session safety: when >1 session is active, agents MUST pass
+      // sid explicitly — the global getActiveSession() fallback is a race
+      // condition that silently picks the wrong session.
+      if (explicitSid === undefined && activeSessionCount() > 1) {
+        return toError({
+          code: "SID_REQUIRED" as const,
+          message:
+            `Multiple sessions are active (${activeSessionCount()}). ` +
+            `Pass sid (from session_start) to identify your session.`,
+        });
+      }
+
       // Session-aware queue selection: explicit sid takes priority over global
       // active-session state (which is unreliable when multiple Copilot chat
       // instances share the same server process).

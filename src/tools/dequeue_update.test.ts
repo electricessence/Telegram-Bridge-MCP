@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   ackVoiceMessage: vi.fn(),
   getActiveSession: vi.fn(() => 0),
   setActiveSession: vi.fn(),
+  activeSessionCount: vi.fn(() => 0),
   getSessionQueue: vi.fn(() => undefined),
   popCascadePassDeadline: vi.fn(() => undefined as number | undefined),
   getRoutingMode: vi.fn(() => "load_balance"),
@@ -28,6 +29,7 @@ vi.mock("../message-store.js", () => ({
 vi.mock("../session-manager.js", () => ({
   getActiveSession: () => mocks.getActiveSession(),
   setActiveSession: (...args: unknown[]) => mocks.setActiveSession(...args),
+  activeSessionCount: () => mocks.activeSessionCount(),
 }));
 
 vi.mock("../session-queue.js", () => ({
@@ -350,13 +352,15 @@ describe("dequeue_update tool", () => {
     expect(mocks.setActiveSession).toHaveBeenCalledWith(3);
   });
 
-  it("falls back to getActiveSession when sid param is omitted", async () => {
+  it("falls back to getActiveSession when sid param is omitted (single session)", async () => {
     const evt = makeEvent(71, "fallback to active");
     const mockSessionQueue = {
       dequeueBatch: vi.fn(() => [evt] as TimelineEvent[]),
       pendingCount: vi.fn(() => 0),
       waitForEnqueue: vi.fn().mockResolvedValue(undefined),
     };
+    // Single session — fallback is allowed
+    mocks.activeSessionCount.mockReturnValueOnce(1);
     mocks.getActiveSession.mockReturnValueOnce(5);
     mocks.getSessionQueue.mockImplementationOnce((sid: number) =>
       sid === 5 ? mockSessionQueue : undefined,
@@ -368,6 +372,16 @@ describe("dequeue_update tool", () => {
     expect(mocks.getSessionQueue).toHaveBeenCalledWith(5);
     // setActiveSession not called when sid is omitted
     expect(mocks.setActiveSession).not.toHaveBeenCalled();
+  });
+
+  it("returns SID_REQUIRED error when sid omitted with multiple sessions active", async () => {
+    mocks.activeSessionCount.mockReturnValue(2);
+    const result = await call({ timeout: 0 });
+    expect(isError(result)).toBe(true);
+    const text = JSON.stringify(result);
+    expect(text).toContain("SID_REQUIRED");
+    expect(text).toContain("Multiple sessions are active");
+    mocks.activeSessionCount.mockReturnValue(0);
   });
 
   it("always re-syncs setActiveSession on return when explicit sid provided", async () => {

@@ -21,7 +21,7 @@ import type { Update } from "grammy/types";
 import { recordUpdate, recordBotMessage } from "./session-recording.js";
 import { getCallerSid } from "./session-context.js";
 import { TwoLaneQueue } from "./two-lane-queue.js";
-import { routeToSession, trackMessageOwner, notifySessionWaiters, broadcastOutbound } from "./session-queue.js";
+import { routeToSession, trackMessageOwner, notifySessionWaiters, broadcastOutbound, sessionQueueCount } from "./session-queue.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -273,7 +273,7 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
       try { hook(evt); } catch { /* non-fatal */ }
     }
 
-    _queue.enqueueResponse({ event: evt });
+    if (sessionQueueCount() === 0) _queue.enqueueResponse({ event: evt });
     routeToSession(evt, "response");
     return true;
   }
@@ -303,7 +303,7 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
     _timeline.push(evt);
     evictTimeline();
     // Reactions don't overwrite the message index — they reference it
-    _queue.enqueueResponse({ event: evt });
+    if (sessionQueueCount() === 0) _queue.enqueueResponse({ event: evt });
     routeToSession(evt, "response");
     return true;
   }
@@ -328,7 +328,7 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
       _update: update,
     };
     pushEvent(evt);
-    _queue.enqueueMessage({ event: evt });
+    if (sessionQueueCount() === 0) _queue.enqueueMessage({ event: evt });
     routeToSession(evt, "message");
 
     // Fire one-shot message hooks for any afterId < this message's id.

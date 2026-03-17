@@ -70,6 +70,8 @@
 
 ## Fixed
 
+- Fixed multi-session queue isolation — `dequeue_update` now returns `SID_REQUIRED` error when called without `sid` and multiple sessions are active, preventing agents from silently reading another session's queue via the racy `getActiveSession()` fallback
+- Fixed global queue duplication — inbound messages, callbacks, and reactions are no longer enqueued to both the global queue and the routed session queue; when session queues exist, messages go through `routeToSession()` only, eliminating the possibility of leaking messages across sessions via the unscoped global queue
 - Fixed outbound message ownership tagging using wrong session in multi-session scenarios — `recordOutgoing` and `recordOutgoingEdit` now use `getCallerSid()` (AsyncLocalStorage) instead of `getActiveSession()` (global last-writer-wins), ensuring messages are attributed to the correct session even when sessions execute tool calls concurrently
 - Fixed `dequeue_update` not re-syncing `_activeSessionId` before returning — concurrent tool calls from other sessions could overwrite the global during the long wait; now re-synced on every return path so subsequent tool calls (e.g. `send_text`) see the correct session context
 - Fixed outbound proxy (`sendMessage`, file sends) not preserving session context across awaits — now snapshots `getCallerSid()` at call entry and passes it explicitly to `recordOutgoing`, preventing corruption by concurrent async operations
