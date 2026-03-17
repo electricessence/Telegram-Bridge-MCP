@@ -78,6 +78,45 @@ Also called from:
 
 - [ ] Tests cover all 8 edge cases above (or document why any are not applicable)
 - [ ] All tests pass: `pnpm test`
+
+## Completion
+
+**Agent:** Overseer (SID 1)
+**Date:** 2026-03-17
+
+### What Changed
+
+- **`src/poller.ts`** — Fixed multi-session race condition: `_transcribeAndRecord` now checks `hasAnySessionWaiter()` and `isSessionMessageConsumed()` from session-queue before setting 😴. Previously only checked global queue's `hasPendingWaiters()` and `isMessageConsumed()`, so session-mode agents would miss the 🫡 window.
+- **`src/session-queue.ts`** — Added two new helpers:
+  - `hasAnySessionWaiter()` — returns true if any session queue has a blocked agent
+  - `isSessionMessageConsumed(messageId)` — returns true if any session queue already dequeued the message
+- **`src/poller.test.ts`** — Added 3 new tests for session-aware voice reaction logic
+- **`src/telegram.test.ts`** — Added 5 new tests for `ackVoiceMessage` (success, dedup, no-chat, API failure, reaction recording)
+- **`src/tools/dequeue_update.test.ts`** — Added 7 new tests for voice ack across global and session queue paths (immediate batch, blocking wait, multiple voices, mixed events)
+
+### Test Results
+
+- Tests added: 15 new tests across 3 test files
+- Total tests: 1186 (all passing at time of commit `e4bd7a2`)
+- Voice salute tests specifically: all 15 passing
+
+### Findings
+
+- **Root cause confirmed:** The poller only checked global queue state (`hasPendingWaiters`, `isMessageConsumed`). In multi-session mode, messages route to session queues, so the global queue was empty — the poller would set 😴 even when a session agent was actively waiting. The subsequent 🫡 from `ackVoice` would race the 😴, and Telegram would sometimes reject the rapid reaction change.
+- **Bug was session-specific:** Only manifested when `sessionQueueCount > 0` (multi-session mode), explaining why it worked after a clean restart (single-session fallback).
+- **`trySetMessageReaction` error swallowing** is by design (fire-and-forget for non-critical reactions) but made debugging difficult. The stderr log `[ack] 🫡 failed for msg` was never observed because the race was silent — Telegram accepted both calls but the 😴 arrived last.
+- **Draft bug report (`1-draft/100-voice-salute-bug.md`)** can be closed — root cause identified and fixed.
+
+### Acceptance Criteria Status
+
+- [x] 1. Race: poller sets 😴 while ackVoice sets 🫡 — Fixed in `poller.ts`, tested in `poller.test.ts`
+- [x] 2. Race: multiple voice messages in rapid succession — Tested in `dequeue_update.test.ts` (batch ack)
+- [x] 3. Session queue path vs global queue path — Tested in `dequeue_update.test.ts` (session immediate + blocking)
+- [x] 4. Fire-and-forget swallowed errors — Tested in `telegram.test.ts` (stderr + no-record on failure)
+- [x] 5. Dedup false positive via `getBotReaction` — Tested in `telegram.test.ts` (skip when 🫡 already set)
+- [x] 6. `resolveChat()` returns non-number — Tested in `telegram.test.ts` (no-op path)
+- [x] 7. Blocking wait path — Tested in `dequeue_update.test.ts` (global + session blocking)
+- [x] 8. ask/choose/confirm voice ack paths — Covered in `button-helpers.test.ts` (session-aware polling)
 - [ ] No new lint errors: `pnpm lint`
 - [ ] Build clean: `pnpm build`
 - [ ] Report back with test count and any findings about actual bugs discovered
