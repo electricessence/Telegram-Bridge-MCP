@@ -145,6 +145,17 @@ describe("TwoLaneQueue", () => {
       expect(q.dequeueBatch()).toHaveLength(1);
       expect(q.dequeueBatch()).toEqual([]);
     });
+
+    it("handles 200 response items in single pass", () => {
+      for (let i = 1; i <= 200; i++) q.enqueueResponse(response(i));
+      q.enqueueMessage(msg(201));
+      const batch = q.dequeueBatch();
+      expect(batch).toHaveLength(201);
+      expect(batch[0]).toEqual(response(1));
+      expect(batch[199]).toEqual(response(200));
+      expect(batch[200]).toEqual(msg(201));
+      expect(q.pendingCount()).toBe(0);
+    });
   });
 
   // -------------------------------------------------------------------------

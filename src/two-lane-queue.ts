@@ -81,10 +81,15 @@ export class TwoLaneQueue<T> {
   dequeueBatch(): T[] {
     const batch: T[] = [];
 
-    let resp: T | undefined;
-    while ((resp = this._dequeueReady(this._responseLane)) !== undefined) {
-      this._trackConsumed(resp);
-      batch.push(resp);
+    // Drain response lane once and partition — O(N)
+    const responseItems = [...this._responseLane.consumer()];
+    for (const item of responseItems) {
+      if (this._isReady(item)) {
+        this._trackConsumed(item);
+        batch.push(item);
+      } else {
+        this._responseLane.enqueue(item);
+      }
     }
 
     const msg = this._dequeueReady(this._messageLane);

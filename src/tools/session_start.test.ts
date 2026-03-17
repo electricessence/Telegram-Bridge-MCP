@@ -29,7 +29,7 @@ vi.mock("../telegram.js", async (importActual) => {
     }),
     resolveChat: () => mocks.resolveChat(),
   };
-});;
+});
 
 vi.mock("../message-store.js", () => ({
   recordOutgoing: vi.fn(),
