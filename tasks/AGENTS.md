@@ -51,7 +51,6 @@ This applies to ALL task transitions: `2-queued → 3-in-progress`, `3-in-progre
    - `pnpm build` — compiles clean
 1. **Write the completion report** — append a `## Completion` section to the task document (see template below). This is mandatory — a task without a completion report is not done.
 1. **Move the task** to `4-completed/` — use `git mv` or filesystem move. **Never copy.** The file must no longer exist in `3-in-progress/` after this step.
-1. **Report results** to the overseer — what changed, test count, any concerns. Do not move the task silently.
 1. **Pick up the next task** — go back to `2-queued/` and repeat from step 1. Do not stop after one task. Keep working until the queue is empty.
 
 ## Completion Report
@@ -103,7 +102,6 @@ This is not a failure — it's quality control. A well-specified task should be 
 - **No changelog edits.** The overseer handles changelog entries at commit time.
 - **In-progress = owned.** Once you move a task to `3-in-progress`, it's yours. No one else touches it. If you need to escalate, report back — don't abandon it silently.
 - **Completion report is mandatory.** Never move a task to `4-completed/` without a `## Completion` section. If you forget, the overseer will reject it.
-- **Report before moving.** Tell the overseer you're done before moving to `4-completed/`. The move is the last step, not a silent one.
 - **Scope discipline.** Only change what the task requires. No drive-by refactors, no extra features.
 - **If tests break, stop.** Don't push through broken tests. Fix or escalate.
 
