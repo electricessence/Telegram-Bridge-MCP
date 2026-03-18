@@ -10,6 +10,7 @@ import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { grantDm } from "../dm-permissions.js";
 
 const DEFAULT_INTRO = "ℹ️ Session Start";
+const DEFAULT_RECONNECT_INTRO = "ℹ️ Session Reconnected";
 const APPROVAL_TIMEOUT_MS = 60_000;
 const APPROVAL_YES = "approve_yes";
 const APPROVAL_NO = "approve_no";
@@ -22,8 +23,10 @@ const APPROVAL_NO = "approve_no";
 async function requestApproval(
   chatId: number,
   name: string,
+  reconnect = false,
 ): Promise<boolean> {
-  const text = `🤖 *New session requesting access:* ${markdownToV2(name)}`;
+  const label = reconnect ? "Session reconnecting:" : "New session requesting access:";
+  const text = `🤖 *${label}* ${markdownToV2(name)}`;
   const sent = await getApi().sendMessage(chatId, text, {
     parse_mode: "MarkdownV2",
     reply_markup: {
@@ -68,15 +71,17 @@ function buildIntro(
   sid: number,
   name: string,
   sessionsActive: number,
+  reconnect = false,
 ): string {
+  const reconnectSuffix = reconnect ? " (reconnected)" : "";
   const tag = name ? `Session ${sid} — ${name}` : `Session ${sid}`;
   // When multiple sessions are active (or this one has a name), always show identity
   if (sessionsActive > 1 || name) {
     return template === DEFAULT_INTRO
-      ? `ℹ️ ${tag}`
+      ? `ℹ️ ${tag}${reconnectSuffix}`
       : `${template}\n_${tag}_`;
   }
-  return template;
+  return reconnect && template === DEFAULT_INTRO ? DEFAULT_RECONNECT_INTRO : template;
 }
 
 const DESCRIPTION =
@@ -107,9 +112,16 @@ export function register(server: McpServer) {
             "Human-friendly session name, used as topic prefix. " +
             "Encouraged when multiple sessions are active.",
           ),
+        reconnect: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Set to true when reconnecting after a server restart. " +
+            "Sends 'reconnected' messaging instead of 'joined' to the operator and fellow sessions.",
+          ),
       },
     },
-    async ({ intro, name }) => {
+    async ({ intro, name, reconnect }) => {
       const chatId = resolveChat();
       if (typeof chatId !== "number") return toError(chatId);
 
@@ -152,7 +164,7 @@ export function register(server: McpServer) {
 
       // Approval gate: second+ sessions require operator approval
       if (!isFirstSession) {
-        const approved = await requestApproval(chatId, effectiveName);
+        const approved = await requestApproval(chatId, effectiveName, reconnect);
         if (!approved) {
           return toError({
             code: "SESSION_DENIED",
@@ -177,7 +189,7 @@ export function register(server: McpServer) {
       try {
         // 1. Send the intro message
         const introText = buildIntro(
-          intro, session.sid, effectiveName, session.sessionsActive,
+          intro, session.sid, effectiveName, session.sessionsActive, reconnect,
         );
         const sent = await getApi().sendMessage(
           chatId,
@@ -198,7 +210,7 @@ export function register(server: McpServer) {
           sid: session.sid,
           pin: session.pin,
           sessions_active: session.sessionsActive,
-          action: "fresh",
+          action: reconnect ? "reconnected" : "fresh",
           pending: 0,
           intro_message_id: introId,
         };
@@ -217,6 +229,7 @@ export function register(server: McpServer) {
           const governorSession = allSessions.find(s => s.sid === governorSid);
           const governorLabel = governorSession ? `'${governorSession.name}' (SID ${governorSid})` : `SID ${governorSid}`;
 
+          const joinVerb = reconnect ? "has reconnected" : "has joined";
           for (const fellow of allSessions.filter(s => s.sid !== session.sid)) {
             const isGovernor = fellow.sid === governorSid;
             const governorNote = isGovernor
@@ -224,9 +237,9 @@ export function register(server: McpServer) {
               : `Ambiguous messages go to ${governorLabel}.`;
             deliverServiceMessage(
               fellow.sid,
-              `Session '${effectiveName}' (SID ${session.sid}) has joined. ${governorNote}`,
+              `Session '${effectiveName}' (SID ${session.sid}) ${joinVerb}. ${governorNote}`,
               "session_joined",
-              { sid: session.sid, name: effectiveName, governor_sid: governorSid },
+              { sid: session.sid, name: effectiveName, governor_sid: governorSid, reconnect },
             );
           }
 
