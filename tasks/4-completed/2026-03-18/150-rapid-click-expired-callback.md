@@ -71,3 +71,38 @@ old and response timeout expired." This path is also untested.
 - Mock Telegram API calls, use real hook infrastructure
 - Each scenario independent
 - Test file only — no production code changes
+
+## Completion
+
+**Agent:** GitHub Copilot (Claude Sonnet 4.6)
+**Date:** 2026-03-18
+
+### What Changed
+
+- Created `src/tools/callback-edge-cases.test.ts` — 4 new integration tests covering all
+  specified scenarios. No production code was modified.
+
+### Test Results
+
+- Tests added: 4 new tests
+- Total tests: 1446 (all passing, up from 1442)
+- New test file lints clean; pre-existing lint errors in unrelated files are out of scope
+
+### Findings
+
+- The `_callbackHooks` map is correctly one-shot: deletes before calling, so rapid
+  re-entry is impossible. Second/third clicks have no hook to fire.
+- `ackAndEditSelection` error swallowing is confirmed end-to-end: `answerCallbackQuery`
+  failure (mocked to reject) does NOT prevent the subsequent `editMessageText` call
+  because they are separate `await` statements with independent `.catch()` on the first.
+- `send_choice`'s one-shot hook is consumed on first click; second click routes to the
+  session queue via normal broadcast routing and appears in `dequeue_update` as expected.
+- Callback routing without `trackMessageOwner` (because the outbound proxy is mocked) still
+  works via broadcast fallback — the single active session receives all events.
+
+### Acceptance Criteria Status
+
+- [x] SC-1: Double click — second callback ignored gracefully (confirm resolves once, ack called once)
+- [x] SC-2: Triple rapid click on choose — only first fires hook, no duplicate edits
+- [x] SC-3: Expired callback — `answerCallbackQuery` error swallowed, message edit still succeeds
+- [x] SC-4: send_choice — second click after hook consumed shows up in `dequeue_update`

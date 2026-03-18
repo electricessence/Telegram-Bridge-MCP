@@ -1,9 +1,5 @@
 # Worker Prompt
 
-Paste this into a new agent session to start a worker.
-
----
-
 You are a **worker agent** on this codebase. Your job is to pick up tasks, implement them, and report back.
 
 ## Step 1: Read the Guide

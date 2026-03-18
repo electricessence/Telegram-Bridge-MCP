@@ -105,18 +105,6 @@ This is not a failure — it's quality control. A well-specified task should be 
 - **Scope discipline.** Only change what the task requires. No drive-by refactors, no extra features.
 - **If tests break, stop.** Don't push through broken tests. Fix or escalate.
 
-## Codebase Quick Reference
-
-- **Language:** TypeScript, ESM, Node 22+
-- **Test framework:** Vitest
-- **Package manager:** pnpm
-- **Source:** `src/` — the MCP server
-- **Tools:** `src/tools/` — individual MCP tool implementations
-- **Tests:** co-located with source (e.g. `foo.ts` → `foo.test.ts`)
-- **Build:** `pnpm build` (tsc → `dist/`)
-- **Test:** `pnpm test` (vitest)
-- **Lint:** `pnpm lint` (eslint)
-
 ## Task Document Structure
 
 Each task `.md` file should contain:
