@@ -33,7 +33,11 @@ Add a clear note to `docs/multi-session.md` in the DM section:
 
 ## Acceptance Criteria
 
-- [ ] Health check has 5+ unit tests covering the scenarios above
-- [ ] DM ephemeral nature documented in `docs/multi-session.md`
-- [ ] Build passes, lint clean, all tests pass
-- [ ] `changelog/unreleased.md` updated (if code changed)
+- [x] Health check has 5+ unit tests covering the scenarios above (already present — 20+ tests in `src/health-check.test.ts` covering all listed scenarios)
+- [x] DM ephemeral nature documented in `docs/multi-session.md`
+- [x] Build passes, lint clean, all tests pass (1457)
+- [x] `changelog/unreleased.md` updated (docs-only; no code changed)
+
+## Completion
+
+Health-check tests were already fully implemented in `src/health-check.test.ts` (no-op, non-governor unhealthy, governor unhealthy with/without next session, recovery detection, reroute/make-primary/wait operator responses). Added ephemeral DM permission note to `docs/multi-session.md` under the DM Authorization section.
