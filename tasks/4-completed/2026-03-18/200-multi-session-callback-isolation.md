@@ -99,6 +99,34 @@ Set up governor routing via the mock pattern from `health-check.test.ts`:
 - `src/multi-session.integration.test.ts` — existing integration test patterns
 - `src/health-check.test.ts` — governor mock pattern
 
+## Completion Report
+
+**Status:** Done — all 4 tests pass.
+
+**Test file:** `src/multi-session-callbacks.test.ts` (4 new tests)
+
+**Test count delta:** 1446 → 1450
+
+**What was implemented:**
+
+- SC-1: Verified callback hooks fire exactly once for the sending session when 2 sessions
+  are active; second click for the same message is a no-op (one-shot hook).
+- SC-2: SID 1's `confirm` and SID 2's `choose` run concurrently; each callback routes
+  to the correct hook independent of the other.
+- SC-3: `close_session` replaces SID 1's in-flight hook with a graceful "Session closed"
+  handler that calls `answerCallbackQuery` with text and clears the inline keyboard.
+- SC-4: Governor routing does not cause the governor's queue to receive callback events
+  that belong to another session's message (hook fires by `message_id` owner, not routing).
+
+**No production code changes** — this was a pure testing task. The existing callback
+hook infrastructure (`_callbackHooks`, `_callbackHookOwners`, `replaceSessionCallbackHooks`)
+already handled all scenarios correctly.
+
+**Key pattern documented:** `identity: [sid, pin]` is required for interactive tools
+(`confirm`, `choose`) when `activeSessionCount() > 1`. Tests must pass this explicitly.
+`trackMessageOwner(msgId, sid)` must be called manually in tests since the outbound proxy
+is not active in the test environment.
+
 ## Acceptance Criteria
 
 - [ ] All 4 scenarios pass

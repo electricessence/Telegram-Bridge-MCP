@@ -220,3 +220,29 @@ These tests operate at two levels:
 - SC-1/SC-2/SC-3: use `TemporalQueue` directly with the predicates
 - SC-4/SC-5: use `recordInbound` with session queue setup
 - Test file only — no production code changes
+
+## Completion
+
+**Status:** Done — all 5 tests pass.
+
+**Test file:** `src/temporal-queue-interactive.test.ts` (5 new tests, new file)
+
+**Test count delta:** 1456 → 1461
+
+**What was implemented:**
+
+- SC-1: Callback event between two text messages — first `dequeueBatch()` returns `[text₁]`,
+  second returns `[callback₁, text₂]`, third returns `[]`.
+- SC-2: Pending voice holds the entire batch until `content.text` is set (transcription
+  simulated by mutating the event object in-place). After release, batch 1 is
+  `[reaction, voice]`, batch 2 is `[callback]` (lightweight-only drain).
+- SC-3: Queue of only lightweight callbacks drains in one batch.
+- SC-4: `registerCallbackHook` + `recordInbound` — hook fires once (one-shot), does
+  not fire on a second `recordInbound` for the same message_id, and the callback event
+  still routes to the session queue and appears in `dequeueBatch()`.
+- SC-5: No hook registered — callback routes directly to session queue,
+  `dequeueBatch()` returns the single event.
+
+**No production code changes** — all batch semantics, hook interception, and queue
+routing were already correct in `temporal-queue.ts`, `session-queue.ts`, and
+`message-store.ts`.

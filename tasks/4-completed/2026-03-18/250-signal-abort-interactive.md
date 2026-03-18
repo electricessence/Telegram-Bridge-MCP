@@ -112,3 +112,32 @@ When `pollButtonPress` returns `null`, `confirm` treats it the same as timeout
 - Use `AbortController` from Node.js standard library
 - Each scenario independent
 - Test file only — no production code changes
+
+## Completion Report
+
+**Status:** Done — all 6 tests pass.
+
+**Test file:** `src/tools/signal-abort.test.ts` (6 new tests)
+
+**Test count delta:** 1450 → 1456
+
+**What was implemented:**
+
+- SC-1: `ask` resolves with `{ timed_out: false, aborted: true }` when the signal fires
+  during the reply wait. Also verified with a pre-aborted signal (SC-1b).
+- SC-2: `confirm` resolves with `{ timed_out: true }` when the signal fires before any
+  button press. Also verified that the callback hook remains registered so a late button
+  press still acks gracefully (SC-2b).
+- SC-3: `choose` resolves with `{ timed_out: true }` when the signal fires before any
+  selection is made.
+- SC-4: Aborting the signal after `confirm` has already resolved (result received) does
+  not throw or crash. The normal success path (`answerCallbackQuery` + `editMessageText`)
+  is unaffected.
+
+**Architecture confirmed:** `pollButtonOrTextOrVoice` and the `ask` inline loop both
+race the `abortPromise` (created from `signal.addEventListener("abort", ..., { once: true })`)
+against `waitForEnqueue`, so abort fires promptly without waiting for the polling
+interval to expire. The abort signal event listener uses `{ once: true }` — no dangling
+listeners after resolution.
+
+**No production code changes** — all existing signal wiring was already correct.
