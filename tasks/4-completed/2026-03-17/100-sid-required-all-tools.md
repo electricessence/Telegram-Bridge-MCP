@@ -52,6 +52,7 @@ One field, two numbers, zero ambiguity.
   - Valid → resolved SID returned.
 
 > **Previous designs (both superseded):**
+>
 > 1. SID-only on most tools, PIN only on cross-session tools.
 > 2. Separate `sid` + `pin` params on every tool.
 > Current: single `identity` tuple, universal except exempt tools.
