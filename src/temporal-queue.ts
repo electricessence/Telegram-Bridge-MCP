@@ -166,6 +166,21 @@ export class TemporalQueue<T> {
     return this._queue.count;
   }
 
+  /**
+   * Non-destructive peek: returns item counts grouped by type without consuming anything.
+   * Items are temporarily drained from the internal queue then re-enqueued in order.
+   */
+  peekCategories(getType: (item: T) => string): Record<string, number> {
+    const items = [...this._queue.consumer()];
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      const type = getType(item);
+      counts[type] = (counts[type] ?? 0) + 1;
+      this._queue.enqueue(item);
+    }
+    return counts;
+  }
+
   /** True if the given ID has been dequeued. */
   isConsumed(id: number): boolean {
     return this._consumedIds.has(id);

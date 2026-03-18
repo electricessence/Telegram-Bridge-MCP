@@ -17,6 +17,10 @@ const mocks = vi.hoisted(() => ({
   registerMessageHook: vi.fn(),
   clearMessageHook: vi.fn(),
   pendingCount: vi.fn().mockReturnValue(0),
+  sessionQueue: {
+    pendingCount: vi.fn(() => 0),
+  },
+  peekSessionCategories: vi.fn(() => undefined as Record<string, number> | undefined),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -55,6 +59,11 @@ vi.mock("../session-manager.js", () => ({
   activeSessionCount: () => mocks.activeSessionCount(),
   getActiveSession: () => mocks.getActiveSession(),
   validateSession: (...args: unknown[]) => mocks.validateSession(...args),
+}));
+
+vi.mock("../session-queue.js", () => ({
+  getSessionQueue: (sid: number) => sid === 1 ? mocks.sessionQueue : undefined,
+  peekSessionCategories: (sid: number) => mocks.peekSessionCategories(sid),
 }));
 
 import { register } from "./confirm.js";
@@ -290,6 +299,22 @@ describe("confirm tool", () => {
     const data = parseResult(result);
     expect(data.code).toBe("PENDING_UPDATES");
     expect(data.pending).toBe(3);
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("enriches PENDING_UPDATES with breakdown when session queue is available", async () => {
+    mocks.getActiveSession.mockReturnValue(1);
+    mocks.sessionQueue.pendingCount.mockReturnValueOnce(3);
+    mocks.peekSessionCategories.mockReturnValueOnce({ text: 1, reaction: 2 });
+    const result = await call({ text: "Proceed?", identity: [1, 123456] });
+    expect(isError(result)).toBe(true);
+    const data = parseResult(result);
+    expect(data.code).toBe("PENDING_UPDATES");
+    expect(data.pending).toBe(3);
+    expect(data.breakdown).toEqual({ text: 1, reaction: 2 });
+    expect(data.message).toContain("1 text");
+    expect(data.message).toContain("2 reaction");
+    expect(data.message).toContain("ignore_pending: true");
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 

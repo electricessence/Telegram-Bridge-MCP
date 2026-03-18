@@ -104,6 +104,14 @@ export function getSessionQueue(sid: number): TemporalQueue<TimelineEvent> | und
   return _queues.get(sid);
 }
 
+/**
+ * Non-destructive peek: returns pending item counts by content type for a session.
+ * Returns undefined when no queue exists for the given sid.
+ */
+export function peekSessionCategories(sid: number): Record<string, number> | undefined {
+  return _queues.get(sid)?.peekCategories((evt) => evt.content.type);
+}
+
 /** Number of active session queues. */
 export function sessionQueueCount(): number {
   return _queues.size;

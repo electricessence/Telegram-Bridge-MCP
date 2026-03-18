@@ -5,7 +5,7 @@ import {
   toResult, toError, validateText, validateCallbackData, LIMITS,
 } from "../telegram.js";
 import { registerCallbackHook, clearCallbackHook, registerMessageHook, clearMessageHook, pendingCount } from "../message-store.js";
-import { getSessionQueue } from "../session-queue.js";
+import { getSessionQueue, peekSessionCategories } from "../session-queue.js";
 import { getCallerSid } from "../session-context.js";
 import { requireAuth } from "../session-gate.js";
 import {
@@ -93,13 +93,20 @@ export function register(server: McpServer) {
         const sq = sid > 0 ? getSessionQueue(sid) : undefined;
         const pending = sq ? sq.pendingCount() : pendingCount();
         if (pending > 0) {
+          const breakdown = sid > 0 ? peekSessionCategories(sid) : undefined;
+          const summary = breakdown
+            ? Object.entries(breakdown).map(([k, v]) => `${v} ${k}`).join(", ")
+            : undefined;
+          const detail = summary
+            ? `${pending} unread update(s): ${summary}.`
+            : `${pending} unread update(s).`;
           return toError({
             code: "PENDING_UPDATES" as const,
             message:
-              `${pending} unread update(s) in the queue. ` +
-              `Drain them with dequeue_update(timeout:0) before ` +
-              `calling choose, or pass ignore_pending: true.`,
+              `${detail} Consider draining with dequeue_update(timeout:0) before ` +
+              `calling choose, or pass ignore_pending: true to proceed anyway.`,
             pending,
+            ...(breakdown ? { breakdown } : {}),
           });
         }
       }

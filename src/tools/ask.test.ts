@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
     dequeueMatch: vi.fn(() => undefined as unknown),
     waitForEnqueue: vi.fn(() => new Promise<void>((r) => setTimeout(r, 10))),
   },
+  peekSessionCategories: vi.fn(() => undefined as Record<string, number> | undefined),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -66,6 +67,7 @@ vi.mock("../session-queue.js", () => ({
     if (sid === 2) return mocks.sessionQueue2;
     return undefined;
   },
+  peekSessionCategories: (sid: number) => mocks.peekSessionCategories(sid),
 }));
 
 import { register } from "./ask.js";
@@ -206,6 +208,22 @@ describe("ask tool", () => {
     const data = parseResult(result);
     expect(data.timed_out).toBe(false);
     expect(data.text).toBe("hello");
+  });
+
+  it("enriches PENDING_UPDATES with breakdown when session queue is available", async () => {
+    mocks.getActiveSession.mockReturnValueOnce(1);
+    mocks.sessionQueue1.pendingCount.mockReturnValueOnce(4);
+    mocks.peekSessionCategories.mockReturnValueOnce({ text: 2, voice: 1, reaction: 1 });
+    const result = await call({ question: "Continue?", timeout_seconds: 1, identity: [1, 123456] });
+    expect(isError(result)).toBe(true);
+    const data = parseResult(result);
+    expect(data.code).toBe("PENDING_UPDATES");
+    expect(data.pending).toBe(4);
+    expect(data.breakdown).toEqual({ text: 2, voice: 1, reaction: 1 });
+    expect(data.message).toContain("2 text");
+    expect(data.message).toContain("1 voice");
+    expect(data.message).toContain("ignore_pending: true");
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 
   it("bypasses pending guard when reply_to_message_id is set", async () => {

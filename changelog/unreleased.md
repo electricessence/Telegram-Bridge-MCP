@@ -8,6 +8,7 @@
 - All 35 Pattern B tools have `identity` schema updated to `.optional()` with descriptive text; auth response is structured `SID_REQUIRED`/`AUTH_FAILED` error instead of a Zod validation error
 - `session-gate.ts` — removed `activeSessionCount()`/`getActiveSession()` single-session bypass; `requireAuth(undefined)` always returns `SID_REQUIRED`
 - `session_start` approval dialog now presents a color-picker keyboard — operator selects a color (🟦🟩🟧🟪🟥🟨) to approve instead of plain ✓/✗ buttons; chosen color is assigned to the session; `getAvailableColors(hint?)` in `session-manager.ts` returns palette colors not already in use with optional hint ordering; post-decision message is edited to show the selected color and session name
+- `PENDING_UPDATES` guard error in `confirm`, `ask`, and `choose` now includes a `breakdown` object with counts by content type (text, voice, reaction, etc.) and an enriched message mentioning `ignore_pending: true`; `peekCategories(getType)` added to `TemporalQueue` for non-destructive type counting; `peekSessionCategories(sid)` exported from `session-queue.ts`
 
 - Replaced `TwoLaneQueue` with `TemporalQueue` — events are now delivered in strict arrival order; heavyweight events (user text, voice) act as temporal batch delimiters instead of having separate lanes; `two-lane-queue.ts` is now a backward-compatibility shim re-exporting `TemporalQueue`; `enqueueResponse`/`enqueueMessage` kept as deprecated aliases for `enqueue()`
 - `route_message` now injects a server-stamped `routed_by` field into the event copy delivered to the target session — identifies which session SID performed the routing; cannot be forged by any agent; original event in the global timeline is unmodified
@@ -20,6 +21,10 @@
 - Service messages injected into session queues on lifecycle events — `session_joined` notifies all existing sessions when a new session joins; `session_orientation` tells the new session its role and who the governor is; `session_closed` notifies remaining sessions when a session ends; `governor_promoted` notifies the newly promoted session; events carry `from: "system"` and structured `details` for programmatic handling
 
 ## Added
+
+- `PENDING_UPDATES` guard errors from `confirm`, `ask`, and `choose` now include a `breakdown` object (`{ text: N, voice: N, reaction: N, ... }`) with counts by content type, and the error message summarises the categories with actionable guidance to drain or pass `ignore_pending: true`; global fallback path (no session queue) still returns count-only
+- `peekCategories(getType)` method added to `TemporalQueue` — non-destructive peek that counts queue items by type without consuming them
+- `peekSessionCategories(sid)` exported from `session-queue.ts` — convenience wrapper that applies the `content.type` extractor for `TimelineEvent` queues
 
 - `session_start` now validates session names — rejects names containing special characters, emoji, or non-Latin unicode; only letters (a–z, A–Z), digits, and spaces are allowed; returns `INVALID_NAME` error code; leading/trailing whitespace is trimmed before validation
 - Governor health-check timer (`src/health-check.ts`) — runs every 60 s; if the governor session has not polled `dequeue_update` within 600 s (10 min), sends the operator a three-option inline keyboard prompt to reroute messages to the next available session, make it the permanent primary, or wait; non-governor unresponsive sessions produce a notification only; recovery (next poll) clears the flagged state and notifies the operator

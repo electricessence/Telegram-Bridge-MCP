@@ -73,11 +73,23 @@ If the session queue isn't available (legacy global path), just return the exist
 
 ## Acceptance Criteria
 
-- [ ] Guard error includes `breakdown` object with counts by content type
-- [ ] Guard error message includes human-readable summary and mentions `ignore_pending: true`
-- [ ] No queue items are consumed/removed by the categorization
-- [ ] Fallback: global pending path still works (count only, no breakdown)
-- [ ] Tests: verify breakdown shape for mixed pending items
-- [ ] Tests: verify message text includes category counts
-- [ ] Build clean, lint clean, all tests pass
-- [ ] `changelog/unreleased.md` updated
+- [x] Guard error includes `breakdown` object with counts by content type
+- [x] Guard error message includes human-readable summary and mentions `ignore_pending: true`
+- [x] No queue items are consumed/removed by the categorization
+- [x] Fallback: global pending path still works (count only, no breakdown)
+- [x] Tests: verify breakdown shape for mixed pending items
+- [x] Tests: verify message text includes category counts
+- [x] Build clean, lint clean, all tests pass
+- [x] `changelog/unreleased.md` updated
+
+## Completion
+
+**Date:** 2026-03-18
+
+**Changes:**
+
+- `src/temporal-queue.ts`: Added `peekCategories(getType)` — drains and re-enqueues items to count by type (non-destructive)
+- `src/session-queue.ts`: Exported `peekSessionCategories(sid)` wrapping the above with `evt.content.type` extractor
+- `src/tools/confirm.ts`, `ask.ts`, `choose.ts`: Imported `peekSessionCategories`; enriched `PENDING_UPDATES` guard with `breakdown` field and a detailed message string
+
+**Tests added (3):** one per tool verifying `breakdown` shape, message content, and that `sendMessage` is not called.
