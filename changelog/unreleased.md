@@ -100,6 +100,9 @@
 
 ## Fixed
 
+- Fixed middleware identity disconnect — `server.ts` middleware now extracts SID from `identity[0]` when the hidden `sid` parameter is absent, preventing outbound messages from being attributed to the wrong session when agents pass `identity: [sid, pin]` without the auto-injected `sid`; affected `buildHeader`, `recordOutgoing`, `broadcastOutbound`, and message ownership tracking
+- Fixed `confirm`, `ask`, `choose` pending-updates guard using `getActiveSession()` instead of `getCallerSid()` — pending check now reads from the correct session's queue when called via `identity` auth
+
 - Fixed multi-session 😴 race: poller now checks `hasAnySessionWaiter()` (session queues) in addition to `hasPendingWaiters()` (global queue) before setting 😴 — prevents 😴 overwriting 🫡 when an agent is blocked on a per-session queue
 - Fixed multi-session consumed guard: poller's `_transcribeAndRecord` now checks `isSessionMessageConsumed()` before setting 😴 in both the success path and the transcription-failure catch block — prevents stale 😴 overwriting an agent-set 🫡 when the message was consumed via a session queue (which is never tracked by the global `isMessageConsumed`)
 - Fixed multi-session queue isolation — `dequeue_update` now returns `SID_REQUIRED` error when called without `sid` and multiple sessions are active, preventing agents from silently reading another session's queue via the racy `getActiveSession()` fallback

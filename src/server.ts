@@ -87,7 +87,9 @@ export function createServer(): McpServer {
       (args: Record<string, unknown>, extra: unknown) => {
         const sid = typeof args.sid === "number"
           ? args.sid
-          : getActiveSession();
+          : (Array.isArray(args.identity) && typeof args.identity[0] === "number"
+            ? args.identity[0]
+            : getActiveSession());
         if (sid > 0) {
           return runInSessionContext(sid, () =>
             original(args, extra),
