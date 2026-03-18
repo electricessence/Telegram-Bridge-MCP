@@ -20,6 +20,16 @@ Structured task tracking for bugs, features, and big-picture items. Works like a
 5. Move the task to `4-completed/` when done.
 6. Report results to the overseer.
 
+## Return to Draft
+
+If a worker finds a task **under-specified** — ambiguous scenarios, wrong file paths, open design questions posing as test specs, or missing setup mechanics — they must:
+
+1. Prepend a `## ⚠️ Needs Clarification Before Implementation` section to the task document listing every blocker.
+2. Move the task back to `1-draft/` (using `git mv`).
+3. Report the rejection to the overseer.
+
+The overseer rewrites the task with concrete answers from source code investigation before re-queuing. **Tasks should never be queued with open questions — the overseer must verify all code paths, file locations, event shapes, and expected return values before a task leaves draft.**
+
 ## Archive
 
 Once the overseer/human reviews a completed task and approves it, they move it into a **dated subfolder** within `4-completed/` (e.g., `4-completed/2026-03-17/`). This keeps the root of `4-completed/` clean — only unreviewed items sit there.

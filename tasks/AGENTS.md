@@ -38,7 +38,7 @@ This applies to ALL task transitions: `2-queued → 3-in-progress`, `3-in-progre
 1. **Move that one file** (see "Moving Task Files" above) from `2-queued/` to `3-in-progress/` **immediately** — this is your very first action. No reading, no planning, no code changes until the file is moved. Never move more than one file at once.
 1. Read the task document thoroughly — it contains the description, context, and acceptance criteria.
 1. Understand the codebase context before making changes. Use the existing test files and docs as reference.
-1. **Never guess.** If the task document is unclear, escalate back to the overseer.
+1. **Never guess.** If the task document is unclear, move it back to `1-draft/` with a clarification section (see "Returning Under-Specified Tasks").
 
 ## Workflow
 
@@ -83,6 +83,16 @@ Before moving a task to `4-completed/`, **append a `## Completion` section** to 
 ```
 
 This is mandatory. A task moved to `4-completed/` without a completion report is incomplete and will be sent back.
+
+## Returning Under-Specified Tasks
+
+If a task document is **unclear, contradictory, references wrong file paths, contains open design questions instead of concrete specs, or lacks the setup mechanics needed to write the test** — do NOT guess. Return it to draft:
+
+1. Prepend a `## ⚠️ Needs Clarification Before Implementation` section listing every specific blocker (wrong paths, missing expected values, ambiguous scenarios, undefined setup steps).
+2. Move the task back to `1-draft/` using `git mv tasks/3-in-progress/my-task.md tasks/1-draft/my-task.md`.
+3. Report the rejection and your specific questions to the overseer.
+
+This is not a failure — it's quality control. A well-specified task should be implementable without guessing. If it isn't, send it back.
 
 ## Rules
 
