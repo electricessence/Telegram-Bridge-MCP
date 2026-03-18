@@ -248,6 +248,7 @@ export function isSessionMessageConsumed(messageId: number): boolean {
 
 /** Auto-incrementing ID for synthetic DM events. Negative to avoid collisions. */
 let _nextDmId = -1;
+let _nextServiceId = -100_000;
 
 /**
  * Deliver a direct message from one session to another.
@@ -273,6 +274,34 @@ export function deliverDirectMessage(
 
   q.enqueueMessage(event);
   dlog("dm", `delivered DM from sid=${senderSid} → sid=${targetSid}`, { eventId: event.id });
+  return true;
+}
+
+/**
+ * Inject a server-generated service message into a session queue.
+ * Returned events have `from: "system"` and `event: "service_message"`.
+ * Returns false if the target queue does not exist.
+ */
+export function deliverServiceMessage(
+  targetSid: number,
+  text: string,
+  eventType: string,
+  details?: Record<string, unknown>,
+): boolean {
+  const q = _queues.get(targetSid);
+  if (!q) return false;
+
+  const event: TimelineEvent = {
+    id: _nextServiceId--,
+    timestamp: new Date().toISOString(),
+    event: "service_message",
+    from: "system",
+    content: { type: "service", text, event_type: eventType, ...(details && { details }) },
+    sid: 0,
+  };
+
+  q.enqueueMessage(event);
+  dlog("service", `service message → sid=${targetSid}`, { eventType, eventId: event.id });
   return true;
 }
 

@@ -50,6 +50,10 @@ export interface EventContent {
   reply_to?: number;
   /** Telegram file_id for downloadable media (doc, photo, video, audio, voice, animation). */
   file_id?: string;
+  /** Lifecycle event type — set for service_message events. */
+  event_type?: string;
+  /** Structured details — set for service_message events. */
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -63,8 +67,8 @@ export interface TimelineEvent {
   timestamp: string;
   /** Event type: message, sent, reaction, callback, edit, user_edit. */
   event: string;
-  /** Who originated: "user" or "bot". */
-  from: "user" | "bot";
+  /** Who originated: "user", "bot", or "system" (server-injected service messages). */
+  from: "user" | "bot" | "system";
   /** Event-specific payload. */
   content: EventContent;
   /** Session ID that produced this event (0 or absent = single-session). */

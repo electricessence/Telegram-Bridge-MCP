@@ -4,6 +4,7 @@
 
 - Converted `topic-state`, `typing-state`, `temp-message`, and `temp-reaction` from module-level singletons to per-SID `Map` instances — eliminates cross-session state corruption when multiple sessions are active simultaneously
 - Health check no longer flags sessions with an active animation as unresponsive — an active animation is proof of life; added `hasActiveAnimation(sid)` export to `animation-state.ts`
+- Service messages injected into session queues on lifecycle events — `session_joined` notifies all existing sessions when a new session joins; `session_orientation` tells the new session its role and who the governor is; `session_closed` notifies remaining sessions when a session ends; `governor_promoted` notifies the newly promoted session; events carry `from: "system"` and structured `details` for programmatic handling
 
 ## Added
 

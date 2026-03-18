@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   listSessions: vi.fn().mockReturnValue([]),
   activeSessionCount: vi.fn().mockReturnValue(0),
   setGovernorSid: vi.fn(),
+  getGovernorSid: vi.fn().mockReturnValue(0),
+  deliverServiceMessage: vi.fn(),
   resolveChat: vi.fn(() => 42 as number),
   registerCallbackHook: vi.fn(),
   clearCallbackHook: vi.fn(),
@@ -50,11 +52,13 @@ vi.mock("../session-manager.js", () => ({
 
 vi.mock("../routing-mode.js", () => ({
   setGovernorSid: (...args: unknown[]) => mocks.setGovernorSid(...args),
+  getGovernorSid: () => mocks.getGovernorSid(),
 }));
 
 vi.mock("../session-queue.js", () => ({
   createSessionQueue: vi.fn(),
   removeSessionQueue: vi.fn(),
+  deliverServiceMessage: (...args: unknown[]) => mocks.deliverServiceMessage(...args),
 }));
 
 vi.mock("../dm-permissions.js", () => ({
@@ -758,6 +762,77 @@ describe("session_start tool", () => {
 
     expect(isError(result)).toBe(true);
     expect(mocks.grantDm).not.toHaveBeenCalled();
+  });
+
+  // =========================================================================
+  // Service messages on session join (task 285)
+  // =========================================================================
+
+  it("injects session_joined service message to existing session when 2nd session joins", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", sessionsActive: 2 });
+    mocks.getGovernorSid.mockReturnValue(1);
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }]) // collision
+      .mockReturnValue([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
+    });
+    mocks.sendMessage
+      .mockResolvedValueOnce({ message_id: 50 })
+      .mockResolvedValue(INTRO_MSG);
+
+    await call({ name: "Worker" });
+
+    // Existing session (the governor) notified of the join
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const toExisting = calls.find((c: unknown[]) => c[0] === 1);
+    expect(toExisting).toBeDefined();
+    expect(toExisting![2]).toBe("session_joined");
+    expect(String(toExisting![1])).toContain("Worker");
+    expect(String(toExisting![1])).toContain("governor");
+  });
+
+  it("injects session_orientation service message to new session on join", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", sessionsActive: 2 });
+    mocks.getGovernorSid.mockReturnValue(1);
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }])
+      .mockReturnValue([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_yes", qid: "q1" } }); });
+    });
+    mocks.sendMessage
+      .mockResolvedValueOnce({ message_id: 50 })
+      .mockResolvedValue(INTRO_MSG);
+
+    await call({ name: "Worker" });
+
+    // New session (SID 2) gets an orientation message
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const toNew = calls.find((c: unknown[]) => c[0] === 2);
+    expect(toNew).toBeDefined();
+    expect(toNew![2]).toBe("session_orientation");
+    expect(String(toNew![1])).toContain("SID 2");
+  });
+
+  it("does not inject service messages when first session starts", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+
+    await call({});
+
+    expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
   });
 });
 

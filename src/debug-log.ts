@@ -29,6 +29,7 @@ export type DebugCategory =
   | "queue"
   | "cascade"
   | "dm"
+  | "service"
   | "animation"
   | "tool"
   | "health";

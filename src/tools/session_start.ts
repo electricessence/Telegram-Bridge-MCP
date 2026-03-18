@@ -5,8 +5,8 @@ import { markdownToV2 } from "../markdown.js";
 import type { TimelineEvent } from "../message-store.js";
 import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-store.js";
 import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount } from "../session-manager.js";
-import { createSessionQueue, removeSessionQueue } from "../session-queue.js";
-import { setGovernorSid } from "../routing-mode.js";
+import { createSessionQueue, removeSessionQueue, deliverServiceMessage } from "../session-queue.js";
+import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { grantDm } from "../dm-permissions.js";
 
 const DEFAULT_INTRO = "ℹ️ Session Start";
@@ -211,6 +211,36 @@ export function register(server: McpServer) {
             const lowestSid = Math.min(...allSessions.map(s => s.sid));
             setGovernorSid(lowestSid);
           }
+
+          // Notify existing sessions and the new session of the join event
+          const governorSid = getGovernorSid();
+          const governorSession = allSessions.find(s => s.sid === governorSid);
+          const governorLabel = governorSession ? `'${governorSession.name}' (SID ${governorSid})` : `SID ${governorSid}`;
+
+          for (const fellow of allSessions.filter(s => s.sid !== session.sid)) {
+            const isGovernor = fellow.sid === governorSid;
+            const governorNote = isGovernor
+              ? "You are the governor — ambiguous messages will be routed to you."
+              : `Ambiguous messages go to ${governorLabel}.`;
+            deliverServiceMessage(
+              fellow.sid,
+              `Session '${effectiveName}' (SID ${session.sid}) has joined. ${governorNote}`,
+              "session_joined",
+              { sid: session.sid, name: effectiveName, governor_sid: governorSid },
+            );
+          }
+
+          // Notify the new session of its role
+          const newIsGovernor = session.sid === governorSid;
+          const roleNote = newIsGovernor
+            ? `You are the governor (SID ${session.sid}). Ambiguous messages will be routed to you.`
+            : `You are SID ${session.sid}. ${governorLabel} is the governor. Ambiguous messages go to them.`;
+          deliverServiceMessage(
+            session.sid,
+            roleNote,
+            "session_orientation",
+            { sid: session.sid, name: effectiveName, governor_sid: governorSid },
+          );
         }
         return toResult(res);
       } catch (err) {

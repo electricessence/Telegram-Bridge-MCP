@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getApi, toResult, sendServiceMessage, resolveChat } from "../telegram.js";
 import { closeSession, getSession, getActiveSession, setActiveSession, listSessions } from "../session-manager.js";
-import { removeSessionQueue, drainQueue, deliverDirectMessage, routeToSession } from "../session-queue.js";
+import { removeSessionQueue, drainQueue, deliverDirectMessage, deliverServiceMessage, routeToSession } from "../session-queue.js";
 import { revokeAllForSession } from "../dm-permissions.js";
 import { getGovernorSid, setGovernorSid } from "../routing-mode.js";
 import { SESSION_AUTH_SCHEMA, checkAuth } from "../session-auth.js";
@@ -70,6 +70,35 @@ export function register(server: McpServer) {
           sendServiceMessage(
             `⚠️ Governor session closed. 🤖 ${label} promoted to governor.`,
           ).catch(() => {});
+          // Notify the promoted governor
+          deliverServiceMessage(
+            next.sid,
+            `You are now the governor (${sessionName} closed). Ambiguous messages will be routed to you.`,
+            "governor_promoted",
+            { closed_sid: sid, closed_name: sessionName, new_governor_sid: next.sid },
+          );
+          // Notify other remaining sessions of the new governor
+          for (const s of remaining.slice(1)) {
+            deliverServiceMessage(
+              s.sid,
+              `Session '${sessionName}' (SID ${sid}) has ended. '${label}' (SID ${next.sid}) is now the governor.`,
+              "session_closed",
+              { closed_sid: sid, closed_name: sessionName, new_governor_sid: next.sid },
+            );
+          }
+        }
+      }
+
+      // Notify all remaining sessions of the closure (for non-governor cases, or always)
+      if (remaining.length > 0 && !(wasGovernor && remaining.length >= 2)) {
+        // For non-governor close, or 2→1, notify remaining sessions
+        for (const s of remaining) {
+          deliverServiceMessage(
+            s.sid,
+            `Session '${sessionName}' (SID ${sid}) has ended.`,
+            "session_closed",
+            { closed_sid: sid, closed_name: sessionName },
+          );
         }
       }
       // Non-governor closes with 0 or 2+ remaining: no routing change needed

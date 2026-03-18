@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   setGovernorSid: vi.fn(),
   sendServiceMessage: vi.fn(),
   deliverDirectMessage: vi.fn(),
+  deliverServiceMessage: vi.fn(),
   drainQueue: vi.fn().mockReturnValue([]),
   routeToSession: vi.fn(),
   replaceSessionCallbackHooks: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("../session-manager.js", () => ({
 vi.mock("../session-queue.js", () => ({
   removeSessionQueue: vi.fn(),
   deliverDirectMessage: (...args: unknown[]) => mocks.deliverDirectMessage(...args),
+  deliverServiceMessage: (...args: unknown[]) => mocks.deliverServiceMessage(...args),
   drainQueue: (...args: unknown[]) => mocks.drainQueue(...args),
   routeToSession: (...args: unknown[]) => mocks.routeToSession(...args),
 }));
@@ -412,5 +414,53 @@ describe("close_session tool", () => {
     await call({ sid: 1, pin: 123456 });
 
     expect(mocks.replaceSessionCallbackHooks).not.toHaveBeenCalled();
+  });
+
+  // =========================================================================
+  // Service messages on session lifecycle (task 285)
+  // =========================================================================
+
+  it("sends session_closed service message to remaining session when non-governor closes", async () => {
+    mocks.getGovernorSid.mockReturnValue(0); // no governor (single-session logic)
+    mocks.getSession.mockReturnValue({ sid: 1, pin: 123456, name: "Worker", createdAt: "2026-03-17" });
+    mocks.listSessions.mockReturnValue([{ sid: 2, name: "Primary", createdAt: "2026-03-17" }]);
+
+    await call({ sid: 1, pin: 123456 });
+
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const toRemaining = calls.find((c: unknown[]) => c[0] === 2);
+    expect(toRemaining).toBeDefined();
+    expect(toRemaining![2]).toBe("session_closed");
+    expect(String(toRemaining![1])).toContain("Worker");
+  });
+
+  it("sends governor_promoted service message to newly promoted session", async () => {
+    mocks.getGovernorSid.mockReturnValue(1); // closing session is governor
+    mocks.getSession.mockReturnValue({ sid: 1, pin: 123456, name: "Primary", createdAt: "2026-03-17" });
+    mocks.listSessions.mockReturnValue([
+      { sid: 2, name: "Scout", createdAt: "2026-03-17" },
+      { sid: 3, name: "Helper", createdAt: "2026-03-17" },
+    ]);
+
+    await call({ sid: 1, pin: 123456 });
+
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const promotionMsg = calls.find((c: unknown[]) => c[2] === "governor_promoted");
+    expect(promotionMsg).toBeDefined();
+    expect(promotionMsg![0]).toBe(2); // lowest SID promoted
+    expect(String(promotionMsg![1])).toContain("governor");
+
+    // Other remaining session gets session_closed
+    const closedMsg = calls.find((c: unknown[]) => c[0] === 3 && c[2] === "session_closed");
+    expect(closedMsg).toBeDefined();
+  });
+
+  it("does not send service messages when last session closes", async () => {
+    mocks.getGovernorSid.mockReturnValue(0);
+    mocks.listSessions.mockReturnValue([]);
+
+    await call({ sid: 1, pin: 123456 });
+
+    expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
   });
 });
