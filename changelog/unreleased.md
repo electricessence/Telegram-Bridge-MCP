@@ -28,10 +28,6 @@
 - Created `docs/multi-session-prompts.md` — governor, worker, and topic discipline prompt templates with a two-session quick-start guide
 - Added multi-session behavior documentation in `docs/behavior.md` and `docs/communication.md` — routing modes, ambiguous message protocol, governor responsibilities, coordination tools
 
-## Removed
-
-- Removed redundant join DM from `session_start` — the `deliverDirectMessage` loop that sent "📢 🤖 {Name} has joined" to existing sessions was removed; the new session's intro Telegram message is already routed to existing sessions via normal poller flow
-
 - New test files: `config.test.ts` (100% coverage), `rate-limiter.test.ts` (100% coverage)
 - Extended test coverage for `tts.ts`, `typing-state.ts`, `show_typing.ts`, `confirm.ts`, `choose.ts`, `dequeue_update.ts`, `session_start.ts`; total tests 942 → 1030, statements 85.4% → 90.2%, branches 76.6% → 82.4%
 - Added `multi-session.integration.test.ts` — 38 integration tests proving multi-session routing, cascade pass chains, governor delegation, DM delivery, broadcast, session lifecycle, and edge cases (ownership vs queue removal, mid-close cascade skip, waiter wakeup, response-lane priority, self-DM, governor fallback) with 2–3 concurrent sessions
@@ -124,12 +120,14 @@
 - Fixed animation-state 429 resume timer leak — multiple rate-limit retries no longer create duplicate resume timers
 - Fixed rate-limiter comment claiming 100 ms debounce when actual `MIN_SEND_INTERVAL_MS` is 1000 ms
 - Fixed stale "broadcast for now" comment in session-queue header — routing modes are fully implemented
-- Fixed multi-session.md overstating auth coverage — clarified that only session-management tools require `sid`/`pin`
+- Fixed multi-session.md overstating auth coverage — clarified that only session-management tools require `sid`/`pin`; all other tools receive session identity automatically via AsyncLocalStorage context from server middleware
+- Fixed duplicate `## Removed` heading in `changelog/unreleased.md` — consolidated into a single section per Keep a Changelog format
 - Fixed identity-gate test bugs — corrected four test files: `get_debug_log` telegram mock now spreads actual module so `toError` is available; `send_text_as_voice` was missing `isError`/`errorCode` imports; `send_new_checklist` and `send_new_progress` identity-gate describe blocks were nested inside wrong outer describe (wrong variable in scope); `send_new_checklist` gate tests were missing required `title` arg, causing ZodError before the handler ran and leaving unconsumed `mockReturnValueOnce` state that corrupted subsequent `update_checklist` tests
 - Fixed missing branch coverage in 6 tool files (`delete_message`, `edit_message_text`, `send_choice`, `send_new_checklist`, `send_new_progress`, `update_progress`) — added resolveChat error, validateText failure, boolean API result, and button label limit tests; branch coverage 82.43% → 83.27%
 
 ## Removed
 
+- Removed redundant join DM from `session_start` — the `deliverDirectMessage` loop that sent "📢 🤖 {Name} has joined" to existing sessions was removed; the new session's intro Telegram message is already routed to existing sessions via normal poller flow
 - Removed `load_balance` and `cascade` routing modes — ambiguous messages now broadcast to all sessions by default (no governor) or route only to the governor session when one is set
 - Removed `pass_message` tool — cascade-mode message passing is no longer supported
 - Removed `/routing` built-in command and routing inline panel — routing is now implicit (governor vs. broadcast)

@@ -4,7 +4,7 @@
 > and pass\_message modes have been removed. The current design uses governor-only routing.
 > See [multi-session-protocol.md](multi-session-protocol.md) and [behavior.md](behavior.md)
 > for the current spec.
-
+>
 > Working document — brainstorming and design notes for multi-session / multi-agent communication through a single Telegram Bridge MCP instance.
 
 ## Critical Constraint: One MCP Instance Per Bot Token
@@ -66,7 +66,9 @@ This two-factor model prevents impersonation:
 
 ### Tool Call Authentication
 
-**Session-management tools require `sid` and `pin`** — both as integer parameters. These include `close_session`, `send_direct_message`, `pass_message`, `route_message`, and `request_dm_access`. Other tools rely on the active session context set by `session_start` and do not require explicit auth parameters.
+**Session-management tools require `sid` and `pin`** — both as integer parameters. These include `close_session`, `send_direct_message`, `pass_message`, `route_message`, and `request_dm_access`. These tools call `checkAuth()` explicitly and will reject with an auth error if the credentials are missing or wrong.
+
+All other tools receive the caller's session identity automatically via server middleware (AsyncLocalStorage context set by `runInSessionContext`). They do not require explicit `sid`/`pin` parameters — the session is identified from the tool-call context, not from parameters the agent types.
 
 Parameter design for token efficiency:
 
