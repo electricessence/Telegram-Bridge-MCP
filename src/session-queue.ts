@@ -1,7 +1,7 @@
 /**
  * Per-session message queues and inbound routing.
  *
- * Each session gets its own TwoLaneQueue<TimelineEvent>. When an inbound
+ * Each session gets its own TemporalQueue<TimelineEvent>. When an inbound
  * update arrives, the router decides which session(s) receive it:
  *
  *   - Reply-to / callback / reaction → owning session (targeted)
@@ -12,7 +12,7 @@
  * they receive copies of the same event references.
  */
 
-import { TwoLaneQueue } from "./two-lane-queue.js";
+import { TemporalQueue } from "./temporal-queue.js";
 import type { TimelineEvent } from "./message-store.js";
 import { getMessage, CURRENT } from "./message-store.js";
 import { getGovernorSid } from "./routing-mode.js";
@@ -27,6 +27,16 @@ function isEventReady(event: TimelineEvent): boolean {
   return !(c.type === "voice" && c.text === undefined);
 }
 
+/**
+ * Heavyweight events are temporal batch delimiters — user text and voice
+ * messages. Reactions, callbacks, files, DMs, and service messages are
+ * lightweight and collected ahead of the delimiter.
+ */
+function isHeavyweightEvent(event: TimelineEvent): boolean {
+  return event.event === "message" &&
+    (event.content.type === "text" || event.content.type === "voice");
+}
+
 function getEventId(event: TimelineEvent): number {
   return event.id;
 }
@@ -36,7 +46,7 @@ function getEventId(event: TimelineEvent): number {
 // ---------------------------------------------------------------------------
 
 /** sid → per-session queue */
-const _queues = new Map<number, TwoLaneQueue<TimelineEvent>>();
+const _queues = new Map<number, TemporalQueue<TimelineEvent>>();
 
 /** message_id → owning sid (tracks which session sent each bot message) */
 const _messageOwnership = new Map<number, number>();
@@ -48,7 +58,8 @@ const _messageOwnership = new Map<number, number>();
 /** Create a queue for a new session. Returns false if already exists. */
 export function createSessionQueue(sid: number): boolean {
   if (_queues.has(sid)) return false;
-  _queues.set(sid, new TwoLaneQueue<TimelineEvent>({
+  _queues.set(sid, new TemporalQueue<TimelineEvent>({
+    isHeavyweight: isHeavyweightEvent,
     isReady: isEventReady,
     getId: getEventId,
   }));
@@ -86,7 +97,7 @@ export function drainQueue(sid: number): TimelineEvent[] {
 }
 
 /** Get a session's queue (or undefined if no such session). */
-export function getSessionQueue(sid: number): TwoLaneQueue<TimelineEvent> | undefined {
+export function getSessionQueue(sid: number): TemporalQueue<TimelineEvent> | undefined {
   return _queues.get(sid);
 }
 
@@ -177,12 +188,11 @@ function resolveTargetSession(event: TimelineEvent): number {
 function enqueueToSession(
   sid: number,
   event: TimelineEvent,
-  lane: "response" | "message",
+  _lane: "response" | "message",
 ): void {
   const q = _queues.get(sid);
   if (!q) return;
-  if (lane === "response") q.enqueueResponse(event);
-  else q.enqueueMessage(event);
+  q.enqueue(event);
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +209,7 @@ export function broadcastOutbound(event: TimelineEvent, senderSid: number): void
   if (_queues.size <= 1) return;
   for (const [sid, q] of _queues) {
     if (sid === senderSid) continue;
-    q.enqueueResponse(event);
+    q.enqueue(event);
   }
 }
 
