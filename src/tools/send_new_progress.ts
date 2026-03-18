@@ -4,6 +4,7 @@ import { getApi, toResult, toError, resolveChat, validateText } from "../telegra
 import { escapeHtml } from "../markdown.js";
 import { applyTopicToTitle } from "../topic-state.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const FILLED = "▓";
 const EMPTY = "░";
@@ -63,13 +64,7 @@ export function register(server: McpServer) {
           .max(40)
           .default(DEFAULT_WIDTH)
           .describe(`Bar width in characters. Default ${DEFAULT_WIDTH}.`),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ percent, title, subtext, width, identity}) => {

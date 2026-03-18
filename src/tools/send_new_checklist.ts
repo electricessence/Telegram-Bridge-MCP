@@ -4,6 +4,7 @@ import { getApi, toResult, toError, resolveChat, validateText } from "../telegra
 import { escapeHtml } from "../markdown.js";
 import { applyTopicToTitle } from "../topic-state.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const STEP_STATUS_SCHEMA = z.enum(["pending", "running", "done", "failed", "skipped"]);
 type StepStatus = z.infer<typeof STEP_STATUS_SCHEMA>;
@@ -65,13 +66,7 @@ export function register(server: McpServer) {
       inputSchema: {
         title: TITLE_INPUT,
         steps: STEPS_INPUT,
-        identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+        identity: IDENTITY_SCHEMA,
       },
     },
     async ({ title, steps, identity }) => {
@@ -111,13 +106,7 @@ export function register(server: McpServer) {
           .int()
           .min(1)
           .describe("ID of the checklist message to update, as returned by send_new_checklist."),
-        identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+        identity: IDENTITY_SCHEMA,
       },
     },
     async ({ title, steps, message_id, identity }) => {

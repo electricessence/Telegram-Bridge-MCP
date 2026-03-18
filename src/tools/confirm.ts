@@ -11,6 +11,7 @@ import {
   pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped,
   type ButtonStyle,
 } from "./button-helpers.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Sends a Yes/No confirmation message and waits until the user presses a " +
@@ -71,13 +72,7 @@ export function register(server: McpServer) {
         .boolean()
         .optional()
         .describe("Set true to skip the pending-updates check and block immediately"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ text, yes_text, no_text, yes_data, no_data, yes_style, no_style, timeout_seconds, reply_to_message_id, ignore_pending, identity}, { signal }) => {

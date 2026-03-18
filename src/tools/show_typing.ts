@@ -3,6 +3,7 @@ import { z } from "zod";
 import { toResult, toError, resolveChat } from "../telegram.js";
 import { showTyping, cancelTyping } from "../typing-state.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Starts (or extends) a sustained background typing indicator that repeats " +
@@ -30,13 +31,7 @@ export function register(server: McpServer) {
         .boolean()
         .optional()
         .describe("If true, immediately stop the typing indicator instead of starting/extending it."),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ timeout_seconds, cancel, identity}) => {

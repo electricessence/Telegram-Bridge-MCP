@@ -4,6 +4,7 @@ import { toResult, toError } from "../telegram.js";
 import { requireAuth } from "../session-gate.js";
 import { getSession } from "../session-manager.js";
 import { deliverDirectMessage } from "../session-queue.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Send a direct message to another session. The message is " +
@@ -17,13 +18,7 @@ export function register(server: McpServer) {
     {
       description: DESCRIPTION,
       inputSchema: {
-        identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+        identity: IDENTITY_SCHEMA,
         target_sid: z
           .number()
           .int()

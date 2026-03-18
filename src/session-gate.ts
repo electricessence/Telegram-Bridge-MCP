@@ -27,7 +27,7 @@ export function setAuthHook(fn: (sid: number) => void): void {
  * ```
  */
 export function requireAuth(
-  identity: [number, number] | undefined,
+  identity: readonly number[] | undefined,
 ): number | TelegramError {
   if (!identity) {
     return {

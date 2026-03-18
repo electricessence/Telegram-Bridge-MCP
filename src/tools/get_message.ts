@@ -3,6 +3,7 @@ import { z } from "zod";
 import { toResult, toError } from "../telegram.js";
 import { getMessage, getVersions, CURRENT } from "../message-store.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Look up a stored message by ID and optional version. Returns detail including " +
@@ -25,13 +26,7 @@ export function register(server: McpServer) {
           .int()
           .default(CURRENT)
           .describe("Version: -1 = current/latest (default), 0 = original, 1+ = edit history"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     ({ message_id, version, identity}) => {

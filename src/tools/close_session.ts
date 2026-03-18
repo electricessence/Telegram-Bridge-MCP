@@ -1,5 +1,4 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 import { getApi, toResult, toError, sendServiceMessage, resolveChat } from "../telegram.js";
 import { closeSession, getSession, getActiveSession, setActiveSession, listSessions } from "../session-manager.js";
 import { removeSessionQueue, drainQueue, deliverDirectMessage, deliverServiceMessage, routeToSession } from "../session-queue.js";
@@ -7,6 +6,7 @@ import { revokeAllForSession } from "../dm-permissions.js";
 import { getGovernorSid, setGovernorSid } from "../routing-mode.js";
 import { requireAuth } from "../session-gate.js";
 import { replaceSessionCallbackHooks } from "../message-store.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Close the current session. Removes it from the active " +
@@ -19,13 +19,7 @@ export function register(server: McpServer) {
     {
       description: DESCRIPTION,
       inputSchema: {
-        identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+        identity: IDENTITY_SCHEMA,
       },
     },
     ({ identity }) => {

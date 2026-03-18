@@ -4,6 +4,7 @@ import { getApi, toResult, toError, resolveChat, validateText } from "../telegra
 import { resolveParseMode } from "../markdown.js";
 import { getMessage, recordOutgoingEdit, CURRENT } from "../message-store.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Delta-append text to an existing message. The server reads the current text " +
@@ -27,13 +28,7 @@ export function register(server: McpServer) {
           .enum(["Markdown", "HTML", "MarkdownV2"])
           .default("Markdown")
           .describe("Re-render the accumulated text with this parse mode"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ message_id, text, separator, parse_mode, identity}) => {

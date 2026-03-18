@@ -4,6 +4,7 @@ import { getApi, toResult, toError, validateText, resolveChat } from "../telegra
 import { markdownToV2, escapeV2, escapeHtml } from "../markdown.js";
 import { applyTopicToTitle } from "../topic-state.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const SEVERITY_PREFIX: Record<string, string> = {
   info: "ℹ️",
@@ -48,13 +49,7 @@ export function register(server: McpServer) {
         .min(1)
         .optional()
         .describe("Reply to this message ID — shows quoted message above the notification"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ title, body, severity, parse_mode, disable_notification, reply_to_message_id, identity}) => {

@@ -7,6 +7,7 @@ import {
 } from "../message-store.js";
 import { setActiveSession, touchSession } from "../session-manager.js";
 import { getSessionQueue, getMessageOwner } from "../session-queue.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 /** Auto-salute voice messages on dequeue so the user knows we received them. */
 function ackVoice(event: TimelineEvent): void {
@@ -59,13 +60,7 @@ export function register(server: McpServer) {
           .max(300)
           .default(300)
           .describe("Seconds to block when queue is empty. Default 300 (5 min) blocks up to 300 s for the next update — optimized for agent listen loops. Pass 0 for an instant non-blocking poll (drain loops only). Max 300."),
-        identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+        identity: IDENTITY_SCHEMA,
       },
     },
     async ({ timeout, identity }, { signal }) => {

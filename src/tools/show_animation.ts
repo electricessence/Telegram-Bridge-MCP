@@ -3,6 +3,7 @@ import { z } from "zod";
 import { toResult, toError, resolveChat } from "../telegram.js";
 import { startAnimation, getPreset } from "../animation-state.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Start a server-managed cycling visual placeholder message. The animation " +
@@ -61,13 +62,7 @@ export function register(server: McpServer) {
           .boolean()
           .default(false)
           .describe("If true, the initial animation placeholder triggers a notification. Default false = silent (no ping/buzz)."),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ preset, frames, interval, timeout, persistent, allow_breaking_spaces, notify, identity}) => {

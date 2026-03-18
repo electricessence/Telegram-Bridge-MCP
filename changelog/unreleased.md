@@ -16,6 +16,7 @@
 
 ## Fixed
 
+- Replaced `z.tuple([z.number().int(), z.number().int()])` identity schema with `z.array(z.number().int()).length(2)` across all 37 tool files — Zod's tuple serialisation produces `prefixItems` arrays that GitHub Copilot's JSON-Schema validator rejects ("is not of type 'object', 'boolean'"); the array form produces valid `{ items: { type: "integer" } }` instead; shared `IDENTITY_SCHEMA` constant in `src/tools/identity-schema.ts`; `requireAuth()` signature widened to `readonly number[] | undefined`
 - Converted `topic-state`, `typing-state`, `temp-message`, and `temp-reaction` from module-level singletons to per-SID `Map` instances — eliminates cross-session state corruption when multiple sessions are active simultaneously
 - Health check no longer flags sessions with an active animation as unresponsive — an active animation is proof of life; added `hasActiveAnimation(sid)` export to `animation-state.ts`
 - Service messages injected into session queues on lifecycle events — `session_joined` notifies all existing sessions when a new session joins; `session_orientation` tells the new session its role and who the governor is; `session_closed` notifies remaining sessions when a session ends; `governor_promoted` notifies the newly promoted session; events carry `from: "system"` and structured `details` for programmatic handling

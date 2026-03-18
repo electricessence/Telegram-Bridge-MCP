@@ -8,6 +8,7 @@ import { requireAuth } from "../session-gate.js";
 import {
   sendChoiceMessage, type KeyboardOption,
 } from "./button-helpers.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Non-blocking one-shot keyboard — sends a message with choice buttons and " +
@@ -69,13 +70,7 @@ export function register(server: McpServer) {
           .min(1)
           .optional()
           .describe("Reply to this message ID"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ text, options, columns, parse_mode, disable_notification, reply_to_message_id, identity}) => {

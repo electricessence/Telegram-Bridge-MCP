@@ -8,6 +8,7 @@ import { resolveParseMode } from "../markdown.js";
 import { recordOutgoingEdit } from "../message-store.js";
 import type { ButtonStyle } from "./button-helpers.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Core edit primitive — modifies an existing message by ID. " +
@@ -54,13 +55,7 @@ export function register(server: McpServer) {
           .enum(["Markdown", "HTML", "MarkdownV2"])
           .default("Markdown")
           .describe("Markdown = auto-converted (default); MarkdownV2 = raw; HTML = HTML tags"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ message_id, text, keyboard, parse_mode, identity}) => {

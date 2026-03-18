@@ -5,6 +5,7 @@ import { requireAuth } from "../session-gate.js";
 import { getGovernorSid } from "../routing-mode.js";
 import { getSession } from "../session-manager.js";
 import { routeMessage } from "../session-queue.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Route an ambiguous message to a specific session. Only the " +
@@ -18,13 +19,7 @@ export function register(server: McpServer) {
     {
       description: DESCRIPTION,
       inputSchema: {
-        identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+        identity: IDENTITY_SCHEMA,
         message_id: z
           .number()
           .int()

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { toResult, toError } from "../telegram.js";
 import { transcribeWithIndicator } from "../transcribe.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Transcribes a Telegram voice message by its file_id. " +
@@ -24,13 +25,7 @@ export function register(server: McpServer) {
         .int()
         .optional()
         .describe("Optional message_id — if provided, adds a ✍ / 🫡 reaction to indicate transcription progress"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ file_id, message_id, identity}) => {

@@ -5,6 +5,7 @@ import { getApi, toResult, toError, resolveChat, type ReactionEmoji } from "../t
 import { recordBotReaction } from "../message-store.js";
 import { setTempReaction } from "../temp-reaction.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 /**
  * Allowed emoji reactions from the Telegram Bot API.
@@ -128,13 +129,7 @@ export function register(server: McpServer) {
             "next outbound action or this timeout. " +
             "Implies temporary=true.",
           ),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ message_id, emoji, is_big, temporary, restore_emoji, timeout_seconds, identity}) => {

@@ -11,6 +11,7 @@ import {
   listBuiltinPresets,
   DEFAULT_FRAMES,
 } from "../animation-state.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Configure the session's default animation frames and manage named presets. " +
@@ -38,13 +39,7 @@ export function register(server: McpServer) {
           .boolean()
           .default(false)
           .describe("Reset the session default back to the built-in animation. Ignores frames/name."),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     ({ frames, name, reset, identity}) => {

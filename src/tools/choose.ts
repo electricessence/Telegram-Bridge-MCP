@@ -12,6 +12,7 @@ import {
   pollButtonOrTextOrVoice, ackAndEditSelection, editWithSkipped,
   sendChoiceMessage, type KeyboardOption,
 } from "./button-helpers.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Sends a question with 2–8 labeled option buttons and waits until the " +
@@ -71,13 +72,7 @@ export function register(server: McpServer) {
         .boolean()
         .optional()
         .describe("Set true to skip the pending-updates check and block immediately"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ question, options, timeout_seconds, columns, reply_to_message_id, ignore_pending, identity}, { signal }) => {

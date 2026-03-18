@@ -6,6 +6,7 @@ import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
 import { getTopic } from "../topic-state.js";
 import { getDefaultVoice } from "../config.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Synthesizes plain text to speech and sends it as a Telegram voice note. " +
@@ -53,13 +54,7 @@ export function register(server: McpServer) {
             "Inline keyboard attached to the voice message. " +
             "Only applied to the first chunk if the message is split."
           ),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ text, voice, caption, disable_notification, reply_to_message_id, reply_markup, identity}) => {

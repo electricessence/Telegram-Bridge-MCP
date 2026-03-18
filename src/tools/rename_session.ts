@@ -3,6 +3,7 @@ import { z } from "zod";
 import { toResult, toError } from "../telegram.js";
 import { listSessions, renameSession } from "../session-manager.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Rename the current session. The new name must not be taken " +
@@ -15,13 +16,7 @@ export function register(server: McpServer) {
     {
       description: DESCRIPTION,
       inputSchema: {
-        identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+        identity: IDENTITY_SCHEMA,
         new_name: z
           .string()
           .describe("New session name. Must be alphanumeric (letters, digits, spaces only)."),

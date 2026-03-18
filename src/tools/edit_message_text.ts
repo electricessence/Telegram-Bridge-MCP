@@ -5,6 +5,7 @@ import { getApi, toResult, toError, resolveChat, validateText } from "../telegra
 import { resolveParseMode } from "../markdown.js";
 import { recordOutgoingEdit } from "../message-store.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Legacy — use edit_message instead, which handles both text and keyboard " +
@@ -40,13 +41,7 @@ export function register(server: McpServer) {
         })
         .optional()
         .describe("New inline keyboard. Pass { inline_keyboard: [] } to remove buttons."),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ message_id, text, parse_mode, reply_markup, identity}) => {

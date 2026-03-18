@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 import { BUILT_IN_COMMANDS } from "../built-in-commands.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const RE_BOT_COMMAND = /^[a-z0-9_]+$/;
 
@@ -48,13 +49,7 @@ export function register(server: McpServer) {
         .describe(
           '"chat" scopes commands to the active chat only (recommended). "default" sets them globally for all private chats.'
         ),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ commands, scope, identity}) => {

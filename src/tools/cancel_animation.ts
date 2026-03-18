@@ -3,6 +3,7 @@ import { z } from "zod";
 import { toResult, toError } from "../telegram.js";
 import { cancelAnimation } from "../animation-state.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Stop the active animation. Without text: deletes the placeholder. " +
@@ -24,13 +25,7 @@ export function register(server: McpServer) {
           .enum(["Markdown", "HTML", "MarkdownV2"])
           .default("Markdown")
           .describe("Parse mode for replacement text"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ text, parse_mode, identity}) => {

@@ -7,6 +7,7 @@ import { dequeueMatch, waitForEnqueue, pendingCount, type TimelineEvent } from "
 import { getSessionQueue, peekSessionCategories } from "../session-queue.js";
 import { getCallerSid } from "../session-context.js";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
   "Sends a question to a chat and waits until the user replies. " +
@@ -44,13 +45,7 @@ export function register(server: McpServer) {
         .boolean()
         .optional()
         .describe("Set true to skip the pending-updates check and block immediately"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({ question, timeout_seconds, reply_to_message_id, ignore_pending, identity}, { signal }) => {

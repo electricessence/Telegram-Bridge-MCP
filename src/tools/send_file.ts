@@ -8,6 +8,7 @@ import { resolveParseMode } from "../markdown.js";
 import { showTyping } from "../typing-state.js";
 import { extname } from "path";
 import { requireAuth } from "../session-gate.js";
+import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 // ---------------------------------------------------------------------------
 // Auto-detection
@@ -95,13 +96,7 @@ export function register(server: McpServer) {
           .int()
           .optional()
           .describe("Reply to this message ID"),
-              identity: z
-          .tuple([z.number().int(), z.number().int()])
-          .optional()
-          .describe(
-            "Identity tuple [sid, pin] from session_start. " +
-            "Always required — pass your [sid, pin] on every tool call.",
-          ),
+              identity: IDENTITY_SCHEMA,
 },
     },
     async ({
