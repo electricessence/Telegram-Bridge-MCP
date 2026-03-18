@@ -72,6 +72,7 @@
 
 ## Changed
 
+- Session name in multi-session outbound header now renders in monospace: `` 🤖 `Name` `` instead of plain `🤖 Name` — applies to `sendMessage`, `editMessageText`, and file captions
 - Refactored `animation-state` to per-SID state — all animation functions now take `sid` as first parameter; presets, defaults, and resume state stored in per-SID Maps; eliminates cross-session animation conflicts
 - Refactored outbound proxy interceptor to per-SID — `registerSendInterceptor(sid, fn)` and `clearSendInterceptor(sid?)` scope interceptors per session; lookups use `getCallerSid()` from AsyncLocalStorage
 - Simplified `session_start` DM announcement — removed governor/routing terminology from user-facing messages; DM now reads "🤖 {Name} has joined. You'll coordinate incoming messages." instead of mentioning routing mode details

@@ -470,7 +470,7 @@ describe("outbound-proxy", () => {
       );
 
       const [, sentText] = raw.sendMessage.mock.calls[0] as [number, string, unknown];
-      expect(sentText).toMatch(/🤖 `Scout\_2`\n/);
+      expect(sentText).toMatch(/🤖 `Scout\\_2`\n/);
     });
 
     it("prepends header to _rawText in multi-session mode", async () => {
