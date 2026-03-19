@@ -44,7 +44,85 @@ import { dumpTimeline, dumpTimelineSince, timelineSize, storeSize, setOnEvent } 
 // ---------------------------------------------------------------------------
 
 /** Maps from message_id → panel type so we can route callback_queries back to us. */
-const _activePanels = new Map<number, "session" | "voice" | "voice-sample">();
+const _activePanels = new Map<number, "session" | "voice" | "voice-sample" | "approval">();
+
+// ---------------------------------------------------------------------------
+// Operator approval gate — system-level confirmation for sensitive tool calls
+// ---------------------------------------------------------------------------
+
+/** Pending approval callbacks, indexed by the approval button message_id. */
+const _pendingApprovals = new Map<number, (approved: boolean) => void>();
+
+/**
+ * Send an inline keyboard to the operator asking for approval, and block
+ * until the operator responds (or the timeout expires).
+ *
+ * @param prompt  Markdown text describing what is being approved.
+ * @param timeoutMs  How long to wait before auto-denying (default: 60 s).
+ * @returns "approved" | "denied" | "timed_out"
+ */
+export async function requestOperatorApproval(
+  prompt: string,
+  timeoutMs = 60_000,
+): Promise<"approved" | "denied" | "timed_out"> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return "denied";
+  const api = getApi();
+
+  let msg: { message_id: number };
+  try {
+    msg = await api.sendMessage(chatId, prompt, {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [[
+          { text: "✅ Approve", callback_data: "approval:approve" },
+          { text: "❌ Deny",    callback_data: "approval:deny"    },
+        ]],
+      },
+    });
+  } catch {
+    return "denied";
+  }
+
+  markInternalMessage(msg.message_id);
+  _activePanels.set(msg.message_id, "approval");
+
+  return new Promise<"approved" | "denied" | "timed_out">((resolve) => {
+    const timer = setTimeout(() => {
+      _pendingApprovals.delete(msg.message_id);
+      _activePanels.delete(msg.message_id);
+      void api.editMessageText(chatId, msg.message_id, `${prompt}\n\n_⏱ Timed out_`, {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: [] },
+      }).catch(() => {/* non-fatal */});
+      resolve("timed_out");
+    }, timeoutMs);
+
+    _pendingApprovals.set(msg.message_id, (approved) => {
+      clearTimeout(timer);
+      _activePanels.delete(msg.message_id);
+      const suffix = approved ? "\n\n▸ ✅ *Approved*" : "\n\n▸ ❌ *Denied*";
+      void api.editMessageText(chatId, msg.message_id, `${prompt}${suffix}`, {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: [] },
+      }).catch(() => {/* non-fatal */});
+      resolve(approved ? "approved" : "denied");
+    });
+  });
+}
+
+async function handleApprovalCallback(
+  callbackQueryId: string,
+  panelMsgId: number,
+  data: string,
+): Promise<void> {
+  try { await getApi().answerCallbackQuery(callbackQueryId); } catch { /* ignore */ }
+  const resolve = _pendingApprovals.get(panelMsgId);
+  if (resolve) {
+    _pendingApprovals.delete(panelMsgId);
+    resolve(data === "approval:approve");
+  }
+}
 
 /** Set to true after sending the startup prefs prompt so we only ask once per process. */
 let _sessionPrefsAsked = false;
@@ -173,7 +251,11 @@ export function isInternalTimelineEvent(evt: Omit<TimelineEvent, "_update">): bo
     return _builtInCommandNames.has(evt.content.text ?? "");
   }
   if (evt.event === "callback" && typeof evt.content.data === "string") {
-    return evt.content.data.startsWith("session:") || evt.content.data.startsWith("voice:");
+    return (
+      evt.content.data.startsWith("session:") ||
+      evt.content.data.startsWith("voice:") ||
+      evt.content.data.startsWith("approval:")
+    );
   }
   return false;
 }
@@ -232,6 +314,12 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
         );
       } else if (panelType === "voice-sample") {
         await handleVoiceSampleCallback(
+          update.callback_query.id,
+          msgId,
+          update.callback_query.data ?? "",
+        );
+      } else if (panelType === "approval") {
+        await handleApprovalCallback(
           update.callback_query.id,
           msgId,
           update.callback_query.data ?? "",

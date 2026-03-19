@@ -4,10 +4,12 @@ import { toResult, toError } from "../telegram.js";
 import { listSessions, renameSession } from "../session-manager.js";
 import { requireAuth } from "../session-gate.js";
 import { IDENTITY_SCHEMA } from "./identity-schema.js";
+import { requestOperatorApproval } from "../built-in-commands.js";
 
 const DESCRIPTION =
   "Rename the current session. The new name must not be taken " +
   "by another active session (checked case-insensitively). " +
+  "Requires operator approval via Telegram button before taking effect. " +
   "Returns { sid, old_name, new_name }. Requires session credentials.";
 
 export function register(server: McpServer) {
@@ -22,7 +24,7 @@ export function register(server: McpServer) {
           .describe("New session name. Must be alphanumeric (letters, digits, spaces only)."),
       },
     },
-    ({ identity, new_name }) => {
+    async ({ identity, new_name }) => {
       const _sid = requireAuth(identity);
       if (typeof _sid !== "number") return toError(_sid);
       const sid = _sid;
@@ -45,7 +47,9 @@ export function register(server: McpServer) {
       }
 
       // Collision guard: reject if another active session already has this name
-      const collision = listSessions().find(
+      const sessions = listSessions();
+      const current = sessions.find(s => s.sid === sid);
+      const collision = sessions.find(
         s => s.sid !== sid && s.name.toLowerCase() === trimmed.toLowerCase(),
       );
       if (collision) {
@@ -54,6 +58,24 @@ export function register(server: McpServer) {
           message:
             `A session named "${collision.name}" already exists (SID ${collision.sid}). ` +
             `Choose a different name.`,
+        });
+      }
+
+      const currentName = current?.name ?? `SID ${sid}`;
+      const decision = await requestOperatorApproval(
+        `🔒 *Session Rename Request*\n\nSession *${currentName}* (SID ${sid}) wants to rename itself to *${trimmed}*.\n\nApprove?`,
+      );
+
+      if (decision === "denied") {
+        return toError({
+          code: "APPROVAL_DENIED",
+          message: "The operator denied the rename request.",
+        });
+      }
+      if (decision === "timed_out") {
+        return toError({
+          code: "APPROVAL_TIMEOUT",
+          message: "The rename request timed out waiting for operator approval.",
         });
       }
 

@@ -62,6 +62,7 @@
 
 ## Added
 
+- `rename_session` now requires operator approval via Telegram inline keyboard before taking effect — the tool call blocks until the operator presses ✅ Approve or ❌ Deny; returns `APPROVAL_DENIED` or `APPROVAL_TIMEOUT` if the operator rejects or does not respond within 60 s; all sessions including the governor require approval; added `requestOperatorApproval(prompt, timeoutMs)` to `built-in-commands.ts` using the `_activePanels` / `handleIfBuiltIn` intercept pattern
 - Session join broadcast announcement — on approval, the approval prompt is deleted and a visible `Session N — 🟢 Online` message is sent through the outbound proxy (which auto-prepends the session's name tag); the message is tracked with `trackMessageOwner` so operator/session replies route to the new session; `announcement_message_id` is included in the `session_joined` and `session_orientation` service event details so listeners can identify the message
 
 - Added `get_chat_history` tool with backward paging support (`before_id`) and configurable window size (`count`, default 20, max 50); returns chronological timeline events plus `has_more` so sessions can read recent history and page older events safely using timeline position (not numeric ID order)

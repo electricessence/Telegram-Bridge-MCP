@@ -5,12 +5,17 @@ const mocks = vi.hoisted(() => ({
   listSessions: vi.fn().mockReturnValue([]),
   renameSession: vi.fn(),
   validateSession: vi.fn().mockReturnValue(true),
+  requestOperatorApproval: vi.fn().mockResolvedValue("approved"),
 }));
 
 vi.mock("../session-manager.js", () => ({
   listSessions: mocks.listSessions,
   renameSession: mocks.renameSession,
   validateSession: mocks.validateSession,
+}));
+
+vi.mock("../built-in-commands.js", () => ({
+  requestOperatorApproval: mocks.requestOperatorApproval,
 }));
 
 import { register } from "./rename_session.js";
@@ -23,6 +28,7 @@ describe("rename_session tool", () => {
     mocks.listSessions.mockReturnValue([]);
     mocks.validateSession.mockReturnValue(true);
     mocks.renameSession.mockReturnValue({ old_name: "Primary", new_name: "Scout" });
+    mocks.requestOperatorApproval.mockResolvedValue("approved");
     const server = createMockServer();
     register(server);
     call = server.getHandler("rename_session");
@@ -175,5 +181,69 @@ describe("rename_session tool", () => {
 
     expect(isError(result)).toBe(true);
     expect(JSON.stringify(result)).toContain("SESSION_NOT_FOUND");
+  });
+
+  // =========================================================================
+  // Operator approval gate
+  // =========================================================================
+
+  it("requests operator approval before renaming", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Primary" }]);
+    mocks.renameSession.mockReturnValue({ old_name: "Primary", new_name: "Scout" });
+
+    await call({ identity: [1, 111111], new_name: "Scout" });
+
+    expect(mocks.requestOperatorApproval).toHaveBeenCalledOnce();
+  });
+
+  it("returns APPROVAL_DENIED when operator denies", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Primary" }]);
+    mocks.requestOperatorApproval.mockResolvedValue("denied");
+
+    const result = await call({ identity: [1, 111111], new_name: "Scout" });
+
+    expect(isError(result)).toBe(true);
+    expect(JSON.stringify(result)).toContain("APPROVAL_DENIED");
+    expect(mocks.renameSession).not.toHaveBeenCalled();
+  });
+
+  it("returns APPROVAL_TIMEOUT when operator does not respond", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Primary" }]);
+    mocks.requestOperatorApproval.mockResolvedValue("timed_out");
+
+    const result = await call({ identity: [1, 111111], new_name: "Scout" });
+
+    expect(isError(result)).toBe(true);
+    expect(JSON.stringify(result)).toContain("APPROVAL_TIMEOUT");
+    expect(mocks.renameSession).not.toHaveBeenCalled();
+  });
+
+  it("does not request approval for invalid names (approval not reached)", async () => {
+    const result = await call({ identity: [1, 111111], new_name: "" });
+
+    expect(isError(result)).toBe(true);
+    expect(mocks.requestOperatorApproval).not.toHaveBeenCalled();
+  });
+
+  it("does not request approval when auth fails", async () => {
+    mocks.validateSession.mockReturnValue(false);
+
+    const result = await call({ identity: [1, 999999], new_name: "Scout" });
+
+    expect(isError(result)).toBe(true);
+    expect(mocks.requestOperatorApproval).not.toHaveBeenCalled();
+  });
+
+  it("does not request approval when name collides", async () => {
+    mocks.listSessions.mockReturnValue([
+      { sid: 1, name: "Primary" },
+      { sid: 2, name: "Scout" },
+    ]);
+
+    const result = await call({ identity: [1, 111111], new_name: "Scout" });
+
+    expect(isError(result)).toBe(true);
+    expect(JSON.stringify(result)).toContain("NAME_CONFLICT");
+    expect(mocks.requestOperatorApproval).not.toHaveBeenCalled();
   });
 });
