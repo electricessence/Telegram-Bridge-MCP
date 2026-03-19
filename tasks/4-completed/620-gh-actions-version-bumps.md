@@ -35,3 +35,11 @@ Close 5 stale dependabot PRs and apply all GitHub Actions version bumps in a sin
 
 - `docker/setup-buildx-action` and `docker/build-push-action` are NOT in the dependabot batch — leave them as-is
 - `pnpm/action-setup` is also not in the batch — leave as-is
+
+## Completion
+
+- Branch `chore/actions-version-bumps` created from master, all 6 action SHA/version comments updated
+- PR #45 created and merged (squash) as commit `3c88a15`
+- Dependabot PRs #8, #9, #10, #11, #12 closed with reference comment to #45
+- **CI** on master: ✅ passed
+- **Publish Docker image** on master: ✅ passed

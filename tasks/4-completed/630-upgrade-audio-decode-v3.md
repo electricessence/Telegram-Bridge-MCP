@@ -48,5 +48,15 @@ Change `"audio-decode": "^2.2.3"` to `"audio-decode": "^3.0.0"` and run `pnpm in
 4. Update test mocks in `transcribe.test.ts` and `tts.test.ts`
 5. Build + full test suite
 6. Commit, create PR, merge
+
+## Completion
+
+- Branch: `chore/audio-decode-v3`
+- Commit: `0ecf813` — `chore(deps): upgrade audio-decode 2.x -> 3.0.0; adapt to channelData[] API`
+- PR: #47 — merged (squash) to master
+- Dependabot PR #24: auto-closed via "Closes #24" in PR body
+- CI on master: ✅ (43s)
+- Docker publish on master: ✅ (4m21s)
+- Tests: 1488/1488 passing
 7. Close PR #24 with a comment linking to the consolidated commit
 8. Monitor CI
