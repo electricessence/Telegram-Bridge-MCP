@@ -5,6 +5,7 @@ import { markdownToV2 } from "../markdown.js";
 import { showTyping, cancelTyping } from "../typing-state.js";
 import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
 import { getTopic } from "../topic-state.js";
+import { getSessionVoice } from "../voice-state.js";
 import { getDefaultVoice } from "../config.js";
 import { requireAuth } from "../session-gate.js";
 import { IDENTITY_SCHEMA } from "./identity-schema.js";
@@ -91,9 +92,9 @@ export function register(server: McpServer) {
         } else if (caption) {
           resolvedCaption = caption;
         }
-        // Voice resolution: explicit param > config default > env/provider
+        // Voice resolution: explicit param > session override > config default > env/provider
         const resolvedVoice =
-          voice ?? getDefaultVoice() ?? undefined;
+          voice ?? getSessionVoice() ?? getDefaultVoice() ?? undefined;
         const typingSeconds = Math.min(120, Math.max(5, Math.ceil(plainText.length / 20)));
         await showTyping(typingSeconds, "record_voice");
         const message_ids: number[] = [];

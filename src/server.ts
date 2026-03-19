@@ -35,6 +35,7 @@ import { register as registerDownloadFile } from "./tools/download_file.js";
 import { register as registerTranscribeVoice } from "./tools/transcribe_voice.js";
 import { register as registerSetCommands } from "./tools/set_commands.js";
 import { register as registerSetTopic } from "./tools/set_topic.js";
+import { register as registerSetVoice } from "./tools/set_voice.js";
 import { register as registerGetMe } from "./tools/get_me.js";
 import { register as registerGetChat } from "./tools/get_chat.js";
 import { register as registerGetAgentGuide } from "./tools/get_agent_guide.js";
@@ -108,6 +109,7 @@ export function createServer(): McpServer {
   // ── High-level agent tools (use these 99% of the time) ─────────────────
   registerGetAgentGuide(server);
   registerSetTopic(server);
+  registerSetVoice(server);
   registerNotify(server);
   registerAsk(server);
   registerChoose(server);  registerSendChoice(server);  registerSendNewChecklist(server);  registerSendNewProgress(server);

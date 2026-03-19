@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   stripForTts: vi.fn((t: string) => t),
   synthesizeToOgg: vi.fn(),
   getTopic: vi.fn((): string | null => null),
+  getSessionVoice: vi.fn((): string | null => null),
   registerTool: vi.fn(),
 }));
 
@@ -45,6 +46,10 @@ vi.mock("../tts.js", () => ({
 
 vi.mock("../topic-state.js", () => ({
   getTopic: () => mocks.getTopic(),
+}));
+
+vi.mock("../voice-state.js", () => ({
+  getSessionVoice: () => mocks.getSessionVoice(),
 }));
 
 vi.mock("../session-manager.js", () => ({
@@ -85,6 +90,7 @@ describe("send_text_as_voice", () => {
     mocks.synthesizeToOgg.mockResolvedValue(Buffer.from("ogg"));
     mocks.sendVoiceDirect.mockResolvedValue({ message_id: 42 });
     mocks.getTopic.mockReturnValue(null);
+    mocks.getSessionVoice.mockReturnValue(null);
     setupHandler();
   });
 
@@ -175,6 +181,27 @@ describe("send_text_as_voice", () => {
     mocks.synthesizeToOgg.mockRejectedValue(new Error("network"));
     const result = await handler({ text: "hi", identity: [1, 123456] }) as { isError: boolean };
     expect(result.isError).toBe(true);
+  });
+
+  describe("voice resolution", () => {
+    it("prefers explicit voice param over session voice", async () => {
+      mocks.getSessionVoice.mockReturnValue("nova");
+      await handler({ text: "Hello", voice: "alloy", identity: [1, 123456] });
+      expect(mocks.synthesizeToOgg).toHaveBeenCalledWith("Hello", "alloy");
+    });
+
+    it("uses session voice when no explicit param", async () => {
+      mocks.getSessionVoice.mockReturnValue("echo");
+      await handler({ text: "Hello", identity: [1, 123456] });
+      expect(mocks.synthesizeToOgg).toHaveBeenCalledWith("Hello", "echo");
+    });
+
+    it("falls back to undefined when no explicit param and no session voice", async () => {
+      mocks.getSessionVoice.mockReturnValue(null);
+      await handler({ text: "Hello", identity: [1, 123456] });
+      // getDefaultVoice returns undefined in test env; synthesizeToOgg receives undefined
+      expect(mocks.synthesizeToOgg).toHaveBeenCalledWith("Hello", undefined);
+    });
   });
 
   describe("topic formatting", () => {
