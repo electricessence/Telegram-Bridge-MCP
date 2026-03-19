@@ -62,7 +62,13 @@ for (const candidate of candidates) {
   try {
     await api.setMessageReaction(chatId, message_id, [{ type: "emoji", emoji: candidate }], { is_big });
     recordBotReaction(message_id, candidate);
-    return toResult({ ok: true, message_id, emoji: candidate, attempted: candidates.length > 1 });
+    const result: Record<string, unknown> = { ok: true, message_id, emoji: candidate };
+    if (candidates.length > 1 && candidate !== candidates[0]) {
+      result.requested = candidates[0];
+      result.fallback_used = true;
+      result.reason = "The preferred emoji requires Telegram Premium. Used the closest free alternative.";
+    }
+    return toResult(result);
   } catch (err) {
     if (isReactionInvalid(err) && candidates.indexOf(candidate) < candidates.length - 1) {
       continue; // Try next fallback
@@ -71,6 +77,38 @@ for (const candidate of candidates) {
   }
 }
 ```
+
+### Return Payload
+
+**Normal (no fallback needed):**
+```json
+{ "ok": true, "message_id": 1234, "emoji": "✅" }
+```
+
+**Fallback used:**
+```json
+{
+  "ok": true,
+  "message_id": 1234,
+  "emoji": "👍",
+  "requested": "✅",
+  "fallback_used": true,
+  "reason": "The preferred emoji requires Telegram Premium. Used the closest free alternative."
+}
+```
+
+**Direct emoji (no alias), premium fails:**
+→ Error propagates normally. No silent substitution — agent chose a specific emoji.
+
+### Fallback Semantics
+
+Aliases with fallbacks are chosen for semantic proximity (not arbitrary):
+| Alias | Preferred | Fallback | Semantic |
+|-------|-----------|----------|----------|
+| done/complete/finished | ✅ | 👍 | Positive completion |
+| working/processing/busy | ⏳ | 🤔 | "Working on it" |
+| error/failed/stop/blocked | ⛔ | 👎 | Negative signal |
+| rocket/launch | 🚀 | 🔥 | Excitement/momentum |
 
 ### Premium Status Caching
 
