@@ -7,6 +7,7 @@ import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-sto
 import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getAvailableColors, COLOR_PALETTE } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverServiceMessage } from "../session-queue.js";
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
+import { runInSessionContext } from "../session-context.js";
 
 const APPROVAL_TIMEOUT_MS = 60_000;
 const APPROVAL_NO = "approve_no";
@@ -166,7 +167,9 @@ export function register(server: McpServer) {
       // Approval gate: second+ sessions require operator approval
       let chosenColor: string | undefined = color;
       if (!isFirstSession) {
-        const decision = await requestApproval(chatId, effectiveName, reconnect, color);
+        const decision = await runInSessionContext(0, () =>
+          requestApproval(chatId, effectiveName, reconnect, color),
+        );
         if (!decision.approved) {
           return toError({
             code: "SESSION_DENIED",

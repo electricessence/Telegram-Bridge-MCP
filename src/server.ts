@@ -8,6 +8,7 @@ import { getActiveSession } from "./session-manager.js";
 
 import { register as registerDequeueUpdate } from "./tools/dequeue_update.js";
 import { register as registerGetMessage } from "./tools/get_message.js";
+import { register as registerGetChatHistory } from "./tools/get_chat_history.js";
 import { register as registerSendText } from "./tools/send_text.js";
 import { register as registerSendMessage } from "./tools/send_message.js";
 import { register as registerSendChoice } from "./tools/send_choice.js";
@@ -115,6 +116,7 @@ export function createServer(): McpServer {
   // ── Polling ─────────────────────────────────────────────────────────────
   registerDequeueUpdate(server);
   registerGetMessage(server);
+  registerGetChatHistory(server);
 
   // ── Messaging ───────────────────────────────────────────────────────────
   registerSendMessage(server);

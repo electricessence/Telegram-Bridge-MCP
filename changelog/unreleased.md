@@ -26,6 +26,7 @@
 
 ## Fixed
 
+- Stopped broadcasting `"sent"` outbound events to the governor — removed `broadcastOutbound()` call from `recordOutgoing()` in `message-store.ts`; the governor's queue now only receives ambiguous inbound messages, not every other session's outgoing chat events; `broadcastOutbound` stays exported for direct use
 - Fixed ALS session context spoofing in `server.ts` middleware — `args.identity[0]` now takes priority over `args.sid` when both are present; a caller with a valid identity tuple can no longer be overridden by a bare `sid` argument
 - Replaced `z.tuple([z.number().int(), z.number().int()])` identity schema with `z.array(z.number().int())` (no `.length(2)`) across all 37 tool files — Zod's tuple serialisation and `.length(N)` both produce `items` as an array that OpenAI's JSON-Schema validator rejects ("is not of type 'object', 'boolean'"); the unconstrained array form produces valid `{ items: { type: "integer" } }`; shared `IDENTITY_SCHEMA` constant in `src/tools/identity-schema.ts`; length enforced at runtime by `requireAuth()` — short arrays fail `validateSession` with `AUTH_FAILED`
 - Converted `topic-state`, `typing-state`, `temp-message`, and `temp-reaction` from module-level singletons to per-SID `Map` instances — eliminates cross-session state corruption when multiple sessions are active simultaneously
@@ -34,6 +35,7 @@
 
 ## Added
 
+- Added `get_chat_history` tool with backward paging support (`before_id`) and configurable window size (`count`, default 20, max 50); returns chronological timeline events plus `has_more` so sessions can read recent history and page older events safely using timeline position (not numeric ID order)
 - Added button symbol parity validation to `choose`, `confirm`, and `send_choice` — returns `BUTTON_SYMBOL_PARITY` error when some labels have emoji and others do not; pass `ignore_parity: true` to bypass; added `button-validation.ts` shared helper with `hasEmoji()` and `validateButtonSymbolParity()`
 - Added `voice_transcription_failed` service message — when voice transcription fails (timeout or API error) the server now injects a `service_message` with `event_type: "voice_transcription_failed"` into the target session queue; `details` carries `message_id`, `reason` (`service_timeout` or `service_error`), and human-readable error text; backwards compatible (patched voice event still contains `[transcription failed: ...]` text); added `deliverVoiceTranscriptionFailed()` to `session-queue.ts`
 - Added server-side Telegram rate limit tracking — `callApi()` now pre-checks a rate limit window before attempting each API call; on 429 `callApi` records `_rateLimitUntil` and retries as before; subsequent calls during the window fail immediately with a `RATE_LIMITED` `GrammyError` without hitting Telegram; exported `recordRateLimitHit()`, `getRateLimitRemaining()`, and `clearRateLimitForTest()` from `telegram.ts`

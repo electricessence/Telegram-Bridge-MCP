@@ -21,7 +21,7 @@ import type { Update } from "grammy/types";
 import { recordUpdate, recordBotMessage } from "./session-recording.js";
 import { getCallerSid } from "./session-context.js";
 import { TemporalQueue } from "./temporal-queue.js";
-import { routeToSession, trackMessageOwner, notifySessionWaiters, broadcastOutbound, sessionQueueCount } from "./session-queue.js";
+import { routeToSession, trackMessageOwner, notifySessionWaiters, sessionQueueCount } from "./session-queue.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -463,7 +463,6 @@ export function recordOutgoing(
   };
   pushEvent(evt);
   trackMessageOwner(messageId, activeSid);
-  if (activeSid > 0) broadcastOutbound(evt, activeSid);
 }
 
 /**
