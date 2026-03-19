@@ -6,6 +6,7 @@ import { revokeAllForSession } from "../dm-permissions.js";
 import { getGovernorSid, setGovernorSid } from "../routing-mode.js";
 import { requireAuth } from "../session-gate.js";
 import { replaceSessionCallbackHooks } from "../message-store.js";
+import { dlog } from "../debug-log.js";
 import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
@@ -31,11 +32,11 @@ export function register(server: McpServer) {
       const sessionInfo = getSession(sid);
       const sessionName = sessionInfo?.name || `Session ${sid}`;
 
-      // Drain orphaned queue items BEFORE removing the queue so we can reroute
-      const orphaned = drainQueue(sid);
-
       const closed = closeSession(sid);
       if (!closed) return toResult({ closed: false, sid });
+
+      // Drain orphaned queue items after close succeeds so we can reroute
+      const orphaned = drainQueue(sid);
 
       removeSessionQueue(sid);
       revokeAllForSession(sid);
@@ -119,7 +120,9 @@ export function register(server: McpServer) {
         const qid = evt.content.qid;
         if (qid) {
           void getApi().answerCallbackQuery(qid, { text: "Session closed" })
-            .catch(() => { /* non-fatal */ });
+            .catch((err: unknown) => {
+              dlog("session", `callback ack failed for qid=${qid}: ${String(err)}`);
+            });
         }
         // Remove inline keyboard from the message
         const chatId = resolveChat();
@@ -127,7 +130,9 @@ export function register(server: McpServer) {
         if (typeof chatId === "number" && target) {
           void getApi()
             .editMessageReplyMarkup(chatId, target, { reply_markup: { inline_keyboard: [] } })
-            .catch(() => { /* non-fatal */ });
+            .catch((err: unknown) => {
+              dlog("session", `callback hook cleanup failed for msg ${target}: ${String(err)}`);
+            });
         }
       });
 

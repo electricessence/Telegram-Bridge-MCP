@@ -484,4 +484,13 @@ describe("close_session tool", () => {
       expect.stringContaining("🤖 Scout has disconnected."),
     );
   });
+
+  it("does not drain queue when closeSession returns false", async () => {
+    mocks.closeSession.mockReturnValue(false);
+
+    const result = parseResult(await call({ identity: [1, 123456] }));
+
+    expect(result.closed).toBe(false);
+    expect(mocks.drainQueue).not.toHaveBeenCalled();
+  });
 });
