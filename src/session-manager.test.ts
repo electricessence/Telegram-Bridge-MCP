@@ -62,6 +62,16 @@ describe("createSession", () => {
     const b = createSession();
     expect(b.sessionsActive).toBe(2);
   });
+
+  it("never assigns the same PIN to two concurrent sessions", () => {
+    // Create many sessions and verify no two share a PIN
+    const pins = new Set<number>();
+    for (let i = 0; i < 20; i++) {
+      const s = createSession();
+      expect(pins.has(s.pin)).toBe(false);
+      pins.add(s.pin);
+    }
+  });
 });
 
 describe("color assignment", () => {

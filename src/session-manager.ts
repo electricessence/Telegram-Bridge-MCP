@@ -84,7 +84,19 @@ export function getAvailableColors(hint?: string): string[] {
 
 export function createSession(name = "", colorHint?: string): SessionCreateResult {
   const sid = _nextId++;
-  const pin = generatePin();
+  const usedPins = new Set([..._sessions.values()].map((s) => s.pin));
+  let pin: number;
+  const MAX_PIN_ATTEMPTS = 10;
+  let attempt = 0;
+  do {
+    pin = generatePin();
+    attempt++;
+  } while (usedPins.has(pin) && attempt < MAX_PIN_ATTEMPTS);
+  if (usedPins.has(pin)) {
+    throw new Error(
+      `[session-manager] Failed to generate a unique PIN after ${MAX_PIN_ATTEMPTS} attempts.`,
+    );
+  }
   const color = assignColor(colorHint);
   const session: Session = {
     sid,
