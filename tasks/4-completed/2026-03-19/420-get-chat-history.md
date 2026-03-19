@@ -54,7 +54,7 @@ Add `import { register as registerGetChatHistory } from "./tools/get_chat_histor
 ## Key decisions
 
 - **No DM filtering.** The timeline contains DMs between other sessions, service messages, etc. For now, return everything. The agent can decide what's relevant. If privacy is needed later, we can add filtering in a follow-up.
-- **Newest-first.** Most useful for "what just happened?" queries. Paging goes backwards via `before_id`.
+- **Oldest-first (chronological).** Events returned in timeline order. Paging goes backwards via `before_id`.
 - **No `after_id`.** Forward paging isn't needed — that's what `dequeue_update` is for.
 
 ## Acceptance Criteria

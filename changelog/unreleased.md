@@ -26,6 +26,7 @@
 
 ## Fixed
 
+- Fixed multi-session outbound name tag rendering for `parse_mode: "HTML"` in `outbound-proxy` — session headers now use `<code>Name</code>` (HTML-escaped) instead of literal backticks in `sendMessage` and `editMessageText`
 - Stopped broadcasting `"sent"` outbound events to the governor — removed `broadcastOutbound()` call from `recordOutgoing()` in `message-store.ts`; the governor's queue now only receives ambiguous inbound messages, not every other session's outgoing chat events; `broadcastOutbound` stays exported for direct use
 - Fixed ALS session context spoofing in `server.ts` middleware — `args.identity[0]` now takes priority over `args.sid` when both are present; a caller with a valid identity tuple can no longer be overridden by a bare `sid` argument
 - Replaced `z.tuple([z.number().int(), z.number().int()])` identity schema with `z.array(z.number().int())` (no `.length(2)`) across all 37 tool files — Zod's tuple serialisation and `.length(N)` both produce `items` as an array that OpenAI's JSON-Schema validator rejects ("is not of type 'object', 'boolean'"); the unconstrained array form produces valid `{ items: { type: "integer" } }`; shared `IDENTITY_SCHEMA` constant in `src/tools/identity-schema.ts`; length enforced at runtime by `requireAuth()` — short arrays fail `validateSession` with `AUTH_FAILED`
