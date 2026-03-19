@@ -304,6 +304,8 @@ DM capability requires explicit operator approval:
 3. On approval, the server records the permission. On denial, the request is rejected.
 4. Permissions are directional: A→B does not imply B→A. Each direction requires separate approval.
 
+> **Note:** DM permissions are stored in-memory only. When the MCP server restarts, all permissions are reset. Sessions must request DM access again after a restart.
+
 ### DM Types
 
 | Type | Description | Use Case |
