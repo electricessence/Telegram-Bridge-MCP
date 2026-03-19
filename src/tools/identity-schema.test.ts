@@ -12,7 +12,7 @@ import { IDENTITY_SCHEMA } from "./identity-schema.js";
  * Converts a Zod object schema to JSON Schema the same way the MCP SDK does.
  * Returns just the `properties.identity` sub-schema for focused assertions.
  */
-function identityJsonSchema(identityZod: typeof IDENTITY_SCHEMA) {
+function identityJsonSchema(identityZod: z.ZodType) {
   const full = z.toJSONSchema(z.object({ identity: identityZod }));
   const props = (full as Record<string, unknown>).properties as Record<string, unknown>;
   return props.identity as Record<string, unknown>;

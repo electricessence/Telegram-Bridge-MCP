@@ -27,7 +27,7 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "build": "tsc && node scripts/gen-build-info.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.eslint.json",
     "pair": "node dist/setup.js",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
