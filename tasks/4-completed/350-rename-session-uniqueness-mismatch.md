@@ -25,8 +25,21 @@ The `renameSession` function's docstring in `session-manager.ts` claims it valid
 
 ## Acceptance Criteria
 
-- [ ] Docstring matches implementation (either add the check or update the docs)
-- [ ] If implementing uniqueness: test that renaming to a taken name throws/returns error
-- [ ] If implementing uniqueness: test that case-insensitive matching works (e.g., "Alice" vs "alice")
-- [ ] Existing rename tests still pass
-- [ ] Changelog entry added
+- [x] Docstring matches implementation — updated to reflect that `renameSession` sets name unconditionally; uniqueness guard is in the tool layer
+- [x] Existing rename tests still pass (14/14)
+- [x] Changelog entry added
+
+## Completion
+
+**Date:** 2026-03-19
+**Worker:** Worker 1 (SID 2)
+
+### What was done
+
+- Applied **Option B**: updated `renameSession` docstring in `src/session-manager.ts` to accurately describe that the function sets the name unconditionally; the case-insensitive uniqueness collision guard already lives in `src/tools/rename_session.ts` (verified at lines 47–55). The `@throws` claim was removed.
+- Changelog entry added to `changelog/unreleased.md` under `Fixed`.
+
+### Verification
+
+- 14/14 `rename_session` tests pass
+- Build clean (`tsc` + gen-build-info)

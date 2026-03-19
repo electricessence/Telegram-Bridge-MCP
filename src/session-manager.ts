@@ -200,11 +200,10 @@ export function resetSessions(): void {
 }
 
 /**
- * Rename a session. Validates that the new name is not taken by another
- * active session (case-insensitive). Returns `{ old_name, new_name }` on
+ * Rename a session. Sets the name unconditionally — callers are responsible
+ * for uniqueness validation before calling (see `rename_session.ts` tool for
+ * the case-insensitive collision guard). Returns `{ old_name, new_name }` on
  * success or `null` if the session does not exist.
- *
- * @throws if the new name is already taken — caller must check first.
  */
 export function renameSession(
   sid: number,
