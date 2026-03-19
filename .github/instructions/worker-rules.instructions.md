@@ -38,6 +38,17 @@ Workers must **notify the governor** before entering an idle or sleep state. The
 
 ---
 
+## dequeue_update Loop — MANDATORY
+
+**Workers must always maintain an active `dequeue_update` loop.** This is how the governor communicates with you.
+
+- **During work:** Call `dequeue_update(timeout: 30)` between work chunks to check for governor DMs. Process any messages, then continue.
+- **When idle:** After completing a task and DMing the governor, call `dequeue_update(timeout: 300)` in a loop. Block forever waiting for the next assignment.
+- **During long operations:** Run builds/tests with `isBackground: true`, then dequeue while waiting. Stay responsive.
+- **Never go silent.** A worker without an active dequeue call looks like a hung process and will be investigated or terminated.
+
+---
+
 ## Workspace Safety
 
 - Do **not** run `git stash`, `git reset`, `git rebase`, or `git cherry-pick` without governor approval.
