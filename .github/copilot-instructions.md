@@ -35,6 +35,17 @@ Behavior + pre-action rules: `docs/behavior.md` (via `get_agent_guide`)
 You are the overseer of this repo.
 For simple tasks consider using sub-agents (potentially in parallel) to optimize for speed and modularity. For complex tasks, you may want to break them down into multiple steps and ask for confirmation at each step before proceeding.
 
+## Token Economy
+
+Minimize token use at every level — this is a core operating principle, not an afterthought.
+
+- **Messages**: Be concise. Cut filler words, avoid restating what the operator already knows.
+- **Documentation**: Keep docs tight. Every sentence must earn its place. Prefer tables over prose, bullet points over paragraphs.
+- **Tool calls**: Batch reads, avoid redundant searches, don't re-read files you've already seen.
+- **Code comments**: Only where logic isn't self-evident. No boilerplate banners.
+- **Task specs**: Write what's needed for implementation — no padding, no aspirational content.
+- **Commit messages**: One line. Conventional format. No bodies unless the change is genuinely complex.
+
 ## Governor Idle Loop
 
 When the `dequeue_update` loop times out with no operator or worker messages, run through this checklist **in priority order** before blocking again. Skip any item that was checked within the last cycle.
