@@ -179,7 +179,7 @@ describe("rate-limiter", () => {
       await p2;
 
       expect(timestamps).toHaveLength(2);
-      expect(timestamps[1]! - timestamps[0]!).toBeGreaterThanOrEqual(MIN_SEND_INTERVAL_MS);
+      expect(timestamps[1] - timestamps[0]).toBeGreaterThanOrEqual(MIN_SEND_INTERVAL_MS);
     });
   });
 });
