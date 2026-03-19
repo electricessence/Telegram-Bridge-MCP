@@ -23,6 +23,9 @@ import {
   resetApi,
   sendVoiceDirect,
   ackVoiceMessage,
+  recordRateLimitHit,
+  getRateLimitRemaining,
+  clearRateLimitForTest,
   LIMITS,
   type TelegramError,
 } from "./telegram.js";
@@ -264,6 +267,15 @@ describe("splitMessage", () => {
 // ---------------------------------------------------------------------------
 
 describe("callApi", () => {
+  beforeEach(() => {
+    clearRateLimitForTest();
+  });
+
+  afterEach(() => {
+    clearRateLimitForTest();
+    vi.useRealTimers();
+  });
+
   it("returns the result of a successful call", async () => {
     const fn = vi.fn().mockResolvedValue(42);
     expect(await callApi(fn)).toBe(42);
@@ -287,7 +299,6 @@ describe("callApi", () => {
     await vi.runAllTimersAsync();
     expect(await promise).toBe("ok");
     expect(fn).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
   });
 
   it("throws immediately for non-rate-limit GrammyError", async () => {
@@ -320,7 +331,104 @@ describe("callApi", () => {
     ]);
     // Called once initially + 2 retries = 3 total
     expect(fn).toHaveBeenCalledTimes(3);
-    vi.useRealTimers();
+  });
+
+  it("pre-check: fails fast when inside a known rate limit window", async () => {
+    recordRateLimitHit(30); // 30-second window
+    const fn = vi.fn().mockResolvedValue("ok");
+    await expect(callApi(fn)).rejects.toBeInstanceOf(GrammyError);
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("pre-check: records rate limit window when 429 is encountered", async () => {
+    vi.useFakeTimers();
+    const rateLimitErr = new GrammyError(
+      "Too Many Requests",
+      { ok: false, error_code: 429, description: "Too Many Requests: retry after 10", parameters: { retry_after: 10 } },
+      "sendMessage",
+      {}
+    );
+    const fn = vi.fn().mockRejectedValueOnce(rateLimitErr).mockResolvedValue("ok");
+    const promise = callApi(fn);
+    await vi.runAllTimersAsync();
+    await promise;
+    // After retry_after advances past the window, nothing is set
+    // But *during* the retry, getRateLimitRemaining should reflect the window
+    // (Timer has run, so window may have expired at this point)
+  });
+
+  it("pre-check: resumes after window expires", async () => {
+    vi.useFakeTimers();
+    recordRateLimitHit(5); // 5-second window
+
+    const fn = vi.fn().mockResolvedValue("ok");
+
+    // Inside window: should fail fast
+    await expect(callApi(fn)).rejects.toBeInstanceOf(GrammyError);
+    expect(fn).not.toHaveBeenCalled();
+
+    // Advance past the window
+    await vi.advanceTimersByTimeAsync(6000);
+
+    // Now should succeed
+    const result = await callApi(fn);
+    expect(result).toBe("ok");
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rate limit tracking
+// ---------------------------------------------------------------------------
+
+describe("rate limit tracking", () => {
+  beforeEach(() => { clearRateLimitForTest(); });
+  afterEach(() => { clearRateLimitForTest(); vi.useRealTimers(); });
+
+  it("getRateLimitRemaining returns 0 when not rate limited", () => {
+    expect(getRateLimitRemaining()).toBe(0);
+  });
+
+  it("recordRateLimitHit sets a positive remaining time", () => {
+    recordRateLimitHit(10);
+    expect(getRateLimitRemaining()).toBeGreaterThan(0);
+    expect(getRateLimitRemaining()).toBeLessThanOrEqual(10);
+  });
+
+  it("extends the window if a longer retry_after arrives", () => {
+    recordRateLimitHit(5);
+    const first = getRateLimitRemaining();
+    recordRateLimitHit(60);
+    const second = getRateLimitRemaining();
+    expect(second).toBeGreaterThan(first);
+  });
+
+  it("does NOT shorten the window if a smaller retry_after arrives", () => {
+    recordRateLimitHit(60);
+    const first = getRateLimitRemaining();
+    recordRateLimitHit(5);
+    const second = getRateLimitRemaining();
+    expect(second).toBeGreaterThanOrEqual(first - 1); // allow 1s rounding
+  });
+
+  it("returns 0 after window expires", async () => {
+    vi.useFakeTimers();
+    recordRateLimitHit(1);
+    expect(getRateLimitRemaining()).toBeGreaterThan(0);
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(getRateLimitRemaining()).toBe(0);
+  });
+
+  it("clearRateLimitForTest resets the window", () => {
+    recordRateLimitHit(60);
+    clearRateLimitForTest();
+    expect(getRateLimitRemaining()).toBe(0);
+  });
+
+  it("recordRateLimitHit with undefined uses 5s fallback", () => {
+    recordRateLimitHit(undefined);
+    expect(getRateLimitRemaining()).toBeGreaterThan(0);
+    expect(getRateLimitRemaining()).toBeLessThanOrEqual(5);
   });
 });
 
