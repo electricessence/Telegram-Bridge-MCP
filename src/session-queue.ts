@@ -247,6 +247,20 @@ export function hasAnySessionWaiter(): boolean {
 }
 
 /**
+ * Returns true if the specific session queue that holds this message has an
+ * active waiter (agent blocked in dequeue_update). Unlike `hasAnySessionWaiter`,
+ * this checks only the queue that actually contains the voice message — so a
+ * governor waiter on a different session does NOT suppress 😴 for a message
+ * routed to a worker with no active waiter.
+ */
+export function hasSessionWaiterForMessage(messageId: number): boolean {
+  for (const q of _queues.values()) {
+    if (q.hasItem(messageId) && q.hasPendingWaiters()) return true;
+  }
+  return false;
+}
+
+/**
  * Returns true if any session queue has already consumed the given message ID.
  * Used by the poller as a secondary guard against setting 😴 on an already-
  * dequeued message (e.g. agent consumed the message before transcription

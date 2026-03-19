@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   recordInbound: vi.fn((): boolean => true),
   patchVoiceText: vi.fn(),
   transcribeVoice: vi.fn((): Promise<string> => Promise.resolve("hello world")),
-  hasAnySessionWaiter: vi.fn((): boolean => false),
+  hasSessionWaiterForMessage: vi.fn((_id: number): boolean => false),
   isSessionMessageConsumed: vi.fn((_id: number): boolean => false),
   deliverVoiceTranscriptionFailed: vi.fn(),
 }));
@@ -44,7 +44,7 @@ vi.mock("./message-store.js", () => ({
 }));
 
 vi.mock("./session-queue.js", () => ({
-  hasAnySessionWaiter: () => mocks.hasAnySessionWaiter(),
+  hasSessionWaiterForMessage: (id: number) => mocks.hasSessionWaiterForMessage(id),
   isSessionMessageConsumed: (id: number) => mocks.isSessionMessageConsumed(id),
   deliverVoiceTranscriptionFailed: mocks.deliverVoiceTranscriptionFailed,
 }));
@@ -271,11 +271,11 @@ describe("poller", () => {
     // Session queue waiter awareness (multi-session race condition prevention)
     // -------------------------------------------------------------------------
 
-    it("skips 😴 when a session queue agent is waiting (hasAnySessionWaiter=true)", async () => {
+    it("skips 😴 when the session holding this message has an active waiter", async () => {
       // In multi-session mode, hasPendingWaiters() (global) returns false but
-      // the agent is blocked on a session queue. Without the fix the poller
-      // would set 😴 anyway, then the agent's 🫡 races it on the Telegram API.
-      mocks.hasAnySessionWaiter.mockReturnValueOnce(true);
+      // the agent is blocked on the session queue that owns this message.
+      // hasSessionWaiterForMessage returns true → 😴 must be suppressed.
+      mocks.hasSessionWaiterForMessage.mockReturnValueOnce(true);
       // Reset transcription — previous tests may have left mockRejectedValue active
       mocks.transcribeVoice.mockResolvedValue("hello world");
       const u = voiceUpdate(20);
@@ -285,6 +285,21 @@ describe("poller", () => {
       // ✍ should have been set, but 😴 must NOT appear
       expect(reactionCalls.some(c => c[2] === "✍")).toBe(true);
       expect(reactionCalls.some(c => c[2] === "😴")).toBe(false);
+    });
+
+    it("sets 😴 when governor has a waiter but voice message is in worker's session queue", async () => {
+      // Regression: old hasAnySessionWaiter() returned true whenever the
+      // governor's dequeue_update loop was active, suppressing 😴 even though
+      // the worker's session queue (which owns the message) had no waiter.
+      // New hasSessionWaiterForMessage() checks only the owning queue →
+      // returns false here → 😴 MUST be set.
+      mocks.hasSessionWaiterForMessage.mockReturnValueOnce(false); // owning queue: no waiter
+      mocks.transcribeVoice.mockResolvedValue("hello world");
+      const u = voiceUpdate(23);
+      await runOneCycle([u]);
+
+      const reactionCalls = mocks.trySetMessageReaction.mock.calls;
+      expect(reactionCalls.some(c => c[2] === "😴")).toBe(true);
     });
 
     it("skips 😴 when message already consumed by a session queue (isSessionMessageConsumed=true)", async () => {
@@ -304,7 +319,7 @@ describe("poller", () => {
 
     it("still sets 😴 when neither global nor session waiters are active", async () => {
       // No waiter, not consumed — normal queued case, 😴 should fire.
-      mocks.hasAnySessionWaiter.mockReturnValue(false);
+      mocks.hasSessionWaiterForMessage.mockReturnValue(false);
       mocks.isSessionMessageConsumed.mockReturnValue(false);
       // Reset transcription — previous tests may have left mockRejectedValue active
       mocks.transcribeVoice.mockResolvedValue("hello world");

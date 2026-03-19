@@ -42,6 +42,7 @@ const DEFAULT_MAX_SIZE = 5000;
 export class TemporalQueue<T> {
   private readonly _queue = new Queue<T>();
   private readonly _consumedIds = new Set<number>();
+  private readonly _pendingIds = new Set<number>();
   private _waiters: Array<() => void> = [];
   private readonly _maxSize: number;
   private readonly _isHeavyweight: (item: T) => boolean;
@@ -61,8 +62,16 @@ export class TemporalQueue<T> {
 
   /** Add an item to the end of the temporal queue. */
   enqueue(item: T): void {
-    if (this._queue.count >= this._maxSize) this._queue.dequeue(); // evict oldest
+    if (this._queue.count >= this._maxSize) {
+      const evicted = this._queue.dequeue();
+      if (evicted !== undefined) {
+        const evictedId = this._getId(evicted);
+        if (evictedId > 0) this._pendingIds.delete(evictedId);
+      }
+    }
     this._queue.enqueue(item);
+    const id = this._getId(item);
+    if (id > 0) this._pendingIds.add(id);
     this._notifyWaiters();
   }
 
@@ -229,6 +238,14 @@ export class TemporalQueue<T> {
 
   private _trackConsumed(item: T): void {
     const id = this._getId(item);
-    if (id > 0) this._consumedIds.add(id);
+    if (id > 0) {
+      this._consumedIds.add(id);
+      this._pendingIds.delete(id);
+    }
+  }
+
+  /** True if the queue contains a pending (not yet consumed) item with the given ID. */
+  hasItem(id: number): boolean {
+    return id > 0 && this._pendingIds.has(id);
   }
 }

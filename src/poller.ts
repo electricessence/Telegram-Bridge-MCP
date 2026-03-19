@@ -17,7 +17,7 @@ import {
 } from "./telegram.js";
 import { handleIfBuiltIn } from "./built-in-commands.js";
 import { recordInbound, hasPendingWaiters, patchVoiceText, isMessageConsumed } from "./message-store.js";
-import { hasAnySessionWaiter, isSessionMessageConsumed, deliverVoiceTranscriptionFailed } from "./session-queue.js";
+import { hasSessionWaiterForMessage, isSessionMessageConsumed, deliverVoiceTranscriptionFailed } from "./session-queue.js";
 import { transcribeVoice } from "./transcribe.js";
 
 const REACT_TRANSCRIBING = "\u270D" as ReactionEmoji;  // ✍
@@ -256,10 +256,13 @@ async function _transcribeAndRecord(u: Update): Promise<void> {
     }
 
     // Phase 2: patch transcribed text and notify waiters
-    // Capture waiter status before patching — session queue waiters are
-    // included so multi-session agents aren't missed (Bug: hasPendingWaiters
-    // only checks the global queue; session agents wait on per-session queues).
-    const waiterWaiting = hasPendingWaiters() || hasAnySessionWaiter();
+    // Capture waiter status before patching — if the specific session queue
+    // that holds this voice message already has an agent blocked in
+    // dequeue_update, it will be notified immediately and set 🫡 itself.
+    // Using hasSessionWaiterForMessage (not hasAnySessionWaiter) ensures a
+    // governor waiter on a *different* session does not suppress 😴 for a
+    // message routed to a worker with no active waiter.
+    const waiterWaiting = hasPendingWaiters() || hasSessionWaiterForMessage(messageId);
     patchVoiceText(messageId, text);
 
     // Only set 😴 if no waiter is blocking AND the message hasn't already

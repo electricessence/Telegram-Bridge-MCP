@@ -24,8 +24,16 @@ if (!waiterWaiting && !isMessageConsumed(messageId) && !isSessionMessageConsumed
 
 The check was designed for single-session mode where one waiter = immediate consumption. In multi-session, a waiter on session A doesn't mean session B's message will be consumed promptly.
 
-## Acceptance
+## Completion
 
-- Voice messages that aren't immediately dequeued show 😴 after transcription completes
-- Voice messages that ARE immediately dequeued skip 😴 and go straight to 🫡
-- Existing tests pass, new test covers the multi-session scenario
+**Status:** Done — 1483/1483 tests pass, build clean.
+
+**Root cause confirmed:** `hasAnySessionWaiter()` iterates all session queues; in multi-session the governor is always blocking in `dequeue_update`, so it always returned true, suppressing 😴 for every voice message.
+
+**Fix:**
+- `TemporalQueue` gains `private readonly _pendingIds = new Set<number>()` — maintained in `enqueue()` (with eviction handling) and `_trackConsumed()`; exposes `hasItem(id): boolean` for O(1) lookup.
+- `session-queue.ts` new export `hasSessionWaiterForMessage(messageId)` — iterates queues, returns true only when the queue *holding this message* (`q.hasItem(messageId)`) also has an active waiter (`q.hasPendingWaiters()`).
+- `poller.ts` import and call site updated: `hasAnySessionWaiter` → `hasSessionWaiterForMessage(messageId)`.
+- `poller.test.ts` mock renamed; existing "skips 😴" test title clarified; new regression test added: "sets 😴 when governor has a waiter but voice message is in worker's session queue".
+
+**Changelog:** Added to `changelog/unreleased.md` under Fixed.

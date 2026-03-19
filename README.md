@@ -419,6 +419,10 @@ docker buildx imagetools inspect \
 
 ---
 
+## Roadmap
+
+Planned and in-progress work lives in the [`tasks/`](tasks/) Kanban board — see [`tasks/0-backlog/`](tasks/0-backlog/) and [`tasks/1-draft/`](tasks/1-draft/) for upcoming ideas.
+
 ## License
 
 AGPL-3.0-only — see [LICENSE](LICENSE).

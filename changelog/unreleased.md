@@ -28,6 +28,7 @@
 
 ## Fixed
 
+- Fixed voice 😴 reaction suppressed for worker-session messages in multi-session — `hasAnySessionWaiter()` (checks all sessions) replaced with `hasSessionWaiterForMessage(messageId)` in `poller.ts`; new helper returns true only when the session queue that *holds this specific message* has an active waiter; governor's perpetual `dequeue_update` loop no longer causes 😴 to be skipped for every worker voice message; `TemporalQueue` gained `_pendingIds` tracking and `hasItem(id)` for O(1) ownership lookup
 - Fixed `setTempReaction` timeout losing session context — the `setTimeout` callback now passes the captured SID directly to `fireTempReactionRestore(sid?)`, preventing it from calling `getCallerSid()` inside the timer (which returns 0 with no ALS context); reaction restore now correctly targets the originating session
 - Fixed misleading `renameSession` docstring in `session-manager.ts` — corrected to reflect that the function sets the name unconditionally; the uniqueness guard lives in the `rename_session` tool layer (not in the session-manager function)
 - Added meaningful assertions to the "pre-check: records rate limit window when 429 is encountered" test in `telegram.test.ts` — now verifies `getRateLimitRemaining() > 0` immediately after 429 is caught and `getRateLimitRemaining() === 0` after the retry-after window elapses
