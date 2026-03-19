@@ -17,7 +17,7 @@ import {
 } from "./telegram.js";
 import { handleIfBuiltIn } from "./built-in-commands.js";
 import { recordInbound, hasPendingWaiters, patchVoiceText, isMessageConsumed } from "./message-store.js";
-import { hasAnySessionWaiter, isSessionMessageConsumed } from "./session-queue.js";
+import { hasAnySessionWaiter, isSessionMessageConsumed, deliverVoiceTranscriptionFailed } from "./session-queue.js";
 import { transcribeVoice } from "./transcribe.js";
 
 const REACT_TRANSCRIBING = "\u270D" as ReactionEmoji;  // ✍
@@ -274,6 +274,8 @@ async function _transcribeAndRecord(u: Update): Promise<void> {
     const errMsg = err instanceof Error ? err.message : String(err);
     process.stderr.write(`[poller] transcription error for msg ${messageId}: ${errMsg}\n`);
     patchVoiceText(messageId, `[transcription failed: ${errMsg}]`);
+    const reason = errMsg.includes("timed out") ? "service_timeout" : "service_error";
+    deliverVoiceTranscriptionFailed(messageId, reason, errMsg);
     if (!isMessageConsumed(messageId) && !isSessionMessageConsumed(messageId)) {
       await trySetMessageReaction(chatId, messageId, REACT_QUEUED).catch(() => {});
     }

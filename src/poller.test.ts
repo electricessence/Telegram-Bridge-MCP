@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   transcribeVoice: vi.fn((): Promise<string> => Promise.resolve("hello world")),
   hasAnySessionWaiter: vi.fn((): boolean => false),
   isSessionMessageConsumed: vi.fn((): boolean => false),
+  deliverVoiceTranscriptionFailed: vi.fn(),
 }));
 
 vi.mock("./telegram.js", async (importActual) => {
@@ -45,6 +46,7 @@ vi.mock("./message-store.js", () => ({
 vi.mock("./session-queue.js", () => ({
   hasAnySessionWaiter: () => mocks.hasAnySessionWaiter(),
   isSessionMessageConsumed: (id: number) => mocks.isSessionMessageConsumed(id),
+  deliverVoiceTranscriptionFailed: (...args: unknown[]) => mocks.deliverVoiceTranscriptionFailed(...args),
 }));
 
 vi.mock("./transcribe.js", () => ({
@@ -312,9 +314,46 @@ describe("poller", () => {
       const reactionCalls = mocks.trySetMessageReaction.mock.calls;
       expect(reactionCalls.some(c => c[2] === "😴")).toBe(true);
     });
+
+    // -------------------------------------------------------------------------
+    // voice_transcription_failed service message delivery
+    // -------------------------------------------------------------------------
+
+    it("delivers voice_transcription_failed service message on transcription error", async () => {
+      mocks.transcribeVoice.mockRejectedValue(new Error("whisper down"));
+      mocks.trySetMessageReaction.mockResolvedValue(undefined);
+      const u = voiceUpdate(30);
+      await runOneCycle([u]);
+
+      expect(mocks.deliverVoiceTranscriptionFailed).toHaveBeenCalledWith(
+        30,
+        "service_error",
+        "whisper down",
+      );
+    });
+
+    it("uses service_timeout reason when error message contains 'timed out'", async () => {
+      mocks.transcribeVoice.mockRejectedValue(new Error("transcription timed out (60s)"));
+      mocks.trySetMessageReaction.mockResolvedValue(undefined);
+      const u = voiceUpdate(31);
+      await runOneCycle([u]);
+
+      expect(mocks.deliverVoiceTranscriptionFailed).toHaveBeenCalledWith(
+        31,
+        "service_timeout",
+        "transcription timed out (60s)",
+      );
+    });
+
+    it("does NOT call deliverVoiceTranscriptionFailed on successful transcription", async () => {
+      mocks.transcribeVoice.mockResolvedValue("hello world");
+      const u = voiceUpdate(32);
+      await runOneCycle([u]);
+
+      expect(mocks.deliverVoiceTranscriptionFailed).not.toHaveBeenCalled();
+    });
   });
 
-  // -- Error handling -------------------------------------------------------
 
   describe("error handling", () => {
     it("does not crash when getUpdates throws", async () => {
