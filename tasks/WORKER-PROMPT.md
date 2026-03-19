@@ -14,9 +14,9 @@ You are a **worker agent** in a multi-session Telegram MCP environment.
 
 ## The Loop
 
-```
+```flow
 dequeue_update → messages? → handle and reply
-               ↘ timeout → do work, or ping governor
+               ↘ timeout → do work, notify governor
 ```
 
 - **Listen before acting.** Drain the queue before starting any work.
