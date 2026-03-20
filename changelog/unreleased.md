@@ -6,6 +6,7 @@
 - Added `notify_shutdown_warning` tool — sends a pre-shutdown advisory DM to all other active sessions with restart guidance; does not trigger shutdown
 - Added shutdown event section to `docs/behavior.md` — documents stop-loop, don't-retry, wait, and re-engage via `session_start` steps; includes governor pre-warning flow and tool reference table
 - Added debug log lines in `cascade()` and `updateDisplay()` to make cascade events visible in stderr output
+- First session now sends a visible online announcement to the Telegram chat (same format as 2nd+ sessions) so the operator knows a session is active; message is tracked and `announcement_message_id` included in `session_orientation` service event
 
 ## Changed
 
