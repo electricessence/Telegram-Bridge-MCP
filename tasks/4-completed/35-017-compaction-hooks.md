@@ -46,3 +46,16 @@ The VS Code extension API (`ChatContext`, `ChatParticipant`, language model inte
 | Server→agent wake | MCP protocol limitation | ❌ Not possible |
 
 **Future possibility:** A companion VS Code extension that monitors MCP server health and re-triggers the agent. Medium effort, low priority given existing mitigations work.
+
+## Addendum — VS Code 1.110–1.112 Release Review (2026-03-20)
+
+Reviewed release notes for VS Code 1.110 (Feb 2026), 1.111 (March 9), 1.112 (March 18) for compaction-relevant features:
+
+- **Hooks system** (1.110): `/create-hook` command and formal hooks infrastructure. 1.111 added **agent-scoped hooks** in `.agent.md` frontmatter (`chat.useCustomAgentHooks`). These are pre/post-processing hooks for agent/tool lifecycle — **NOT compaction events**. No `onCompaction` hook exists.
+- **Manual `/compact`** (1.110): Agents can trigger compaction manually with custom guidance (e.g. `/compact focus on schema decisions`). Auto-compaction still fires when context window fills.
+- **Session memory for plans** (1.110): Plans persist to session memory and survive compaction. Validates our prompt-level approach — VS Code is building persistence mechanisms that survive compaction.
+- **Agent Debug panel** (1.110–1.112): Real-time visibility into chat events, tool calls, customization loading. Export/import in 1.112. Useful for debugging but not programmatic compaction response.
+- **Autopilot** (1.111): `task_complete` tool for autonomous agent operation. Not compaction-related but relevant to autonomous agent patterns.
+- **MCP server sandboxing** (1.112): macOS/Linux only (not Windows). Restricts filesystem/network access.
+
+**Conclusion:** No compaction-specific hooks or events have been added. The hooks system solves a different problem (tool/agent lifecycle). Our prompt-level recovery in `copilot-instructions.md` remains the best and only viable approach.
