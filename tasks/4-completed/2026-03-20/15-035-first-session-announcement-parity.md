@@ -32,12 +32,13 @@ As a result, the first session announcement appears as a bare "Session 1 — �
 | `src/tools/session_start.ts` | Lines 206–221: compose header inline, add pin + setSessionAnnouncementMessage |
 | `src/tools/session_start.test.ts` | Update first-session announcement tests to assert name tag, pin, and tracking |
 
-## Source References
+## Completion
 
-- `src/outbound-proxy.ts:33` — `if (activeSessionCount() < 2) return { plain: "", formatted: "" };`
-- `src/tools/session_start.ts:203–221` — first-session announcement (no pin, no setSessionAnnouncementMessage)
-- `src/tools/session_start.ts:230–246` — 2nd+ session announcement (has pin + tracking)
-- `src/tools/close_session.ts:53–58` — unpin logic depends on `getSessionAnnouncementMessage`
+- Commit: `30f44c3` on `task/035-first-session-announcement`
+- Pushed and ready for merge
+- Changed `session_start.ts`: composed header inline (`${session.color} 🤖 ${effectiveName}\nSession ${sid} — 🟢 Online`), added `setSessionAnnouncementMessage` and `pinChatMessage` calls inside first-session branch
+- Updated `session_start.test.ts`: added `color: "🟦"` to 9 mock instances + default beforeEach mock; updated announcement text assertion to check name/color; renamed misleading "does not pin" test to clarify failure-path intent; added 2 new tests: "first session announcement is pinned" and "first session announcement tracked via setSessionAnnouncementMessage"
+- 1629/1629 tests pass (overseer verified)
 - `src/tools/session_start.test.ts:682–726` — existing first-session announcement tests
 
 ## Changelog
