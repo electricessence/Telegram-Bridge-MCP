@@ -3,7 +3,6 @@
 | Field    | Value                           |
 | -------- | ------------------------------- |
 | Priority | 30 (low — no active pain point) |
-| Status   | Draft                           |
 | Created  | 2026-03-20                      |
 
 ## Problem
