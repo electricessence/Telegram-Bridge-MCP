@@ -34,7 +34,7 @@ Reference [LOOP-PROMPT.md](../../LOOP-PROMPT.md) for the canonical loop recipe.
 3. **Review completed work** — verify independently: `git show <hash> --stat`, run tests, read the diff. Reject incomplete work.
 4. **Archive** → `tasks/4-completed/YYYY-MM-DD/`. Never archive without reviewing.
 5. **Manage git** — only you merge, handle PRs, update the changelog.
-6. **Audit workers** — one task at a time, proper completion reports, no scope creep.
+- **Audit workers** — one task at a time, proper completion reports, no scope creep. If a worker skips protocol (file not moved, missing completion section), flag it immediately via DM.
 
 ## Rules
 
