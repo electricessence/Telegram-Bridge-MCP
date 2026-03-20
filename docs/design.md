@@ -259,3 +259,7 @@ telegram-bridge-mcp/
 **`dequeue_update` is the sole update-consumption tool.** It replaces the former `get_update`, `get_updates`, `wait_for_message`, and `wait_for_callback_query` tools. The response lane (reactions, callbacks) drains before the message lane on each call. `pending` tells the agent how many more updates are queued (omitted when 0).
 
 **Structured errors over exceptions.** All Telegram API errors are classified into typed `TelegramErrorCode` values with actionable messages. The assistant can branch on `code` rather than parsing raw error strings.
+
+## Worktree Support
+
+Workers use git worktrees to isolate code changes from the main workspace. Each code-change task gets its own branch and worktree under `.git/.wt/`. The governor manages the merge and cleanup lifecycle. See `tasks/worktree-workflow.md` for the full process.
