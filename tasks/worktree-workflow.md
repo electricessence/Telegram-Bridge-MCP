@@ -110,14 +110,19 @@ Then archive the task file.
 
 ## When to Use Worktrees
 
-Not every task needs a worktree. The governor decides per-task:
+**Not every task needs a worktree.** Simple edits (README, docs, configs) should be done directly in the main workspace — no branch, no worktree. Worktrees are for code changes that could break the build or conflict with other work.
+
+The governor decides per-task and specifies it in the task spec:
 
 | Task type | Worktree? |
 | --- | --- |
-| Code changes (features, fixes) | Yes |
-| Documentation-only changes | Governor's discretion |
-| Config/task board changes | No |
-| Research / investigation | No |
+| Source code (features, fixes, refactors) | **Yes** |
+| Large multi-file documentation overhauls | Governor's discretion |
+| Single-file doc edits (README, changelog) | **No** — edit in place |
+| Config/task board changes | **No** |
+| Research / investigation | **No** |
+
+**If the task spec doesn't include a `## Worktree` section, work directly in the main workspace.**
 
 ## Rules
 
