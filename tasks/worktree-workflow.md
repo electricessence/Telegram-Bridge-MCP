@@ -91,10 +91,25 @@ git diff main..task/013-worktree-test-run --stat
 
 ### 3. Merge
 
+The governor picks the merge strategy per task:
+
+**Direct merge** — for low-risk changes (docs, configs, small fixes):
 ```bash
 # From the main workspace
 git merge task/013-worktree-test-run
 ```
+
+**PR-based merge** — for features and anything that changes runtime behavior:
+```bash
+# Worker pushes to origin; governor creates a PR
+# PR gets CI, Copilot review, and operator review before merging
+```
+
+Use PR-based merge when:
+- The change modifies source code (`src/`)
+- The feature is large or complex
+- You want CI validation before merging
+- The operator wants a review checkpoint
 
 Or create a PR if the change warrants review.
 
@@ -102,9 +117,10 @@ Or create a PR if the change warrants review.
 
 ```bash
 git worktree remove .git/.wt/10-013-worktree-test-run
-git branch -d task/013-worktree-test-run
 git push origin --delete task/013-worktree-test-run
 ```
+
+Local branch deletion (`git branch -d`) may be policy-blocked in automated sessions. This is fine — stale local branches are harmless refs. The operator can clean them up periodically with `git branch --merged | xargs git branch -d`.
 
 Then archive the task file.
 
