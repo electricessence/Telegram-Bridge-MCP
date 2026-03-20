@@ -273,6 +273,22 @@ describe("recordInbound — voice messages", () => {
     const evt = dequeue();
     expect(evt).toBeUndefined();
   });
+
+  it("captures reply_to on a voice reply", () => {
+    const update = voiceUpdate(12);
+    const message = update.message as unknown as Record<string, unknown>;
+    message.reply_to_message = {
+      message_id: 5,
+      date: Math.floor(Date.now() / 1000),
+      chat: { id: 100, type: "private" },
+    };
+    recordInbound(update);
+
+    // Voice without text is not dequeue-ready — inspect via getMessage
+    const evt = getMessage(12);
+    expect(evt!.content.type).toBe("voice");
+    expect(evt!.content.reply_to).toBe(5);
+  });
 });
 
 describe("patchVoiceText — two-phase voice recording", () => {

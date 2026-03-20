@@ -1,6 +1,6 @@
 # Task Board Hygiene
 
-**Frequency:** Every 15 min | **Scope:** Governor only
+**Frequency:** Every 15 min | **Scope:** Overseer only
 
 ## Procedure
 
@@ -9,9 +9,10 @@
    - Completed tasks still in `0-backlog` or `3-in-progress`.
    - Duplicates across folders.
    - Stale drafts that should be promoted or removed.
-3. Check `2-queued/` — if tasks exist, assign to an available worker immediately ("queued = ready to roll").
+3. Check `2-queued/` — workers pick up queued tasks autonomously via their own reminders. Only DM a worker directly for urgent re-prioritization.
 4. Check `3-in-progress/` — if tasks have been active for a while, verify the assigned worker is making progress.
-5. Fix trivial issues directly. Flag anything needing operator approval.
+5. **Enforce protocol** — if a worker completed a task but didn't move the file (left it in `3-in-progress/` or `2-queued/`), DM the worker immediately: "Protocol violation: move your task file." If repeated, escalate to operator.
+6. Fix trivial issues directly. Flag anything needing operator approval.
 
 ## Dynamic Follow-Up
 

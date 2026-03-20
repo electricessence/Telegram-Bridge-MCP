@@ -4,7 +4,7 @@ import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
 import type { TimelineEvent } from "../message-store.js";
 import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-store.js";
-import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getAvailableColors, COLOR_PALETTE } from "../session-manager.js";
+import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMessageOwner } from "../session-queue.js";
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { runInSessionContext } from "../session-context.js";
@@ -200,13 +200,36 @@ export function register(server: McpServer) {
           pending: 0,
         };
         if (discarded > 0) res.discarded = discarded;
-        if (session.sessionsActive > 1) {
+        if (isFirstSession) {
+          // Send visible announcement with name tag — same format as 2nd+ sessions.
+          // buildHeader() intentionally skips single-session mode; compose inline.
+          const _announcement = await Promise.resolve(
+            runInSessionContext(session.sid, () =>
+              getApi().sendMessage(chatId, `${session.color} 🤖 ${effectiveName}\nSession ${session.sid} — 🟢 Online`),
+            ),
+          ).catch(() => undefined);
+          const announcementMsgId = _announcement?.message_id;
+          if (announcementMsgId !== undefined) {
+            trackMessageOwner(announcementMsgId, session.sid);
+            setSessionAnnouncementMessage(session.sid, announcementMsgId);
+            getApi().pinChatMessage(chatId, announcementMsgId, { disable_notification: true }).catch(() => {});
+          }
+          deliverServiceMessage(
+            session.sid,
+            `You are SID ${session.sid}. You are the only active session.`,
+            "session_orientation",
+            { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
+          );
+        } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
           res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
           if (session.sessionsActive === 2) {
-            // Auto-activate governor: lowest-SID session (the first one) becomes governor
-            const lowestSid = Math.min(...allSessions.map(s => s.sid));
-            setGovernorSid(lowestSid);
+            // Reconnecting sessions take the governor seat (resuming a prior role).
+            // Fresh joiners use lowest-SID heuristic (original session is the anchor).
+            const governorSid = reconnect
+              ? session.sid
+              : Math.min(...allSessions.map(s => s.sid));
+            setGovernorSid(governorSid);
           }
 
           // Broadcast a visible announcement via the outbound proxy so the
@@ -221,6 +244,8 @@ export function register(server: McpServer) {
           const announcementMsgId = _announcement?.message_id;
           if (announcementMsgId !== undefined) {
             trackMessageOwner(announcementMsgId, session.sid);
+            setSessionAnnouncementMessage(session.sid, announcementMsgId);
+            getApi().pinChatMessage(chatId, announcementMsgId, { disable_notification: true }).catch(() => {});
           }
 
           // Notify existing sessions and the new session of the join event

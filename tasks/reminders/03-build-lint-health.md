@@ -1,6 +1,6 @@
 # Build & Lint Health
 
-**Frequency:** Every 20 min | **Scope:** Governor only
+**Frequency:** Every 20 min | **Scope:** Overseer only
 
 ## Procedure
 

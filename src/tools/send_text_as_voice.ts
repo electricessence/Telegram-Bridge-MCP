@@ -28,8 +28,9 @@ export function register(server: McpServer) {
       inputSchema: {
         text: z.string().describe("Text to synthesize and send as a voice note."),
         voice: z.string().min(1).optional().describe(
-          "Voice name to use for synthesis. Overrides the default voice. " +
-          "Available voices depend on the TTS provider."
+          "Voice name for this call only. Overrides the session default and global default for this message. " +
+          "To change your voice persistently across all calls, use `set_voice` instead — " +
+          "that sets a session-scoped default so you don't need to repeat it on every call."
         ),
         caption: z.string().optional().describe(
           "Optional caption text shown below the voice note. " +

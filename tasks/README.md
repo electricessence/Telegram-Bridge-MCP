@@ -112,5 +112,5 @@ A task without a completion report is incomplete and will be sent back.
 
 ## Role-Specific Instructions
 
-- **Workers:** See [WORKER-PROMPT.md](WORKER-PROMPT.md)
-- **Overseers:** See [OVERSEER-PROMPT.md](OVERSEER-PROMPT.md)
+- **Workers:** See [.github/agents/worker.agent.md](../.github/agents/worker.agent.md)
+- **Overseers:** See [.github/agents/overseer.agent.md](../.github/agents/overseer.agent.md)

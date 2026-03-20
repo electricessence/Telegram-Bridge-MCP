@@ -1,6 +1,6 @@
 # Multi-Session Restart Protocol
 
-> **Who this is for:** The Governor (Overseer) agent and any worker agents. This document describes the **procedure** for shutting down and restarting the multi-session environment safely.
+> **Who this is for:** The Overseer agent and any worker agents. This document describes the **procedure** for shutting down and restarting the multi-session environment safely.
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Role | Responsibility |
 |---|---|
-| **Governor** | Coordinates shutdown. Sends pre-warnings. Commits, stages. Writes tasks. Does NOT implement code. |
+| **Overseer** | Coordinates shutdown. Sends pre-warnings. Commits, stages. Writes tasks. Does NOT implement code. |
 | **Worker** | Implements tasks. Responds to pre-warning. Waits for restart. Re-engages after restart. |
 | **Operator** | Initiates restart, waits, and re-engages agents after the server comes back up. |
 
@@ -24,9 +24,9 @@ Each session (SID) is held in memory by the running server process. When that pr
 
 ## Two-Phase Shutdown Procedure
 
-### Phase 1 — Governor Pre-Warning (before `/shutdown`)
+### Phase 1 — Overseer Pre-Warning (before `/shutdown`)
 
-Before issuing the actual shutdown, the Governor notifies all active worker sessions directly:
+Before issuing the actual shutdown, the Overseer notifies all active worker sessions directly:
 
 1. Identify all active worker sessions (via `list_sessions` or known SIDs from session startup).
 2. Send each worker a DM via their session:
@@ -38,7 +38,7 @@ Before issuing the actual shutdown, the Governor notifies all active worker sess
 
 ### Phase 2 — Actual Shutdown
 
-4. Governor issues `/shutdown` (built-in command) or calls the `shutdown` MCP tool.
+4. Overseer issues `/shutdown` (built-in command) or calls the `shutdown` MCP tool.
 5. `elegantShutdown()` runs automatically:
    - Stops the Telegram poller (10 s cap).
    - Drains any remaining pending updates.
@@ -54,7 +54,7 @@ For an AI agent in VS Code Copilot, **"sleeping" means ending your agent turn**.
 
 The concrete steps:
 
-1. Send a final status message to the operator (or a DM to the governor) summarising where you stopped.
+1. Send a final status message to the operator (or a DM to the overseer) summarising where you stopped.
 2. Run a visible terminal command so the operator can see you have parked:
    ```powershell
    Write-Host "Session ended — awaiting operator restart and re-engagement."
@@ -68,7 +68,7 @@ The concrete steps:
 
 ## What Workers Should Do
 
-### On receiving the Governor's pre-warning (Phase 1)
+### On receiving the Overseer's pre-warning (Phase 1)
 
 1. Acknowledge via DM or 👍 reaction — one brief message is enough.
 2. Do not start new tasks or long-running tool calls.
@@ -85,9 +85,9 @@ If you are still in the `dequeue_update` loop when shutdown fires, you will rece
 3. Run the "going to sleep" terminal command.
 4. **End your agent turn.** The MCP connection will close when the server exits — this is expected.
 
-### What the Governor must do after issuing shutdown
+### What the Overseer must do after issuing shutdown
 
-The Governor is **also subject to this protocol.** After calling the `shutdown` MCP tool:
+The Overseer is **also subject to this protocol.** After calling the `shutdown` MCP tool:
 
 1. Send one final operator message confirming shutdown was issued.
 2. Run the "going to sleep" terminal command.
@@ -105,7 +105,7 @@ When the operator re-engages you (new message or re-engagement prompt):
 
 > **Do not hardcode or remember old SIDs.** Always obtain a fresh SID from `session_start` after a restart.
 >
-> **Governor restarts first.** The Governor must establish its new session before signalling workers to reconnect, so it is ready to coordinate again.
+> **Overseer restarts first.** The Overseer must establish its new session before signalling workers to reconnect, so it is ready to coordinate again.
 
 ---
 
@@ -131,9 +131,9 @@ If a worker calls `dequeue_update` and receives repeated timeouts (or connection
 
 When restarting the server:
 
-- [ ] Tell the Governor to issue Phase 1 pre-warnings to all workers.
+- [ ] Tell the Overseer to issue Phase 1 pre-warnings to all workers.
 - [ ] Wait for worker acknowledgments (or a reasonable timeout).
-- [ ] Tell the Governor to issue Phase 2 shutdown (`/shutdown` or `shutdown` tool).
+- [ ] Tell the Overseer to issue Phase 2 shutdown (`/shutdown` or `shutdown` tool).
 - [ ] Wait for the server to exit (watch for final operator notification).
 - [ ] Restart the server process (Docker, systemd, or manual).
 - [ ] Re-engage agents by sending a new message to each one.
@@ -145,4 +145,4 @@ When restarting the server:
 
 See **task 610** for planned improvements:
 - Update the `elegantShutdown()` service message to include explicit restart guidance for worker agents.
-- Add a `notify_shutdown` tool or built-in command that the Governor can use for Phase 1 pre-warnings without triggering full shutdown.
+- Add a `notify_shutdown` tool or built-in command that the Overseer can use for Phase 1 pre-warnings without triggering full shutdown.

@@ -19,6 +19,7 @@ import { handleIfBuiltIn } from "./built-in-commands.js";
 import { recordInbound, hasPendingWaiters, patchVoiceText, isMessageConsumed } from "./message-store.js";
 import { hasSessionWaiterForMessage, isSessionMessageConsumed, deliverVoiceTranscriptionFailed } from "./session-queue.js";
 import { transcribeVoice } from "./transcribe.js";
+import { dlog } from "./debug-log.js";
 
 const REACT_TRANSCRIBING = "\u270D" as ReactionEmoji;  // ✍
 const REACT_QUEUED = "\uD83D\uDE34" as ReactionEmoji;  // 😴
@@ -99,6 +100,7 @@ async function _pollLoop(): Promise<void> {
       });
 
       const allowed = filterAllowedUpdates(updates);
+      dlog("route", `poll cycle updates=${allowed.length}`);
 
       const voiceUpdates: Update[] = [];
       for (const u of allowed) {
@@ -110,6 +112,7 @@ async function _pollLoop(): Promise<void> {
             // Phase 1: record immediately so blocking waiters unblock at once.
             // text is undefined — waiters that require text will stay in their
             // loop until patchVoiceText fires after transcription (phase 2).
+            dlog("route", `voice phase1 id=${u.message.message_id}`, { reply_to: u.message.reply_to_message?.message_id });
             if (recordInbound(u)) voiceUpdates.push(u);
             continue;
           }
@@ -224,6 +227,7 @@ async function _transcribeAndRecord(u: Update): Promise<void> {
   const messageId = msg.message_id;
 
   try {
+    dlog("route", `voice phase2 start id=${messageId}`);
     // React ✍ (transcribing)
     const setScribe = await trySetMessageReaction(chatId, messageId, REACT_TRANSCRIBING);
     if (!setScribe) process.stderr.write(`[poller] failed to set ✍ on msg ${messageId}\n`);
@@ -262,6 +266,7 @@ async function _transcribeAndRecord(u: Update): Promise<void> {
     // Using hasSessionWaiterForMessage (not hasAnySessionWaiter) ensures a
     // governor waiter on a *different* session does not suppress 😴 for a
     // message routed to a worker with no active waiter.
+    dlog("route", `voice phase2 done id=${messageId}`, { len: text.length });
     const waiterWaiting = hasPendingWaiters() || hasSessionWaiterForMessage(messageId);
     patchVoiceText(messageId, text);
 
@@ -275,6 +280,7 @@ async function _transcribeAndRecord(u: Update): Promise<void> {
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    dlog("route", `voice phase2 failed id=${messageId}`, { err: errMsg });
     process.stderr.write(`[poller] transcription error for msg ${messageId}: ${errMsg}\n`);
     patchVoiceText(messageId, `[transcription failed: ${errMsg}]`);
     const reason = errMsg.includes("timed out") ? "service_timeout" : "service_error";

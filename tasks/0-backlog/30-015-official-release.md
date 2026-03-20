@@ -21,4 +21,4 @@ When the operator feels we've reached a stable point. This is backlog — not ur
 ## Notes
 
 - Do NOT release from `v4-multi-session` — release from `master` after all desired changes are merged.
-- Coordinate with governor for timing.
+- Coordinate with overseer for timing.

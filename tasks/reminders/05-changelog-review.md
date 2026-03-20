@@ -1,6 +1,6 @@
 # Changelog Review
 
-**Frequency:** Every 60 min | **Scope:** Governor only
+**Frequency:** Every 60 min | **Scope:** Overseer only
 
 ## Procedure
 

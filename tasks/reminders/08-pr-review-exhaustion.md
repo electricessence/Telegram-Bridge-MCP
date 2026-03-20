@@ -1,6 +1,6 @@
 # PR Review Exhaustion Loop
 
-**Frequency:** Every 10 min | **Scope:** Governor only
+**Frequency:** Every 10 min | **Scope:** Overseer only
 
 ## Procedure
 

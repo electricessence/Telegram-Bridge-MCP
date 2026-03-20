@@ -262,4 +262,4 @@ telegram-bridge-mcp/
 
 ## Worktree Support
 
-Workers use git worktrees to isolate code changes from the main workspace. Each code-change task gets its own branch and worktree under `.git/.wt/`. The governor manages the merge and cleanup lifecycle. See `tasks/worktree-workflow.md` for the full process.
+Workers use git worktrees to isolate code changes from the main workspace. Each code-change task gets its own branch and worktree under `.git/.wt/`. The overseer manages the merge and cleanup lifecycle. See `tasks/worktree-workflow.md` for the full process.

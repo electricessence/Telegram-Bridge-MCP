@@ -83,6 +83,12 @@ function callbackEvent(target: number): TimelineEvent {
   });
 }
 
+function voiceReplyEvent(replyTo: number): TimelineEvent {
+  return makeEvent({
+    content: { type: "voice", reply_to: replyTo },
+  });
+}
+
 /** Drain all pending items from a session queue. */
 function drain(sid: number): TimelineEvent[] {
   const q = getSessionQueue(sid);
@@ -317,6 +323,55 @@ describe("multi-session integration", () => {
       // Both sessions receive it (broadcast fallback)
       expect(drain(s1.sid)).toEqual([reply]);
       expect(drain(s2.sid)).toEqual([reply]);
+    });
+
+    it("voice reply routes to owning session", () => {
+      const s1 = setupSession("A");
+      const s2 = setupSession("B");
+      const s3 = setupSession("C");
+
+      trackMessageOwner(50, s2.sid);
+
+      const event = voiceReplyEvent(50);
+      routeToSession(event);
+
+      // Voice without text is queued but not dequeue-ready — check pendingCount
+      expect(getSessionQueue(s1.sid)!.pendingCount()).toBe(0);
+      expect(getSessionQueue(s2.sid)!.pendingCount()).toBe(1);
+      expect(getSessionQueue(s3.sid)!.pendingCount()).toBe(0);
+    });
+
+    it("voice reply with governor routes to owning session, not governor", () => {
+      const s1 = setupSession("Worker");
+      const s2 = setupSession("Target");
+      const s3 = setupSession("Governor");
+
+      setGovernorSid(s3.sid);
+      trackMessageOwner(60, s2.sid);
+
+      const event = voiceReplyEvent(60);
+      routeToSession(event);
+
+      // Targeted routing bypasses governor — check pendingCount
+      expect(getSessionQueue(s1.sid)!.pendingCount()).toBe(0);
+      expect(getSessionQueue(s2.sid)!.pendingCount()).toBe(1);
+      expect(getSessionQueue(s3.sid)!.pendingCount()).toBe(0);
+    });
+
+    it("voice message without reply_to goes to governor", () => {
+      const s1 = setupSession("Worker A");
+      const s2 = setupSession("Governor");
+      const s3 = setupSession("Worker B");
+
+      setGovernorSid(s2.sid);
+
+      const event = makeEvent({ content: { type: "voice" } });
+      routeToSession(event);
+
+      // Ambiguous voice → governor receives it
+      expect(getSessionQueue(s1.sid)!.pendingCount()).toBe(0);
+      expect(getSessionQueue(s2.sid)!.pendingCount()).toBe(1);
+      expect(getSessionQueue(s3.sid)!.pendingCount()).toBe(0);
     });
   });
 
@@ -1001,5 +1056,40 @@ describe("multi-session integration", () => {
         expect(delivered).toBe(false);
       },
     );
+  });
+
+  // =========================================================================
+  // 12. Two-phase voice routing
+  // =========================================================================
+
+  describe("two-phase voice routing", () => {
+    it("routed event receives transcription patch (same object reference)", () => {
+      const s1 = setupSession("A");
+      const s2 = setupSession("B");
+
+      trackMessageOwner(50, s2.sid);
+
+      // Phase 1: route voice event with no text (pre-transcription)
+      const event = makeEvent({
+        content: { type: "voice", reply_to: 50 },
+      });
+      routeToSession(event);
+
+      // s1 gets nothing; s2 has 1 pending (not dequeue-ready without text)
+      expect(getSessionQueue(s1.sid)!.pendingCount()).toBe(0);
+      expect(getSessionQueue(s2.sid)!.pendingCount()).toBe(1);
+
+      // dequeue skips unready voice events
+      expect(drain(s2.sid)).toEqual([]);
+
+      // Phase 2: simulate patchVoiceText — mutate the same object in-place
+      event.content.text = "transcribed text";
+
+      // Now the event is ready — drain returns it (same object reference)
+      const dequeued = drain(s2.sid);
+      expect(dequeued).toHaveLength(1);
+      expect(dequeued[0]).toBe(event); // same object reference
+      expect(dequeued[0].content.text).toBe("transcribed text");
+    });
   });
 });

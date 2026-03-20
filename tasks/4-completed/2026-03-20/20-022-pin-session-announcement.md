@@ -70,3 +70,12 @@ task/022-pin-session-announcement
 
 - Task #530 (session join broadcast announcement) — already merged. Announcement msg ID infrastructure exists.
 - Task #018 (first-session announcement) — optional dependency. If merged first, apply pin/unpin to first session too.
+
+## Completion
+
+- Implemented `setSessionAnnouncementMessage` / `getSessionAnnouncementMessage` in `session-manager.ts`
+- Added pin call in `session_start.ts` multi-session path; unpin call in `close_session.ts`
+- 7 new tests (4 in `session_start.test.ts`, 3 in `close_session.test.ts`); 1619 total passing
+- Build, lint, tests all clean
+- Committed: `feat: pin session announcement on join, unpin on close (#022)` on branch `task/022-pin-session-announcement`
+- Note: first-session path skipped — task #018 not yet merged into dev

@@ -1,6 +1,6 @@
 # PR Health Check
 
-**Frequency:** Every 30 min | **Scope:** Governor only
+**Frequency:** Every 30 min | **Scope:** Overseer only
 
 ## Procedure
 

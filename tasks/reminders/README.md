@@ -13,7 +13,7 @@ When the reminder fires, the agent:
 2. If more detail is needed, reads the referenced file
 3. Executes the procedure
 
-## Governor Startup Reminders
+## Overseer Startup Reminders
 
 | # | File | Reminder Text | Delay | Recurring |
 |---|------|--------------|-------|-----------|
@@ -32,8 +32,8 @@ When the reminder fires, the agent:
 
 | # | Reminder Text | Delay | Recurring |
 |---|--------------|-------|-----------|
-| 1 | Check `tasks/2-queued/` for unassigned tasks — pick up and DM governor | 5 min | Yes |
-| 2 | DM governor with current status (working/idle/blocked) | 5 min | Yes |
+| 1 | Check `tasks/2-queued/` for unassigned tasks — pick up and DM overseer | 5 min | Yes |
+| 2 | DM overseer with current status (working/idle/blocked) | 5 min | Yes |
 
 ## Dynamic Reminders
 
@@ -44,5 +44,5 @@ Reminders can spawn reminders:
 ## Adding New Reminders
 
 1. Create a new numbered `.md` file in this folder (e.g., `10-new-check.md`).
-2. Add it to the governor table above.
+2. Add it to the overseer table above.
 3. The reminder text is the lookup key — keep it distinctive.

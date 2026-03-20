@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   editMessageText: vi.fn().mockResolvedValue(undefined),
   deleteMessage: vi.fn().mockResolvedValue(undefined),
   answerCallbackQuery: vi.fn().mockResolvedValue(true),
+  pinChatMessage: vi.fn().mockResolvedValue(undefined),
   pendingCount: vi.fn(),
   dequeue: vi.fn(),
   createSession: vi.fn(),
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   getGovernorSid: vi.fn().mockReturnValue(0),
   deliverServiceMessage: vi.fn(),
   trackMessageOwner: vi.fn(),
+  setSessionAnnouncementMessage: vi.fn(),
   resolveChat: vi.fn(() => 42 as number),
   registerCallbackHook: vi.fn(),
   clearCallbackHook: vi.fn(),
@@ -32,6 +34,7 @@ vi.mock("../telegram.js", async (importActual) => {
       editMessageText: mocks.editMessageText,
       deleteMessage: mocks.deleteMessage,
       answerCallbackQuery: mocks.answerCallbackQuery,
+      pinChatMessage: mocks.pinChatMessage,
     }),
     resolveChat: () => mocks.resolveChat(),
   };
@@ -53,6 +56,7 @@ vi.mock("../session-manager.js", () => ({
   activeSessionCount: () => mocks.activeSessionCount(),
   getAvailableColors: mocks.getAvailableColors,
   COLOR_PALETTE: ["🟦", "🟩", "🟨", "🟧", "🟥", "🟪"],
+  setSessionAnnouncementMessage: mocks.setSessionAnnouncementMessage,
 }));
 
 vi.mock("../routing-mode.js", () => ({
@@ -87,6 +91,7 @@ describe("session_start tool", () => {
       sid: 1,
       pin: 123456,
       name: "Primary",
+      color: "🟦",
       sessionsActive: 1,
     });
     const server = createMockServer();
@@ -429,6 +434,30 @@ describe("session_start tool", () => {
     expect(mocks.setGovernorSid).not.toHaveBeenCalled();
   });
 
+  it("assigns reconnecting session as governor when second session reconnects", async () => {
+    // Reproduces the live bug: Overseer (SID 1) left, Worker (SID 2) survived,
+    // Overseer reconnects as SID 3. Without the fix, SID 2 (lowest) becomes governor
+    // and the Overseer is deaf to ambiguous messages.
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.createSession.mockReturnValue({ sid: 3, pin: 300003, name: "Overseer", sessionsActive: 2 });
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 2, name: "Worker", createdAt: "2026-03-17" }])
+      .mockReturnValue([
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+        { sid: 3, name: "Overseer", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_0", qid: "q1" } }); });
+    });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 50 });
+
+    await call({ name: "Overseer", reconnect: true });
+
+    // Reconnecting session (SID 3) should be governor, NOT surviving SID 2
+    expect(mocks.setGovernorSid).toHaveBeenCalledWith(3);
+  });
+
   // =========================================================================
   // Approval gate
   // =========================================================================
@@ -436,7 +465,7 @@ describe("session_start tool", () => {
   it("first session is auto-approved without operator interaction", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
-    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
 
     const result = parseResult(await call({ name: "Primary" }));
 
@@ -447,7 +476,7 @@ describe("session_start tool", () => {
   it("first session defaults name to 'Primary' when none provided", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
-    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
 
     await call({});
 
@@ -661,14 +690,63 @@ describe("session_start tool", () => {
     expect(String(toNew![1])).toContain("SID 2");
   });
 
-  it("does not inject service messages when first session starts", async () => {
+  it("first session receives session_orientation service message", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
-    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
 
     await call({});
 
-    expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const orientation = calls.find((c: unknown[]) => c[0] === 1 && c[2] === "session_orientation");
+    expect(orientation).toBeDefined();
+    expect(String(orientation![1])).toContain("SID 1");
+  });
+
+  // =========================================================================
+  // First session announcement (task 018)
+  // =========================================================================
+
+  it("first session sends online announcement to chat", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
+
+    await call({});
+
+    const announceCalls = mocks.sendMessage.mock.calls.filter(
+      (c: unknown[]) => String(c[1]).includes("🟢 Online"),
+    );
+    expect(announceCalls.length).toBeGreaterThanOrEqual(1);
+    const announceText = String(announceCalls[0]![1]);
+    expect(announceText).toContain("Primary");
+    expect(announceText).toContain("🟦");
+  });
+
+  it("first session announcement is tracked with trackMessageOwner", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 55 });
+
+    await call({});
+
+    expect(mocks.trackMessageOwner).toHaveBeenCalledWith(55, 1);
+  });
+
+  it("first session session_orientation includes announcement_message_id", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 77 });
+
+    await call({});
+
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const orientation = calls.find((c: unknown[]) => c[0] === 1 && c[2] === "session_orientation");
+    expect(orientation).toBeDefined();
+    expect((orientation![3] as Record<string, unknown>).announcement_message_id).toBe(77);
   });
 
   // =========================================================================
@@ -678,7 +756,7 @@ describe("session_start tool", () => {
   it("reconnect: first session returns action='reconnected'", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
-    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
     mocks.listSessions.mockReturnValue([]);
 
     const result = parseResult(await call({ reconnect: true }));
@@ -764,7 +842,7 @@ describe("session_start tool", () => {
   it("reconnect: false (default) keeps fresh/joined behavior unchanged", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
-    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
     mocks.listSessions.mockReturnValue([]);
 
     const result = parseResult(await call({}));
@@ -987,6 +1065,110 @@ describe("session_start tool", () => {
     await call({ name: "Worker", reconnect: true });
 
     expect(mocks.createSession).toHaveBeenCalledWith("Worker", "🟩");
+  });
+
+  // =========================================================================
+  // Pin announcement message (task 022)
+  // =========================================================================
+
+  it("pins the announcement message after it is sent for multi-session join", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }])
+      .mockReturnValue([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_0", qid: "q1" } }); });
+    });
+    mocks.sendMessage
+      .mockResolvedValueOnce({ message_id: 50 })   // approval prompt
+      .mockResolvedValueOnce({ message_id: 77 });  // announcement
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", color: "🟦", sessionsActive: 2 });
+
+    await call({ name: "Worker" });
+
+    expect(mocks.pinChatMessage).toHaveBeenCalledWith(42, 77, { disable_notification: true });
+  });
+
+  it("stores the announcement message ID via setSessionAnnouncementMessage", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }])
+      .mockReturnValue([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_0", qid: "q1" } }); });
+    });
+    mocks.sendMessage
+      .mockResolvedValueOnce({ message_id: 50 })
+      .mockResolvedValueOnce({ message_id: 88 });
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", color: "🟦", sessionsActive: 2 });
+
+    await call({ name: "Worker" });
+
+    expect(mocks.setSessionAnnouncementMessage).toHaveBeenCalledWith(2, 88);
+  });
+
+  it("does not pin if announcement send fails", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }])
+      .mockReturnValue([
+        { sid: 1, name: "Primary", createdAt: "2026-03-17" },
+        { sid: 2, name: "Worker", createdAt: "2026-03-17" },
+      ]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_0", qid: "q1" } }); });
+    });
+    mocks.sendMessage
+      .mockResolvedValueOnce({ message_id: 50 })   // approval prompt
+      .mockRejectedValueOnce(new Error("send failed")); // announcement fails
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", color: "🟦", sessionsActive: 2 });
+
+    await call({ name: "Worker" });
+
+    expect(mocks.pinChatMessage).not.toHaveBeenCalled();
+    expect(mocks.setSessionAnnouncementMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not pin when first session announcement fails to send", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce(undefined);
+
+    await call({});
+
+    expect(mocks.pinChatMessage).not.toHaveBeenCalled();
+  });
+
+  it("first session announcement is pinned", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 55 });
+
+    await call({});
+
+    expect(mocks.pinChatMessage).toHaveBeenCalledWith(42, 55, { disable_notification: true });
+  });
+
+  it("first session announcement tracked via setSessionAnnouncementMessage", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 88 });
+
+    await call({});
+
+    expect(mocks.setSessionAnnouncementMessage).toHaveBeenCalledWith(1, 88);
   });
 });
 

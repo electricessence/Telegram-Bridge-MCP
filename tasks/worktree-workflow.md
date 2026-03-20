@@ -1,17 +1,17 @@
 # Task Workflow
 
-How the governor assigns work and how workers execute it.
+How the overseer assigns work and how workers execute it.
 
 ## Assignment Modes
 
-The governor picks one per task and specifies it in the task spec:
+The overseer picks one per task and specifies it in the task spec:
 
 | Mode | When to use | Task spec includes |
 | --- | --- | --- |
 | **Direct edit** | Single-file docs, configs, task board changes | No `## Worktree` section |
 | **Worktree** | Code changes, multi-file features, anything that could break the build | `## Worktree` section with branch + directory |
 
-The merge strategy (direct merge vs PR) is the **governor's call**. Workers push; the governor merges.
+The merge strategy (direct merge vs PR) is the **overseer's call**. Workers push; the overseer merges.
 
 ---
 
@@ -21,10 +21,10 @@ No `## Worktree` section in the task spec:
 
 1. Move task file: `2-queued/` → `3-in-progress/`
 2. Edit files in the main workspace
-3. DM governor with commit message, wait for approval
+3. DM overseer with commit message, wait for approval
 4. Commit and push
 5. Move task file: `3-in-progress/` → `4-completed/`
-6. DM governor: done
+6. DM overseer: done
 
 ## Worker: Worktree Tasks
 
@@ -56,7 +56,7 @@ Use sub-agents for scoped subtasks (searching, writing tests, boilerplate).
 
 ### 4. Commit and push
 
-DM governor with commit message. After approval:
+DM overseer with commit message. After approval:
 
 ```bash
 git add -A
@@ -67,18 +67,18 @@ git push -u origin task/018-feature-name
 ### 5. Complete
 
 1. Move task file: `3-in-progress/` → `4-completed/` (in main workspace)
-2. DM governor: *"Task #018 complete. Branch `task/018-feature-name`. Tests passing."*
+2. DM overseer: *"Task #018 complete. Branch `task/018-feature-name`. Tests passing."*
 
 **Stop here.** Do not merge, delete branches, or remove worktrees.
 
 ---
 
-## Governor: Task Assignment
+## Overseer: Task Assignment
 
 | Task type | Worktree? |
 | --- | --- |
 | Source code (features, fixes, refactors) | **Yes** |
-| Multi-file doc overhauls | Governor's discretion |
+| Multi-file doc overhauls | Overseer's discretion |
 | Single-file edits (README, changelog, config) | **No** |
 | Task board changes | **No** |
 
@@ -94,7 +94,7 @@ Base: `master` at current HEAD
 
 ### Merge Strategy
 
-After a worker reports completion, the governor picks one:
+After a worker reports completion, the overseer picks one:
 
 **Direct merge** — low-risk changes (docs, small fixes, config):
 ```bash
@@ -154,6 +154,6 @@ The overseer reviews tasks that arrive in `4-completed/`:
 - Workers **must not** modify files in the main workspace when operating in a worktree.
 - Workers **can** create branches and worktrees when directed by the task spec.
 - Workers **can** commit and push freely within their worktree branch.
-- Workers **must not** merge their branch — the governor does that.
-- Workers **must not** touch task files — the governor manages the task board.
-- If tests fail in the worktree, report the failure to the governor. Do not merge broken code.
+- Workers **must not** merge their branch — the overseer does that.
+- Workers **must not** touch task files — the overseer manages the task board.
+- If tests fail in the worktree, report the failure to the overseer. Do not merge broken code.
