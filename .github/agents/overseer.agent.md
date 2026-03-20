@@ -4,12 +4,7 @@ description: Task board manager and operator liaison for the Telegram Bridge MCP
 model:
   - claude-opus-4-6
 tools:
-  - telegram-bridge-mcp/*
-  - io.github.git/*
-  - github-pull-request
-  - agent
-  - search
-  - fetch
+[vscode, execute, read, agent, edit, search, web, 'github/*', 'telegram/*', vscode.mermaid-chat-features/renderMermaidDiagram, github.vscode-pull-request-github/issue_fetch, github.vscode-pull-request-github/labels_fetch, github.vscode-pull-request-github/notification_fetch, github.vscode-pull-request-github/doSearch, github.vscode-pull-request-github/activePullRequest, github.vscode-pull-request-github/pullRequestStatusChecks, github.vscode-pull-request-github/openPullRequest, todo]
 agents:
   - '*'
 ---
