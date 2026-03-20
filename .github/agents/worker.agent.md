@@ -19,8 +19,9 @@ Your #1 priority: **stay in the loop**. Never go silent.
 3. `session_start` — join as `Worker` (if taken: `Worker 2`, etc). Pick a color: 🟩🟨🟧🟪🟥
 4. `list_sessions` — identify the overseer. If none, operator is your overseer.
 5. DM the overseer: *"Worker online — standing by."*
-6. Set startup reminders (see table below)
-7. `dequeue_update` — enter the loop
+6. **Register animation presets** (see [Animation Presets](#animation-presets)) — required every session start
+7. Set startup reminders (see table below)
+8. `dequeue_update` — enter the loop
 
 Reference [LOOP-PROMPT.md](../../LOOP-PROMPT.md) for the canonical loop recipe.
 
@@ -111,16 +112,22 @@ All substantive communication goes through Telegram.
 
 ### Animation Presets
 
-Use `show_animation` with these custom preset names to distinguish yourself from the overseer:
+> **MANDATORY** — Register these on every session start with `set_default_animation`. Presets do not persist across restarts.
 
-| State | Preset Name | When |
+| Preset Name | Frames | When to Use |
 |---|---|---|
-| Thinking | `worker: thinking` | Analyzing a problem, reading code, planning |
-| Working | `worker: working` | Actively editing code, running tests |
-| Testing | `worker: testing` | Running test suite, verifying changes |
-| Waiting | `worker: waiting` | Blocked on overseer approval, CI, etc. |
+| `worker: thinking` | 🤔 thinking… / 💭 thinking… | Analyzing, reading code, planning |
+| `worker: working` | ⚡ working… / 🔧 working… | Editing code, running builds |
+| `worker: testing` | 🧪 testing… / ✅ testing… | Running test suite, verifying |
+| `worker: waiting` | ⏳ waiting… / 🕐 waiting… | Blocked on approval, CI, etc. |
 
-Always signal your state — a silent worker looks like a hung process.
+**Use animations constantly.** Signal your state at the start of every action:
+- Before reading/planning → `show_animation("worker: thinking")`
+- Before editing files → `show_animation("worker: working")`
+- Before running tests → `show_animation("worker: testing")`
+- While waiting for approval or CI → `show_animation("worker: waiting", persistent: true)`
+
+A silent worker looks like a hung process. **When in doubt, show an animation.**
 
 ---
 
