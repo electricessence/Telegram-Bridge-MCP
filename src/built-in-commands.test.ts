@@ -854,24 +854,20 @@ describe("built-in-commands", () => {
     it("adds /governor to menu when 2+ sessions active", async () => {
       mocks.activeSessionCount.mockReturnValue(2);
       mocks.getMyCommands.mockResolvedValue([]);
-      refreshGovernorCommand();
-      await vi.waitFor(() => {
-        expect(mocks.setMyCommands).toHaveBeenCalledWith(
-          expect.arrayContaining([
-            expect.objectContaining({ command: "governor" }),
-          ]),
-          expect.anything(),
-        );
-      });
+      await refreshGovernorCommand();
+      expect(mocks.setMyCommands).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ command: "governor" }),
+        ]),
+        expect.anything(),
+      );
     });
 
     it("omits /governor from menu when fewer than 2 sessions", async () => {
       mocks.activeSessionCount.mockReturnValue(1);
       mocks.getMyCommands.mockResolvedValue([]);
-      refreshGovernorCommand();
-      await vi.waitFor(() => {
-        expect(mocks.setMyCommands).toHaveBeenCalled();
-      });
+      await refreshGovernorCommand();
+      expect(mocks.setMyCommands).toHaveBeenCalled();
       const calls = mocks.setMyCommands.mock.calls as unknown as Array<
         [Array<{ command: string }>, ...unknown[]]
       >;
@@ -885,10 +881,8 @@ describe("built-in-commands", () => {
         { command: "session", description: "built-in" },
         { command: "mycmd", description: "Custom command" },
       ]);
-      refreshGovernorCommand();
-      await vi.waitFor(() => {
-        expect(mocks.setMyCommands).toHaveBeenCalled();
-      });
+      await refreshGovernorCommand();
+      expect(mocks.setMyCommands).toHaveBeenCalled();
       const calls = mocks.setMyCommands.mock.calls as unknown as Array<
         [Array<{ command: string }>, ...unknown[]]
       >;
@@ -898,15 +892,15 @@ describe("built-in-commands", () => {
       expect(names).toContain("mycmd");
     });
 
-    it("does nothing when resolveChat returns non-number", () => {
+    it("does nothing when resolveChat returns non-number", async () => {
       mocks.resolveChat.mockReturnValue("not configured");
-      refreshGovernorCommand();
+      await refreshGovernorCommand();
       expect(mocks.getMyCommands).not.toHaveBeenCalled();
       expect(mocks.setMyCommands).not.toHaveBeenCalled();
     });
   });
 
-  // -- governor callbacks excluded from isInternalTimelineEvent ------------
+  // -- governor callbacks treated as internal by isInternalTimelineEvent ---
 
   it("handleIfBuiltIn consumes governor callbacks (not forwarded as timeline events)", async () => {
     const panelSessions = [

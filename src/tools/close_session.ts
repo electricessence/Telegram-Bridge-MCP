@@ -137,7 +137,7 @@ export function register(server: McpServer) {
         }
       });
 
-      refreshGovernorCommand();
+      void refreshGovernorCommand();
       return toResult({ closed: true, sid });
     },
   );

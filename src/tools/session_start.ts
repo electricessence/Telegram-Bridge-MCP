@@ -254,7 +254,7 @@ export function register(server: McpServer) {
             { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
         }
-        refreshGovernorCommand();
+        void refreshGovernorCommand();
         return toResult(res);
       } catch (err) {
         // Rollback: clean up orphaned session on failure
