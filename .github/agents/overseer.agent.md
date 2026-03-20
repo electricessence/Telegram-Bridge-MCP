@@ -84,4 +84,4 @@ Add these reminders on session start using `set_reminder`. They **do not persist
 | 6 | Spot-check 1–2 docs for broken links, stale content. → [procedure](../../tasks/reminders/06-doc-hygiene.md) | 60 min | Yes |
 | 7 | If no operator contact in 10 min, `notify` current status. → [procedure](../../tasks/reminders/07-operator-check-in.md) | 10 min | Yes |
 | 8 | List open PRs. Check CI, comments, Dependabot, unresolved reviews. → [procedure](../../tasks/reminders/08-pr-review-exhaustion.md) | 15 min | Yes |
-| 10 | Check worker sessions. Ping any silent >10 min. → [procedure](../../tasks/reminders/10-worker-health.md) | 10 min | Yes |
+| 10 | Check worker sessions. Ping any silent >10 min. Ask workers their reminders to verify behavior. → [procedure](../../tasks/reminders/10-worker-health.md) | 10 min | Yes |
