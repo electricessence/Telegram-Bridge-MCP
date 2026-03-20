@@ -1,9 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { toResult, toError, validateText, resolveChat, splitMessage, sendVoiceDirect } from "../telegram.js";
+import { markdownToV2 } from "../markdown.js";
 import { showTyping, cancelTyping } from "../typing-state.js";
 import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
 import { getTopic } from "../topic-state.js";
+import { getSessionVoice } from "../voice-state.js";
 import { getDefaultVoice } from "../config.js";
 import { requireAuth } from "../session-gate.js";
 import { IDENTITY_SCHEMA } from "./identity-schema.js";
@@ -81,17 +83,18 @@ export function register(server: McpServer) {
       try {
         const topic = getTopic();
         let resolvedCaption: string | undefined;
-        let captionNeedsMarkdown = false;
+        let captionParseMode: "MarkdownV2" | undefined;
         if (topic) {
-          captionNeedsMarkdown = true;
           const topicLabel = `**[${topic}]**`;
-          resolvedCaption = caption ? `${topicLabel}\n${caption}` : topicLabel;
-        } else {
-          resolvedCaption = caption ?? undefined;
+          const mdCaption = caption ? `${topicLabel}\n${caption}` : topicLabel;
+          resolvedCaption = markdownToV2(mdCaption);
+          captionParseMode = "MarkdownV2";
+        } else if (caption) {
+          resolvedCaption = caption;
         }
-        // Voice resolution: explicit param > config default > env/provider
+        // Voice resolution: explicit param > session override > config default > env/provider
         const resolvedVoice =
-          voice ?? getDefaultVoice() ?? undefined;
+          voice ?? getSessionVoice() ?? getDefaultVoice() ?? undefined;
         const typingSeconds = Math.min(120, Math.max(5, Math.ceil(plainText.length / 20)));
         await showTyping(typingSeconds, "record_voice");
         const message_ids: number[] = [];
@@ -100,7 +103,7 @@ export function register(server: McpServer) {
           const isFirst = i === 0;
           const msg = await sendVoiceDirect(chatId, ogg, {
             caption: isFirst ? resolvedCaption : undefined,
-            ...(captionNeedsMarkdown ? { parse_mode: "Markdown" as const } : {}),
+            ...(captionParseMode ? { parse_mode: captionParseMode } : {}),
             disable_notification,
             reply_to_message_id: isFirst ? reply_to_message_id : undefined,
             reply_markup: isFirst ? reply_markup : undefined,

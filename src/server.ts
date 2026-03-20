@@ -35,6 +35,10 @@ import { register as registerDownloadFile } from "./tools/download_file.js";
 import { register as registerTranscribeVoice } from "./tools/transcribe_voice.js";
 import { register as registerSetCommands } from "./tools/set_commands.js";
 import { register as registerSetTopic } from "./tools/set_topic.js";
+import { register as registerSetVoice } from "./tools/set_voice.js";
+import { register as registerSetReminder } from "./tools/set_reminder.js";
+import { register as registerCancelReminder } from "./tools/cancel_reminder.js";
+import { register as registerListReminders } from "./tools/list_reminders.js";
 import { register as registerGetMe } from "./tools/get_me.js";
 import { register as registerGetChat } from "./tools/get_chat.js";
 import { register as registerGetAgentGuide } from "./tools/get_agent_guide.js";
@@ -50,12 +54,16 @@ import { register as registerRouteMessage } from "./tools/route_message.js";
 import { register as registerRenameSession } from "./tools/rename_session.js";
 import { register as registerGetDebugLog } from "./tools/get_debug_log.js";
 
+import { createRequire } from "module";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "telegram-bridge-mcp",
-    version: "3.0.0",
+    version: PKG_VERSION,
   });
 
   // ── Session context middleware ──────────────────────────────────────────
@@ -108,6 +116,10 @@ export function createServer(): McpServer {
   // ── High-level agent tools (use these 99% of the time) ─────────────────
   registerGetAgentGuide(server);
   registerSetTopic(server);
+  registerSetVoice(server);
+  registerSetReminder(server);
+  registerCancelReminder(server);
+  registerListReminders(server);
   registerNotify(server);
   registerAsk(server);
   registerChoose(server);  registerSendChoice(server);  registerSendNewChecklist(server);  registerSendNewProgress(server);

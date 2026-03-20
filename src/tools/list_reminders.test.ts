@@ -1,0 +1,75 @@
+import { vi, describe, it, expect, beforeEach } from "vitest";
+import { createMockServer, parseResult, isError } from "./test-utils.js";
+import type { Reminder } from "../reminder-state.js";
+
+const mocks = vi.hoisted(() => ({
+  validateSession: vi.fn(() => false),
+  listReminders: vi.fn((): Reminder[] => []),
+}));
+
+vi.mock("../session-manager.js", () => ({
+  validateSession: mocks.validateSession,
+}));
+
+vi.mock("../reminder-state.js", () => ({
+  listReminders: mocks.listReminders,
+}));
+
+import { register } from "./list_reminders.js";
+
+describe("list_reminders tool", () => {
+  let call: (args: Record<string, unknown>) => Promise<unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    const server = createMockServer();
+    register(server);
+    call = server.getHandler("list_reminders");
+  });
+
+  it("returns empty reminders list when none set", async () => {
+    mocks.listReminders.mockReturnValue([]);
+    const result = await call({ identity: [1, 123456] });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.reminders).toEqual([]);
+  });
+
+  it("returns active reminders without fires_in_seconds", async () => {
+    const now = Date.now();
+    mocks.listReminders.mockReturnValue([
+      { id: "r1", text: "active!", delay_seconds: 0, recurring: false, state: "active", created_at: now, activated_at: now },
+    ]);
+    const result = await call({ identity: [1, 123456] });
+    const data = parseResult<{ reminders: Record<string, unknown>[] }>(result);
+    expect(data.reminders[0].fires_in_seconds).toBeUndefined();
+  });
+
+  it("includes fires_in_seconds for deferred reminders", async () => {
+    const now = Date.now();
+    mocks.listReminders.mockReturnValue([
+      { id: "r2", text: "later", delay_seconds: 60, recurring: false, state: "deferred", created_at: now, activated_at: null },
+    ]);
+    const result = await call({ identity: [1, 123456] });
+    const data = parseResult<{ reminders: Record<string, unknown>[] }>(result);
+    expect(typeof data.reminders[0].fires_in_seconds).toBe("number");
+    expect(data.reminders[0].fires_in_seconds as number).toBeGreaterThan(0);
+    expect(data.reminders[0].fires_in_seconds as number).toBeLessThanOrEqual(60);
+  });
+
+  describe("identity gate", () => {
+    it("returns SID_REQUIRED when no identity provided", async () => {
+      const result = await call({});
+      expect(isError(result)).toBe(true);
+      expect(parseResult(result).code).toBe("SID_REQUIRED");
+    });
+
+    it("returns AUTH_FAILED on invalid PIN", async () => {
+      mocks.validateSession.mockReturnValue(false);
+      const result = await call({ identity: [1, 0] });
+      expect(isError(result)).toBe(true);
+      expect(parseResult(result).code).toBe("AUTH_FAILED");
+    });
+  });
+});

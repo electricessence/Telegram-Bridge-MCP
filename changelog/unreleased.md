@@ -1,6 +1,19 @@
 # [Unreleased]
 
+## Added
+
+- Added `reminders/` folder with procedure docs for each governor startup reminder — agents read the doc on reminder fire instead of keeping procedures in memory/context
+- Added "Trust Hierarchy and Agent Authority" section to `docs/inter-agent-communication.md` — four-level table (operator > governor > worker > unverified), escalation principles, and clarification that `routed_by`/`sid` fields are server-stamped (unforgeable) while DM text content is not verifiable as operator intent
+- Added "Trust hierarchy and escalation" subsection to `docs/behavior.md` multi-session area with a pointer to inter-agent-communication.md
+- Updated `session_orientation` role note in `session_start.ts` — worker message now identifies the governor as "your first escalation point" and both governor and worker notes include "Call get_agent_guide for trust and routing guidance"
+- Added "Voice Configuration" section to `docs/setup.md` — covers Kokoro as recommended TTS, Docker setup, env vars (`TTS_HOST`, `TTS_FORMAT`, `TTS_VOICE`, `WHISPER_MODEL`), Kokoro voice naming convention (`af_`/`am_`/`bf_`/`bm_` prefixes), and `set_voice` per-session override
+- Added "TTS voice resolution" subsection to `docs/behavior.md` — documents explicit param → session override → global default → provider default priority chain; links to `set_voice` and `/voice` Telegram command
+- Updated `docs/behavior.md` `send_text_as_voice` table entry to remove inaccurate "Requires TTS_HOST or OPENAI_API_KEY" — correctly notes ONNX fallback works out of the box and recommends Kokoro
+- Updated `docs/customization.md` "Voice-Driven Development" section to cover outbound TTS (`send_text_as_voice`), `set_voice`, `/voice` command, and pointer to setup.md
+
 ## Changed
+
+- Bumped version to 4.1.0 — reflects features added beyond the v4 multi-session base (reminders, session identity auth, reaction aliases, voice override)
 
 - Session approval keyboard now uses two rows — color buttons on row 1, `⛔ Deny` alone on row 2 — so the deny button is no longer cramped alongside 6 color emoji; deny button label updated from `✗ Deny` to `⛔ Deny`
 - Removed dead `_lane` parameter from `routeToSession` — vestige of `TwoLaneQueue` era; 55 call sites across production and test files cleaned up
@@ -29,6 +42,11 @@
 
 ## Fixed
 
+- Fixed non-null assertions in `set_reaction.ts` — replaced cast+`!` with `in` guard and destructuring; converted indexed `for` loop to `for...of` with `.entries()`
+- Fixed expired approval callback forwarded to agents — late clicks on `approval:*` buttons now answered with "This approval has expired" and consumed; no longer routed to session queues
+- Fixed duplicate reminder IDs — `addReminder` now replaces an existing reminder with the same ID instead of duplicating; max-count guard only applies to genuinely new reminders
+- Fixed hardcoded version `"3.0.0"` in `McpServer` constructor — now reads from `package.json` via `createRequire`
+- Fixed `requestOperatorApproval` returning `"denied"` on send failure — now returns `"send_failed"`; `rename_session` handles the new value with a distinct error message
 - Fixed `debounceSend()` race condition — concurrent callers could both read `_lastSendAt` before either updated it, allowing messages to fire within the same rate-limit window; replaced with a promise-chain mutex that serialises all callers; `resetRateLimiterForTest()` now resets the lock to a resolved promise
 - Fixed `openai-schema-compat.test.ts` shared `captured` array polluting across tests — added `beforeAll` reset hook; removed manual `captured.length = 0` inside the first test
 - Fixed `requireAuth` accepting a too-short `identity` array — added `identity.length < 2` guard that returns `SID_REQUIRED` before destructuring
@@ -38,6 +56,10 @@
 - Fixed `setTempReaction` timeout losing session context — the `setTimeout` callback now passes the captured SID directly to `fireTempReactionRestore(sid?)`, preventing it from calling `getCallerSid()` inside the timer (which returns 0 with no ALS context); reaction restore now correctly targets the originating session
 - Fixed misleading `renameSession` docstring in `session-manager.ts` — corrected to reflect that the function sets the name unconditionally; the uniqueness guard lives in the `rename_session` tool layer (not in the session-manager function)
 - Added meaningful assertions to the "pre-check: records rate limit window when 429 is encountered" test in `telegram.test.ts` — now verifies `getRateLimitRemaining() > 0` immediately after 429 is caught and `getRateLimitRemaining() === 0` after the retry-after window elapses
+- Added `set_voice` MCP tool — sets a per-session TTS voice override scoped to the calling session; overrides the global default without affecting other sessions; pass empty string to clear; new `src/voice-state.ts` module mirrors `topic-state.ts` pattern with `getSessionVoice()`, `setSessionVoice()`, `clearSessionVoice()`, `getSessionVoiceFor(sid)`; `send_text_as_voice` now resolves voice as: explicit param → session override → global default → provider default
+- Added `set_reminder`, `cancel_reminder`, and `list_reminders` MCP tools — agents can schedule text reminders that fire as synthetic `reminder` events after 60 s of idle within a `dequeue_update` call; deferred reminders (delay_seconds > 0) auto-promote to active after their delay elapses; recurring reminders re-arm after firing; one-shot reminders are deleted; max 20 per session; new `src/reminder-state.ts` module manages per-session state
+- Changed `REACTION_ALIASES` from `Record<string, string>` to `Record<string, string[]>` — each alias is now an ordered fallback array; `set_reaction` tries each candidate in order, falling back on Telegram `REACTION_INVALID` errors; first success wins; when a fallback is used the result includes `fallback_used: true`, `requested`, and `reason`; bot premium status cached per process launch to skip the try/catch on subsequent calls (premium bots go straight to preferred, non-premium bots skip premium-only emoji); `done`/`complete`/`finished` → `["✅","👍"]`, `error`/`failed`/`stop`/`blocked` → `["⛔","👎"]`, `rocket`/`launch` → `["🚀","🔥"]`, all other aliases remain single-element (no fallback needed)
+- Fixed missing `governor_changed` notification on health-check reroute — when the operator clicked "Reroute to X" or "Make X primary" in the health-check panel, worker sessions were not notified of the governor switch; `health-check.ts` now loops over all active sessions (excluding the new governor) and delivers a `governor_changed` service message with `new_governor_sid` and `new_governor_name`; event type documented in `docs/inter-agent-communication.md`
 - Fixed multi-session outbound name tag rendering for `parse_mode: "HTML"` in `outbound-proxy` — session headers now use `<code>Name</code>` (HTML-escaped) instead of literal backticks in `sendMessage` and `editMessageText`
 - Fixed outbound name tag rendering literal backticks when no `parse_mode` is set — outbound proxy now auto-injects `parse_mode: "Markdown"` in `sendMessage` and `editMessageText` when a backtick-formatted session header is prepended but no parse_mode was provided by the caller; `buildHeader()` default branch restored to backtick formatting; `plain` field remains unformatted for captions and recording
 - Fixed `sendVoiceDirect` missing session name tag — voice messages sent via the direct Telegram API path now inject the session header as a caption with `parse_mode: "Markdown"`; `buildHeader` exported from `outbound-proxy.ts` for reuse
@@ -58,6 +80,7 @@
 
 ## Added
 
+- `rename_session` now requires operator approval via Telegram inline keyboard before taking effect — the tool call blocks until the operator presses ✅ Approve or ❌ Deny; returns `APPROVAL_DENIED` or `APPROVAL_TIMEOUT` if the operator rejects or does not respond within 60 s; all sessions including the governor require approval; added `requestOperatorApproval(prompt, timeoutMs)` to `built-in-commands.ts` using the `_activePanels` / `handleIfBuiltIn` intercept pattern
 - Session join broadcast announcement — on approval, the approval prompt is deleted and a visible `Session N — 🟢 Online` message is sent through the outbound proxy (which auto-prepends the session's name tag); the message is tracked with `trackMessageOwner` so operator/session replies route to the new session; `announcement_message_id` is included in the `session_joined` and `session_orientation` service event details so listeners can identify the message
 
 - Added `get_chat_history` tool with backward paging support (`before_id`) and configurable window size (`count`, default 20, max 50); returns chronological timeline events plus `has_more` so sessions can read recent history and page older events safely using timeline position (not numeric ID order)
@@ -98,7 +121,7 @@
 - `session_start` accepts `reconnect: boolean` (default `false`) — when `true`, returns `action: "reconnected"` instead of `"fresh"`, appends " (reconnected)" to the session's Telegram intro message, changes the approval prompt to read "Session reconnecting:" instead of "New session requesting access:", and includes "has reconnected" (vs. "has joined") in `session_joined` service messages delivered to fellow sessions; governor auto-set and DM auto-grant continue to work via existing mechanisms
 - `rename_session` tool — renames the calling session to a new name; requires `[sid, pin]` identity; validates new name is alphanumeric (letters, digits, spaces); rejects collision with another active session (`NAME_TAKEN`); returns `{ sid, old_name, new_name }`; outbound header immediately reflects the new name on the next send; `renameSession()` added to `session-manager.ts`
 - Outbound session header uses monospace name formatting (`🤖 \`Name\`\n`) in both plain and MarkdownV2 contexts — confirming task 500 header requirement (already implemented in outbound-proxy)
-- Fixed voice caption topic formatting — `send_text_as_voice` now renders the topic as `**[topic]**` (bold brackets, own line) with `parse_mode: "Markdown"` when a topic is set; previously rendered as plain `[topic] caption` with no parse_mode, so bold never rendered
+- Fixed voice caption topic formatting — `send_text_as_voice` now converts topic captions through `markdownToV2()` and sends with `parse_mode: "MarkdownV2"` instead of legacy `"Markdown"`; previously `**[Topic]**` rendered literally because Telegram legacy Markdown uses single asterisks for bold
 - Created `docs/multi-session-prompts.md` — governor, worker, and topic discipline prompt templates with a two-session quick-start guide
 - Added multi-session behavior documentation in `docs/behavior.md` and `docs/communication.md` — routing modes, ambiguous message protocol, governor responsibilities, coordination tools
 

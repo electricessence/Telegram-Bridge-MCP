@@ -8,6 +8,16 @@ import {
 import { setActiveSession, touchSession } from "../session-manager.js";
 import { getSessionQueue, getMessageOwner } from "../session-queue.js";
 import { IDENTITY_SCHEMA } from "./identity-schema.js";
+import {
+  promoteDeferred,
+  getActiveReminders,
+  popActiveReminders,
+  getSoonestDeferredMs,
+  buildReminderEvent,
+} from "../reminder-state.js";
+
+/** Seconds an active reminder must be idle before it fires within dequeue_update. */
+const REMINDER_IDLE_THRESHOLD_MS = 60_000;
 
 /** Auto-salute voice messages on dequeue so the user knows we received them. */
 function ackVoice(event: TimelineEvent): void {
@@ -124,15 +134,38 @@ export function register(server: McpServer) {
       // Block until something arrives or timeout expires
       const deadline = Date.now() + timeout * 1000;
       const abortPromise = new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => { r(); }, { once: true }); });
+      const reminderIdleStart = Date.now();
       while (Date.now() < deadline) {
         if (signal.aborted) break;
-        const remaining = deadline - Date.now();
+
+        // Promote any deferred reminders whose delay has elapsed.
+        promoteDeferred(sid);
+
+        const now = Date.now();
+        const idleDuration = now - reminderIdleStart;
+        const activeReminders = getActiveReminders(sid);
+
+        // Fire active reminders after 60 s of idle (no real messages).
+        if (idleDuration >= REMINDER_IDLE_THRESHOLD_MS && activeReminders.length > 0) {
+          const fired = popActiveReminders(sid);
+          resyncActiveSession();
+          return toResult({ updates: fired.map(buildReminderEvent), pending: pendingCountAny() });
+        }
+
+        const remaining = deadline - now;
         if (remaining <= 0) break;
+
+        // Wake up as soon as the earliest of: reminder idle threshold, next deferred promotion, or timeout.
+        const timeToFireMs = activeReminders.length > 0
+          ? Math.max(0, REMINDER_IDLE_THRESHOLD_MS - idleDuration)
+          : Infinity;
+        const deferredMs = getSoonestDeferredMs(sid);
+        const waitMs = Math.min(remaining, timeToFireMs, deferredMs ?? Infinity);
 
         let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
         await Promise.race([
           waitForEnqueueAny(),
-          new Promise<void>((r) => { timeoutHandle = setTimeout(r, remaining); }),
+          new Promise<void>((r) => { timeoutHandle = setTimeout(r, Math.max(0, waitMs)); }),
           abortPromise,
         ]);
         clearTimeout(timeoutHandle);

@@ -163,6 +163,49 @@ Add a **project-scoped** `.mcp.json` in your project root:
 
 ---
 
+## Voice Configuration
+
+### Transcription (inbound)
+
+Voice messages are auto-transcribed before delivery using a bundled ONNX Whisper model. No external API or ffmpeg required.
+
+```env
+WHISPER_MODEL=onnx-community/whisper-base   # default; swap for a larger model for better accuracy
+WHISPER_CACHE_DIR=/path/to/cache            # optional — cache model files here
+```
+
+### Text-to-Speech (outbound)
+
+`send_text_as_voice` picks a TTS provider in priority order:
+
+| Priority | Env var | Provider |
+| --- | --- | --- |
+| 1 | `TTS_HOST` | Any OpenAI-compatible `/v1/audio/speech` endpoint (Kokoro, Ollama, etc.) |
+| 2 | `OPENAI_API_KEY` | api.openai.com |
+| 3 | *(neither)* | Bundled ONNX model — zero config, lower quality |
+
+**Kokoro is the recommended local TTS option** — high-quality output, 25+ voices, runs in Docker with no API key.
+
+```bash
+docker run -d --name kokoro -p 8880:8880 ghcr.io/hexgrad/kokoro-onnx-server:latest
+```
+
+```env
+TTS_HOST=http://localhost:8880
+TTS_FORMAT=ogg
+TTS_VOICE=af_heart      # default voice; send /voice in Telegram to browse all 25+
+```
+
+Kokoro voices follow a `{prefix}_{name}` pattern — `af_` (American female), `am_` (American male), `bf_` (British female), `bm_` (British male). Examples: `af_heart`, `am_onyx`, `bf_emma`, `am_michael`.
+
+Send `/voice` in your Telegram chat to browse and preview all available voices interactively.
+
+### Per-Session Voice Override
+
+Agents can set a per-session TTS voice with the `set_voice` MCP tool, overriding the global default without affecting other sessions. Pass an empty string to clear the override and revert to the global default.
+
+---
+
 ## Troubleshooting
 
 ### "BOT_TOKEN environment variable is not set"

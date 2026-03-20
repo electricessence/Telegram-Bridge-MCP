@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(() => false),
   setMessageReaction: vi.fn(),
   setTempReaction: vi.fn(),
+  resetPremiumCacheForTest: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -25,7 +26,7 @@ vi.mock("../session-manager.js", () => ({
   validateSession: mocks.validateSession,
 }));
 
-import { register } from "./set_reaction.js";
+import { register, resetPremiumCacheForTest } from "./set_reaction.js";
 
 describe("set_reaction tool", () => {
   let call: (args: Record<string, unknown>) => Promise<unknown>;
@@ -33,6 +34,7 @@ describe("set_reaction tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.validateSession.mockReturnValue(true);
+    resetPremiumCacheForTest();
     const server = createMockServer();
     register(server);
     call = server.getHandler("set_reaction");
@@ -156,6 +158,87 @@ describe("set_reaction tool", () => {
     mocks.setTempReaction.mockResolvedValue(false);
     const result = await call({ message_id: 1, emoji: "👀", restore_emoji: "🫡", identity: [1, 123456]});
     expect(isError(result)).toBe(true);
+  });
+
+  // ── Fallback array logic ─────────────────────────────────────────────────────────
+
+  it("falls back to second candidate when preferred gets REACTION_INVALID", async () => {
+    // 'done' resolves to ['✅', '👍'] — ✅ fails, 👍 should succeed
+    mocks.setMessageReaction
+      .mockRejectedValueOnce(
+        new GrammyError("e", { ok: false, error_code: 400, description: "Bad Request: REACTION_INVALID" }, "setMessageReaction", {}),
+      )
+      .mockResolvedValueOnce(true);
+    const result = await call({ message_id: 10, emoji: "done", identity: [1, 123456] });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.emoji).toBe("👍");
+    expect(data.fallback_used).toBe(true);
+    expect(data.requested).toBe("✅");
+    expect(mocks.setMessageReaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("succeeds with preferred emoji when no fallback needed (done alias)", async () => {
+    const result = await call({ message_id: 11, emoji: "done", identity: [1, 123456] });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.emoji).toBe("✅");
+    expect(data.fallback_used).toBeUndefined();
+    expect(mocks.setMessageReaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates non-REACTION_INVALID error even when fallback exists", async () => {
+    // done → ['✅', '👍'] — ✅ throws CHAT_NOT_FOUND (not REACTION_INVALID), error should propagate
+    mocks.setMessageReaction.mockRejectedValue(
+      new GrammyError("e", { ok: false, error_code: 400, description: "Bad Request: chat not found" }, "setMessageReaction", {}),
+    );
+    const result = await call({ message_id: 1, emoji: "done", identity: [1, 123456] });
+    expect(isError(result)).toBe(true);
+    expect(errorCode(result)).toBe("CHAT_NOT_FOUND");
+    // Only tried first candidate before propagating
+    expect(mocks.setMessageReaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("premium cache: skips premium emoji after fallback fires", async () => {
+    // First call: ✅ fails → falls back to 👍 → caches non-premium
+    mocks.setMessageReaction
+      .mockRejectedValueOnce(
+        new GrammyError("e", { ok: false, error_code: 400, description: "Bad Request: REACTION_INVALID" }, "setMessageReaction", {}),
+      )
+      .mockResolvedValue(true);
+    await call({ message_id: 10, emoji: "done", identity: [1, 123456] });
+
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.setMessageReaction.mockResolvedValue(true);
+
+    // Second call: should skip ✅ and go straight to 👍
+    const result = await call({ message_id: 11, emoji: "done", identity: [1, 123456] });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.emoji).toBe("👍");
+    expect(data.fallback_used).toBe(true);
+    // Only one attempt (skipped ✅)
+    const [, , reaction] = mocks.setMessageReaction.mock.calls[0];
+    expect((reaction as { emoji: string }[])[0].emoji).toBe("👍");
+  });
+
+  it("premium cache: sets premium=true after premium emoji succeeds", async () => {
+    // ✅ succeeds → cache should be set to premium
+    mocks.setMessageReaction.mockResolvedValue(true);
+    await call({ message_id: 10, emoji: "done", identity: [1, 123456] });
+
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.setMessageReaction.mockResolvedValue(true);
+
+    // Second call: still tries ✅ first (premium confirmed)
+    const result = await call({ message_id: 11, emoji: "done", identity: [1, 123456] });
+    const data = parseResult(result);
+    expect(data.emoji).toBe("✅");
+    expect(data.fallback_used).toBeUndefined();
+    const [, , reaction2] = mocks.setMessageReaction.mock.calls[0];
+    expect((reaction2 as { emoji: string }[])[0].emoji).toBe("✅");
   });
 });
 
