@@ -53,6 +53,7 @@ import { register as registerSendDirectMessage } from "./tools/send_direct_messa
 import { register as registerRouteMessage } from "./tools/route_message.js";
 import { register as registerRenameSession } from "./tools/rename_session.js";
 import { register as registerGetDebugLog } from "./tools/get_debug_log.js";
+import { register as registerNotifyShutdownWarning } from "./tools/notify_shutdown_warning.js";
 
 import { createRequire } from "module";
 
@@ -184,6 +185,7 @@ export function createServer(): McpServer {
 
   // ── System ─────────────────────────────────────────────────────────────
   registerShutdownServer(server);
+  registerNotifyShutdownWarning(server);
 
   // ── Resources ────────────────────────────────────────────────────────────
   const agentGuideContent = readFileSync(

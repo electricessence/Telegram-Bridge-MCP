@@ -63,7 +63,7 @@ export async function elegantShutdown(): Promise<never> {
   for (const s of sessions) {
     deliverServiceMessage(
       s.sid,
-      "⛔ Server shutting down. To reconnect, try again after a short wait.",
+      "⛔ Server shutting down. Your session will be invalidated on restart. Do not retry dequeue_update. Wait ~60s, then call session_start to establish a new session.",
       "shutdown",
     );
   }
