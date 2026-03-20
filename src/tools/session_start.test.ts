@@ -665,14 +665,60 @@ describe("session_start tool", () => {
     expect(String(toNew![1])).toContain("SID 2");
   });
 
-  it("does not inject service messages when first session starts", async () => {
+  it("first session receives session_orientation service message", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
 
     await call({});
 
-    expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const orientation = calls.find((c: unknown[]) => c[0] === 1 && c[2] === "session_orientation");
+    expect(orientation).toBeDefined();
+    expect(String(orientation![1])).toContain("SID 1");
+  });
+
+  // =========================================================================
+  // First session announcement (task 018)
+  // =========================================================================
+
+  it("first session sends online announcement to chat", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 42 });
+
+    await call({});
+
+    const announceCalls = mocks.sendMessage.mock.calls.filter(
+      (c: unknown[]) => String(c[1]).includes("🟢 Online"),
+    );
+    expect(announceCalls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("first session announcement is tracked with trackMessageOwner", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 55 });
+
+    await call({});
+
+    expect(mocks.trackMessageOwner).toHaveBeenCalledWith(55, 1);
+  });
+
+  it("first session session_orientation includes announcement_message_id", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", sessionsActive: 1 });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 77 });
+
+    await call({});
+
+    const calls = mocks.deliverServiceMessage.mock.calls;
+    const orientation = calls.find((c: unknown[]) => c[0] === 1 && c[2] === "session_orientation");
+    expect(orientation).toBeDefined();
+    expect((orientation![3] as Record<string, unknown>).announcement_message_id).toBe(77);
   });
 
   // =========================================================================

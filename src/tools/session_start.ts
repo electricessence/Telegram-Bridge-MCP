@@ -200,7 +200,25 @@ export function register(server: McpServer) {
           pending: 0,
         };
         if (discarded > 0) res.discarded = discarded;
-        if (session.sessionsActive > 1) {
+        if (isFirstSession) {
+          // Send visible announcement — same format as 2nd+ sessions so the
+          // operator knows a session is online even for the auto-approved first session.
+          const _announcement = await Promise.resolve(
+            runInSessionContext(session.sid, () =>
+              getApi().sendMessage(chatId, `Session ${session.sid} — 🟢 Online`),
+            ),
+          ).catch(() => undefined);
+          const announcementMsgId = _announcement?.message_id;
+          if (announcementMsgId !== undefined) {
+            trackMessageOwner(announcementMsgId, session.sid);
+          }
+          deliverServiceMessage(
+            session.sid,
+            `You are SID ${session.sid}. You are the only active session.`,
+            "session_orientation",
+            { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
+          );
+        } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
           res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
           if (session.sessionsActive === 2) {
