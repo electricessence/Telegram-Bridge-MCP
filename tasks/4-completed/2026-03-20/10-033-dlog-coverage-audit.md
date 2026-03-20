@@ -77,3 +77,27 @@ dlog("route", `targeted event=${event.id} → sid=${targetSid}`, { type: event.c
 ```
 
 Keep messages concise: category, action, key identifiers, optional data object.
+
+## Completion
+
+All primary acceptance criteria met. Changes implemented in main workspace (`dev` branch):
+
+**`src/message-store.ts`** (9 new dlog calls):
+- Inbound edited message: `inbound edit id=…`
+- Inbound callback query: `inbound callback target=… { data }`
+- Inbound reaction: `inbound reaction id=… { added, removed }`
+- Inbound regular message: `inbound msg id=… { type, reply_to }`
+- Dedup skip: `inbound dedup skip id=…`
+- Timeline eviction: `timeline evict id=…`
+- Index eviction: `index evict msgId=…`
+- Outbound message: `outbound id=… type=… { sid }`
+- patchVoiceText: `voice patch id=… { len }`
+
+**`src/poller.ts`** (4 new dlog calls):
+- Poll cycle: `poll cycle updates=…`
+- Voice phase 1: `voice phase1 id=… { reply_to }`
+- Voice phase 2 start: `voice phase2 start id=…`
+- Voice phase 2 done: `voice phase2 done id=… { len }`
+- Voice phase 2 failed: `voice phase2 failed id=… { err }`
+
+Build clean, 1627 tests passing. Committed: `feat: add dlog route coverage to message-store and poller (#033)`
