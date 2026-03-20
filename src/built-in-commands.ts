@@ -460,7 +460,18 @@ async function handleGovernorCallback(
     }
 
     const newGovernor = sessions.find(s => s.sid === newSid);
-    if (!newGovernor) return;
+    if (!newGovernor) {
+      _activePanels.delete(panelMsgId);
+      try {
+        await api.editMessageText(
+          chatId,
+          panelMsgId,
+          "⚠️ The selected session is no longer active. Please reopen /governor to choose from the current list.",
+          { reply_markup: { inline_keyboard: [] } },
+        );
+      } catch { /* ignore */ }
+      return;
+    }
 
     const oldSid = getGovernorSid();
 

@@ -48,9 +48,10 @@ vi.mock("./telegram.js", async (importActual) => {
   };
 });
 
-vi.mock("./built-in-commands.js", () => ({
-  refreshGovernorCommand: vi.fn(),
-}));
+vi.mock("./built-in-commands.js", async (importActual) => {
+  const actual = await importActual<Record<string, unknown>>();
+  return { ...actual, refreshGovernorCommand: vi.fn() };
+});
 
 // ---------------------------------------------------------------------------
 // Real module imports — only refreshGovernorCommand is stubbed above
