@@ -17,20 +17,26 @@ The merge strategy (direct merge vs PR) is the **governor's decision after the w
 
 ## Worker Responsibilities
 
-Workers do the work. They don't manage the task board, merge branches, or decide the merge strategy.
+Workers do the work. They don't merge branches or decide the merge strategy. They DO move their own task file through the pipeline.
 
 ### Direct Edit Tasks
 
 If the task spec has no `## Worktree` section:
-1. Edit files directly in the main workspace
-2. Commit and push
-3. DM the governor: done
+1. Move task file from `2-queued/` to `3-in-progress/`
+2. Edit files directly in the main workspace
+3. Commit and push
+4. Move task file from `3-in-progress/` to `4-completed/`
+5. DM the governor: done
 
 ### Worktree Tasks
 
 If the task spec has a `## Worktree` section:
 
-#### 1. Create branch and worktree
+#### 1. Pick up the task
+
+Move the task file from `2-queued/` to `3-in-progress/` (in the main workspace).
+
+#### 2. Create branch and worktree
 
 Use the slug from the task spec:
 
@@ -41,16 +47,16 @@ git worktree add .git/.wt/10-013-worktree-test-run task/013-worktree-test-run
 
 All worktrees live under `.git/.wt/` — hidden inside the git directory, keeping the workspace root clean.
 
-#### 2. Work inside the worktree
+#### 3. Work inside the worktree
 
-All file operations happen inside the worktree. Never modify files in the main workspace.
+All code edits happen inside the worktree. The only main workspace change is task file movement.
 
 ```bash
 cd .git/.wt/10-013-worktree-test-run
 # edit files, run tests, etc.
 ```
 
-#### 3. Commit and push
+#### 4. Commit and push
 
 ```bash
 git add -A
@@ -58,11 +64,12 @@ git commit -m "feat: description of change"
 git push -u origin task/013-worktree-test-run
 ```
 
-#### 4. Report completion
+#### 5. Report completion
 
+Move the task file from `3-in-progress/` to `4-completed/` (in the main workspace).
 DM the governor: "Task 013 complete. Branch `task/013-worktree-test-run`. Tests passing."
 
-**Stop here.** Do not merge. Do not move task files. Do not touch the task board. The governor handles everything after this point.
+**Stop here.** Do not merge, delete branches, or remove worktrees. The governor handles everything after this point.
 
 ---
 

@@ -26,11 +26,13 @@ If your task spec does not include a worktree directive, work in the main worksp
 
 ---
 
-## Task Files — Do NOT Create Task Files
+## Task Board — Move Your Own Task
 
-Workers do **not** create, move, or delete task files in `tasks/`. Only the governor manages the task board.
+Workers **move their assigned task file** through the pipeline:
+- Pick up: move from `2-queued/` → `3-in-progress/`
+- Complete: move from `3-in-progress/` → `4-completed/`
 
-If you discover something that should be a task, report it to the governor via DM. Do not create the file yourself.
+Workers do **not** create or delete task files, and do not move other sessions' tasks. If you discover something that should be a new task, report it to the governor via DM.
 
 ---
 
@@ -59,6 +61,6 @@ Workers must **notify the governor** before entering an idle or sleep state. The
 
 - Do **not** run `git stash`, `git reset`, `git rebase`, or `git cherry-pick` without governor approval.
 - Do **not** modify files outside the scope of your assigned task.
-- When using a worktree, all file edits happen inside `.git/.wt/task-NNN/` — never in the main workspace.
+- When using a worktree, code edits happen inside the worktree. **Exception:** moving your task file in `tasks/` is always done in the main workspace.
 - Before committing, announce your intent to the governor and wait for acknowledgment (unless the task spec explicitly pre-approves commits).
 - If you encounter merge conflicts, **stop and report** to the governor. Do not resolve them yourself.

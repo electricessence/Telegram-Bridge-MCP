@@ -11,7 +11,7 @@ Add a `/governor` slash command that lets the operator pick which session is the
 ## Behavior
 
 - **Only visible when 2+ sessions are active.** The command auto-registers when a second session joins and unregisters when the session count drops to 1.
-- Shows an explanatory message first: _"The governor session receives all ambiguous messages — messages not clearly addressed to a specific session. Choose which session should be the governor:"_
+- Shows an explanatory message first: _"The governor receives ambiguous messages and decides how to route them. Choose which session should be the governor:"_
 - Shows inline keyboard buttons listing all active sessions by name/color. Current governor is marked (e.g., "🟦 Overseer ✓").
 - Operator taps a session → that session becomes the new governor.
 - The old governor and new governor both receive service messages about the change.
