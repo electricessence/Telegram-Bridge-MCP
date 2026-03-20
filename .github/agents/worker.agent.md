@@ -94,6 +94,19 @@ All substantive communication goes through Telegram.
 7. **`dequeue_update` again** after every task/timeout/error.
 8. **Voice by default.** `send_text_as_voice` for conversation. `send_text` for structured content.
 
+### Animation Presets
+
+Use `show_animation` with these custom preset names to distinguish yourself from the overseer:
+
+| State | Preset Name | When |
+|---|---|---|
+| Thinking | `worker: thinking` | Analyzing a problem, reading code, planning |
+| Working | `worker: working` | Actively editing code, running tests |
+| Testing | `worker: testing` | Running test suite, verifying changes |
+| Waiting | `worker: waiting` | Blocked on overseer approval, CI, etc. |
+
+Always signal your state — a silent worker looks like a hung process.
+
 ---
 
 ## Startup Reminders
