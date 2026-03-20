@@ -54,12 +54,16 @@ import { register as registerRouteMessage } from "./tools/route_message.js";
 import { register as registerRenameSession } from "./tools/rename_session.js";
 import { register as registerGetDebugLog } from "./tools/get_debug_log.js";
 
+import { createRequire } from "module";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "telegram-bridge-mcp",
-    version: "3.0.0",
+    version: PKG_VERSION,
   });
 
   // ── Session context middleware ──────────────────────────────────────────

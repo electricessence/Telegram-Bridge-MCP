@@ -35,6 +35,11 @@
 
 ## Fixed
 
+- Fixed non-null assertions in `set_reaction.ts` — replaced cast+`!` with `in` guard and destructuring; converted indexed `for` loop to `for...of` with `.entries()`
+- Fixed expired approval callback forwarded to agents — late clicks on `approval:*` buttons now answered with "This approval has expired" and consumed; no longer routed to session queues
+- Fixed duplicate reminder IDs — `addReminder` now replaces an existing reminder with the same ID instead of duplicating; max-count guard only applies to genuinely new reminders
+- Fixed hardcoded version `"3.0.0"` in `McpServer` constructor — now reads from `package.json` via `createRequire`
+- Fixed `requestOperatorApproval` returning `"denied"` on send failure — now returns `"send_failed"`; `rename_session` handles the new value with a distinct error message
 - Fixed `debounceSend()` race condition — concurrent callers could both read `_lastSendAt` before either updated it, allowing messages to fire within the same rate-limit window; replaced with a promise-chain mutex that serialises all callers; `resetRateLimiterForTest()` now resets the lock to a resolved promise
 - Fixed `openai-schema-compat.test.ts` shared `captured` array polluting across tests — added `beforeAll` reset hook; removed manual `captured.length = 0` inside the first test
 - Fixed `requireAuth` accepting a too-short `identity` array — added `identity.length < 2` guard that returns `SID_REQUIRED` before destructuring

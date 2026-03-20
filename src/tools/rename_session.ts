@@ -66,10 +66,12 @@ export function register(server: McpServer) {
         `🔒 *Session Rename Request*\n\nSession *${currentName}* (SID ${sid}) wants to rename itself to *${trimmed}*.\n\nApprove?`,
       );
 
-      if (decision === "denied") {
+      if (decision === "denied" || decision === "send_failed") {
         return toError({
           code: "APPROVAL_DENIED",
-          message: "The operator denied the rename request.",
+          message: decision === "send_failed"
+            ? "Failed to send the approval prompt to the operator."
+            : "The operator denied the rename request.",
         });
       }
       if (decision === "timed_out") {

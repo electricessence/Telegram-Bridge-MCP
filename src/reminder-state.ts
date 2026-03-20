@@ -40,7 +40,11 @@ export function addReminder(params: {
 }): Reminder {
   const sid = getCallerSid();
   const list = _reminders.get(sid) ?? [];
-  if (list.length >= MAX_REMINDERS_PER_SESSION) {
+  // Replace existing reminder with the same ID (user-friendly for re-adds)
+  const existingIdx = list.findIndex(r => r.id === params.id);
+  if (existingIdx !== -1) {
+    list.splice(existingIdx, 1);
+  } else if (list.length >= MAX_REMINDERS_PER_SESSION) {
     throw new Error(`Max reminders per session (${MAX_REMINDERS_PER_SESSION}) reached`);
   }
   const now = Date.now();

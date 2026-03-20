@@ -218,6 +218,17 @@ describe("rename_session tool", () => {
     expect(mocks.renameSession).not.toHaveBeenCalled();
   });
 
+  it("returns APPROVAL_DENIED when approval prompt fails to send", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Primary" }]);
+    mocks.requestOperatorApproval.mockResolvedValue("send_failed");
+
+    const result = await call({ identity: [1, 111111], new_name: "Scout" });
+
+    expect(isError(result)).toBe(true);
+    expect(JSON.stringify(result)).toContain("APPROVAL_DENIED");
+    expect(mocks.renameSession).not.toHaveBeenCalled();
+  });
+
   it("does not request approval for invalid names (approval not reached)", async () => {
     const result = await call({ identity: [1, 111111], new_name: "" });
 

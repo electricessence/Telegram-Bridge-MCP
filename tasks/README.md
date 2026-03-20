@@ -61,6 +61,8 @@ Each task is a single `.md` file named: **`PP-NNN-slug.md`**
 
 **Example:** `10-015-scheduled-reminders.md` → ID 015, priority 10.
 
+**Note:** Completed tasks from before this convention was adopted may use the legacy `NNN-slug.md` format (without priority prefix). The `PP-NNN` format applies to all new tasks.
+
 **Referencing:** Always say "task 015" or "#015" — the ID. Never reference by priority number.
 
 **Reprioritizing:** Rename `50-012` → `15-012`. Sort order changes; ID stays the same.

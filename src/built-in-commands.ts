@@ -64,9 +64,9 @@ const _pendingApprovals = new Map<number, (approved: boolean) => void>();
 export async function requestOperatorApproval(
   prompt: string,
   timeoutMs = 60_000,
-): Promise<"approved" | "denied" | "timed_out"> {
+): Promise<"approved" | "denied" | "timed_out" | "send_failed"> {
   const chatId = resolveChat();
-  if (typeof chatId !== "number") return "denied";
+  if (typeof chatId !== "number") return "send_failed";
   const api = getApi();
 
   let msg: { message_id: number };
@@ -81,7 +81,7 @@ export async function requestOperatorApproval(
       },
     });
   } catch {
-    return "denied";
+    return "send_failed";
   }
 
   markInternalMessage(msg.message_id);
@@ -327,6 +327,13 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
       } else {
         await handleSessionCallback(update.callback_query.id, msgId, update.callback_query.data ?? "");
       }
+      return true;
+    }
+
+    // Expired approval callback — panel no longer active but button was pressed late
+    const data = update.callback_query.data ?? "";
+    if (data.startsWith("approval:")) {
+      try { await getApi().answerCallbackQuery(update.callback_query.id, { text: "This approval has expired." }); } catch { /* ignore */ }
       return true;
     }
   }
