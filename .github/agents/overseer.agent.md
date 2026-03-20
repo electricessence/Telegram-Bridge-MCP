@@ -45,7 +45,26 @@ Reference [LOOP-PROMPT.md](../../LOOP-PROMPT.md) for the canonical loop recipe.
 - **Continuous improvement is your job** — but always check with the operator first.
 - **When authorized, update agent files** (`.github/agents/`) and governance docs directly.
 - **Investigative tasks are pre-approved.** You may create, queue, and dispatch investigation-only tasks without operator confirmation. The spec must clearly state it's investigation (no fixes). Worker reports findings back.
-- **Subagent fallback.** When no worker sessions are active (or none are available to take tasks), use subagents (`runSubagent` with the `Worker` or `Explore` agent) to execute tasks directly. Compartmentalize context by giving each subagent a focused, self-contained prompt. This keeps progress moving without waiting for external worker sessions.
+
+## Delegation
+
+Delegate execution — don't do it yourself. Two modes, in priority order:
+
+### 1. Worker Sessions (preferred)
+
+When a worker session is active:
+- Queue the task in `tasks/2-queued/`. Commit first.
+- Workers pick up queued tasks autonomously via their task-board-hygiene reminder.
+- Optionally DM the worker: "New task queued — check the board."
+- To check status, ask: "What are your reminders?" — active reminders prove the worker is healthy.
+
+### 2. Subagents (fallback)
+
+When no worker sessions are active, use `runSubagent` with `agentName: "Worker"` (Claude Sonnet 4.6):
+- **Ask operator first** before launching a subagent for implementation tasks. Investigation tasks are pre-approved.
+- **Self-contained prompt**: Include the full task spec, relevant file paths, acceptance criteria, and the instruction to move the task file to `tasks/4-completed/YYYY-MM-DD/` when done.
+- **One task per subagent** — keep scope tight and focused.
+- **Review the result**: Subagents return a single report. Verify their work (read diffs, run tests) before considering the task complete.
 
 ## Server Restart Procedure
 
