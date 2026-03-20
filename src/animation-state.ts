@@ -129,6 +129,8 @@ interface SavedResume {
   rawFrames: string[];
   intervalMs: number;
   timeoutSeconds: number;
+  priority: number;
+  notify: boolean;
 }
 
 /** Saved resume config per session — held during file-send gap or deferred restart. */
@@ -275,12 +277,9 @@ async function updateDisplay(entry: StackEntry): Promise<void> {
       _displayedMsgId = msg.message_id;
       _displayedChatId = entry.chatId;
       trackMessageId(_displayedMsgId);
-    } catch {
-      // Can't create message — drop this entry and cascade
-      _stack.shift();
-      clearSendInterceptor(entry.sid);
-      await cascade();
-      return;
+    } catch (err) {
+      // Can't create message — throw so the caller (startAnimation / cascade) can handle cleanup
+      throw err;
     }
   }
 
@@ -317,8 +316,15 @@ async function cascade(): Promise<void> {
     return;
   }
 
-  // Display the new top entry
-  await updateDisplay(_stack[0]);
+  // Display the new top entry — if it fails, drop it and cascade to the next
+  const next = _stack[0];
+  try {
+    await updateDisplay(next);
+  } catch {
+    _stack.shift();
+    clearSendInterceptor(next.sid);
+    await cascade();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -400,15 +406,23 @@ export async function startAnimation(
   dlog("animation", `pushed sid=${sid} priority=${priority} isTop=${isNowTop} frames=${paddedFrames.length} persistent=${persistent}`);
 
   if (isNowTop) {
-    // This session is now displayed — update or create the animation message
-    await updateDisplay(entry);
+    // This session is now displayed — update or create the animation message.
+    // If updateDisplay throws, clean up the pushed entry and do NOT register interceptor.
+    try {
+      await updateDisplay(entry);
+    } catch (err) {
+      const idx = _stack.findIndex(e => e.sid === sid);
+      if (idx !== -1) _stack.splice(idx, 1);
+      await cascade();
+      throw err;
+    }
   }
   // If buried, the display stays on the current top entry; no Telegram action needed.
 
   // Register the per-SID send interceptor for animation promotion.
   // Guards inside each callback ensure no-ops when this SID is buried.
   registerSendInterceptor(sid, {
-    async beforeTextSend(targetChatId, text, opts) {
+    async beforeTextSend(_targetChatId, text, opts) {
       // Guard: only promote if this SID is the currently displayed top
       if (_stack[0]?.sid !== sid || _displayedMsgId === null) {
         process.stderr.write(`[animation] sid=${sid} beforeTextSend: buried or no display, passing through\n`);
@@ -432,7 +446,7 @@ export async function startAnimation(
       const hasReplyParameters = "reply_parameters" in opts && opts.reply_parameters != null;
       if (hasReplyParameters) {
         if (captured.persistent) {
-          _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: captured.timeoutMs / 1000 });
+          _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: captured.timeoutMs / 1000, priority: captured.priority, notify: captured.notify });
         } else {
           clearSendInterceptor(sid);
         }
@@ -465,7 +479,7 @@ export async function startAnimation(
           const editMsg = editErr instanceof Error ? editErr.message : String(editErr);
           process.stderr.write(`[animation] sid=${sid} R4 edit FAILED for msg ${animMsgId}: ${editMsg}\n`);
           if (captured.persistent) {
-            _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: savedTimeoutSeconds });
+            _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: savedTimeoutSeconds, priority: captured.priority, notify: captured.notify });
           } else {
             clearSendInterceptor(sid);
           }
@@ -476,7 +490,7 @@ export async function startAnimation(
         if (captured.persistent) {
           // Restart animation below the promoted text — inline restart
           try {
-            const restartId = await startAnimation(sid, captured.rawFrames, captured.intervalMs, savedTimeoutSeconds, true);
+            const restartId = await startAnimation(sid, captured.rawFrames, captured.intervalMs, savedTimeoutSeconds, true, false, captured.notify, captured.priority);
             process.stderr.write(`[animation] sid=${sid} persistent restart: new msg ${restartId}\n`);
           } catch (restartErr) {
             const restartMsg = restartErr instanceof Error ? restartErr.message : String(restartErr);
@@ -495,7 +509,7 @@ export async function startAnimation(
         await bypassProxy(() => getRawApi().deleteMessage(animChatId, animMsgId));
       } catch { /* cosmetic */ }
       if (captured.persistent) {
-        _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: savedTimeoutSeconds });
+        _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: savedTimeoutSeconds, priority: captured.priority, notify: captured.notify });
       } else {
         clearSendInterceptor(sid);
       }
@@ -509,7 +523,7 @@ export async function startAnimation(
       _savedForResumes.delete(sid);
       if (!resume) return;
       try {
-        await startAnimation(sid, resume.rawFrames, resume.intervalMs, resume.timeoutSeconds, true);
+        await startAnimation(sid, resume.rawFrames, resume.intervalMs, resume.timeoutSeconds, true, false, resume.notify, resume.priority);
       } catch { /* best-effort — animation is cosmetic */ }
     },
 
@@ -530,7 +544,7 @@ export async function startAnimation(
       } catch { /* cosmetic */ }
 
       if (captured.persistent) {
-        _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: captured.timeoutMs / 1000 });
+        _savedForResumes.set(sid, { rawFrames: captured.rawFrames, intervalMs: captured.intervalMs, timeoutSeconds: captured.timeoutMs / 1000, priority: captured.priority, notify: captured.notify });
       } else {
         clearSendInterceptor(sid);
       }
@@ -542,7 +556,7 @@ export async function startAnimation(
       _savedForResumes.delete(sid);
       if (!resume) return;
       try {
-        await startAnimation(sid, resume.rawFrames, resume.intervalMs, resume.timeoutSeconds, true);
+        await startAnimation(sid, resume.rawFrames, resume.intervalMs, resume.timeoutSeconds, true, false, resume.notify, resume.priority);
       } catch { /* best-effort */ }
     },
 
@@ -551,7 +565,7 @@ export async function startAnimation(
     },
   });
 
-  return _displayedMsgId ?? 0;
+  return isNowTop ? (_displayedMsgId ?? 0) : 0;
 }
 
 /**
