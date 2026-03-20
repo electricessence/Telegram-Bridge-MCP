@@ -359,11 +359,6 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
 // /governor panel — runtime governor selection
 // ---------------------------------------------------------------------------
 
-/**
- * Update the Telegram command menu to show or hide /governor based on
- * whether 2+ sessions are active. Call after session creation and closure.
- * Fire-and-forget: errors are suppressed.
- */
 /** Returns the /governor command entry if 2+ sessions are active, null otherwise. */
 export function getGovernorCommandEntry(): { command: string; description: string } | null {
   return activeSessionCount() >= 2
@@ -371,12 +366,17 @@ export function getGovernorCommandEntry(): { command: string; description: strin
     : null;
 }
 
-export function refreshGovernorCommand(): void {
+/**
+ * Update the Telegram command menu to show or hide /governor based on
+ * whether 2+ sessions are active. Call after session creation and closure.
+ * Best-effort: returns true on success, false on failure.
+ */
+export function refreshGovernorCommand(): Promise<boolean> {
   const chatId = resolveChat();
-  if (typeof chatId !== "number") return;
+  if (typeof chatId !== "number") return Promise.resolve(false);
 
   const api = getApi();
-  api
+  return api
     .getMyCommands({ scope: { type: "chat", chat_id: chatId } })
     .then(existingCommands => {
       // Strip built-ins and /governor — they'll be re-added below
@@ -391,7 +391,7 @@ export function refreshGovernorCommand(): void {
 
       return api.setMyCommands(merged, { scope: { type: "chat", chat_id: chatId } });
     })
-    .catch(() => {});
+    .then(() => true, () => false);
 }
 
 async function handleGovernorCommand(): Promise<void> {

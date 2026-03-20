@@ -69,8 +69,10 @@ export function register(server: McpServer) {
         // Always prepend built-in commands so they survive agent menu updates.
         // If the agent passes [] to clear, honour it — but keep built-ins.
         const builtIns: { command: string; description: string }[] = [...BUILT_IN_COMMANDS];
-        const govEntry = getGovernorCommandEntry();
-        if (govEntry) builtIns.push(govEntry);
+        if (scope === "chat") {
+          const govEntry = getGovernorCommandEntry();
+          if (govEntry) builtIns.push(govEntry);
+        }
         const merged = [
           ...builtIns,
           ...commands.filter(c => !builtIns.some(b => b.command === c.command)),
