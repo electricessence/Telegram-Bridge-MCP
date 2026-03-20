@@ -10,4 +10,5 @@
 
 ## Fixed
 
-- Regression-tested cascade-after-text-promotion: buried animation resumes correctly after higher-priority animation is consumed by `beforeTextSend`; added 3 new unit tests
+- Regression-tested cascade-after-text-promotion: buried animation resumes correctly after higher-priority animation is consumed by `beforeTextSend`
+- Added 3 new unit tests for cascade-after-text-promotion behavior
