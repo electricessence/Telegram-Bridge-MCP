@@ -311,10 +311,21 @@ Transcription is transparent — results arrive as `text` with `voice: true`.
 
 | Tool | When to use |
 | --- | --- |
-| `send_text_as_voice(text)` | **Speak a text response via TTS.** The text is synthesized to speech and sent as a voice note. Requires `TTS_HOST` or `OPENAI_API_KEY`. Write as natural spoken language — Markdown is stripped before synthesis. |
+| `send_text_as_voice(text)` | **Speak a text response via TTS.** The text is synthesized to speech and sent as a voice note. Works out of the box with the bundled ONNX model; set `TTS_HOST` (Kokoro recommended) or `OPENAI_API_KEY` for higher quality. Write as natural spoken language — Markdown is stripped before synthesis. |
 | `send_file(file, type: "voice")` | **Send an existing audio file.** Accepts a local OGG/Opus path, public HTTPS URL, or Telegram `file_id`. Use this when you already have audio to deliver. |
 
 Never call `send_file(type: "voice")` to speak text — it only delivers pre-existing audio.
+
+### TTS voice resolution
+
+`send_text_as_voice` picks the voice in this order:
+
+1. **Explicit `voice` parameter** — passed directly in the tool call
+2. **Session override** — set via the `set_voice` tool for the current session
+3. **Global default** — persisted in config via `/voice` in Telegram or a prior `set_voice` with no session context
+4. **Provider default** — the TTS provider's built-in default voice
+
+Use `set_voice` to change your session's voice without affecting other sessions. Use `/voice` in Telegram to set the global default interactively and preview voices.
 
 ### TTS delivery error: "user restricted receiving of voice note messages"
 

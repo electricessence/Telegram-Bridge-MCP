@@ -6,6 +6,10 @@
 - Added "Trust Hierarchy and Agent Authority" section to `docs/inter-agent-communication.md` — four-level table (operator > governor > worker > unverified), escalation principles, and clarification that `routed_by`/`sid` fields are server-stamped (unforgeable) while DM text content is not verifiable as operator intent
 - Added "Trust hierarchy and escalation" subsection to `docs/behavior.md` multi-session area with a pointer to inter-agent-communication.md
 - Updated `session_orientation` role note in `session_start.ts` — worker message now identifies the governor as "your first escalation point" and both governor and worker notes include "Call get_agent_guide for trust and routing guidance"
+- Added "Voice Configuration" section to `docs/setup.md` — covers Kokoro as recommended TTS, Docker setup, env vars (`TTS_HOST`, `TTS_FORMAT`, `TTS_VOICE`, `WHISPER_MODEL`), Kokoro voice naming convention (`af_`/`am_`/`bf_`/`bm_` prefixes), and `set_voice` per-session override
+- Added "TTS voice resolution" subsection to `docs/behavior.md` — documents explicit param → session override → global default → provider default priority chain; links to `set_voice` and `/voice` Telegram command
+- Updated `docs/behavior.md` `send_text_as_voice` table entry to remove inaccurate "Requires TTS_HOST or OPENAI_API_KEY" — correctly notes ONNX fallback works out of the box and recommends Kokoro
+- Updated `docs/customization.md` "Voice-Driven Development" section to cover outbound TTS (`send_text_as_voice`), `set_voice`, `/voice` command, and pointer to setup.md
 
 ## Changed
 
