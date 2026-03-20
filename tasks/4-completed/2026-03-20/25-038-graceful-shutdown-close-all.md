@@ -45,3 +45,9 @@ Before triggering process exit:
 ## Dependencies
 
 - Task #037 (unpin on close_session) should be completed first
+
+## Completion
+
+- Implemented in `src/shutdown.ts`: after notifying sessions and waking waiters, `elegantShutdown` now collects all session announcement message IDs and calls `Promise.allSettled` on `unpinChatMessage` for each; errors are swallowed and do not block shutdown
+- 5 new tests in `src/shutdown.test.ts`: unpins all sessions, skips when no announcement, skips when chat unconfigured, continues on unpin failure, works with no sessions
+- Changelog updated; commit `7738b2e` on dev
