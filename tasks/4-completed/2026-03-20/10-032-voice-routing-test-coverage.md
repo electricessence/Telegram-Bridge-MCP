@@ -77,3 +77,15 @@ function voiceReplyEvent(replyTo: number): TimelineEvent {
   });
 }
 ```
+
+## Completion
+
+- Added 1 test to `message-store.test.ts`: voice `reply_to` captured via `getMessage()` (not dequeue, since voice without text is not ready)
+- Added `voiceReplyEvent()` helper + 5 tests to `multi-session.integration.test.ts`:
+  - Targeted routing: voice reply routes to owning session (pendingCount check)
+  - Targeted routing: voice reply bypasses governor when owner is known
+  - Targeted routing: voice without reply_to goes to governor (ambiguous)
+  - Two-phase: unready event stays in queue; text patch makes it dequeue-ready (same object ref)
+- Key insight: voice events without `text` are non-ready in `TemporalQueue` — routing tests use `pendingCount()` instead of `drain()` to verify queue placement
+- All 1627 tests pass, build and lint clean
+- Changes committed to main workspace (no worktree — tests only)

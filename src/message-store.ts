@@ -22,6 +22,7 @@ import { recordUpdate, recordBotMessage } from "./session-recording.js";
 import { getCallerSid } from "./session-context.js";
 import { TemporalQueue } from "./temporal-queue.js";
 import { routeToSession, trackMessageOwner, notifySessionWaiters, sessionQueueCount } from "./session-queue.js";
+import { dlog } from "./debug-log.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -183,7 +184,8 @@ function now(): string {
 /** Evict oldest timeline events when over capacity. */
 function evictTimeline(): void {
   while (_timeline.length > MAX_TIMELINE) {
-    _timeline.shift();
+    const evicted = _timeline.shift();
+    if (evicted) dlog("route", `timeline evict id=${evicted.id}`);
   }
 }
 
@@ -191,7 +193,10 @@ function evictTimeline(): void {
 function evictIndex(): void {
   while (_insertionOrder.length > MAX_MESSAGES) {
     const oldest = _insertionOrder.shift();
-    if (oldest !== undefined) _index.delete(oldest);
+    if (oldest !== undefined) {
+      _index.delete(oldest);
+      dlog("route", `index evict msgId=${oldest}`);
+    }
   }
 }
 
@@ -240,6 +245,7 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
   // --- Edited message: silent store update, no enqueue ---
   if (update.edited_message) {
     const msgId = update.edited_message.message_id;
+    dlog("route", `inbound edit id=${msgId}`);
     const evt: TimelineEvent = {
       id: msgId,
       timestamp: now(),
@@ -266,6 +272,7 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
     const targetId = cq.message
       ? ("message_id" in cq.message ? cq.message.message_id : 0)
       : 0;
+    dlog("route", `inbound callback target=${targetId}`, { data: cq.data });
     const evt: TimelineEvent = {
       id: targetId,
       timestamp: now(),
@@ -307,6 +314,7 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
     const removed = mr.old_reaction
       .filter((r) => r.type === "emoji")
       .map((r) => (r as { emoji: string }).emoji);
+    dlog("route", `inbound reaction id=${mr.message_id}`, { added, removed });
     const evt: TimelineEvent = {
       id: mr.message_id,
       timestamp: now(),
@@ -333,12 +341,14 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
     const msg = update.message;
     // Dedup: skip if this message_id is already in the index (restart re-delivery)
     if (_index.has(msg.message_id)) {
+      dlog("route", `inbound dedup skip id=${msg.message_id}`);
       return true;
     }
     const content = buildMessageContent(msg, transcribedText);
     if (msg.reply_to_message) {
       content.reply_to = msg.reply_to_message.message_id;
     }
+    dlog("route", `inbound msg id=${msg.message_id}`, { type: content.type, reply_to: content.reply_to });
     const evt: TimelineEvent = {
       id: msg.message_id,
       timestamp: now(),
@@ -461,6 +471,7 @@ export function recordOutgoing(
     content,
     ...(activeSid > 0 && { sid: activeSid }),
   };
+  dlog("route", `outbound id=${messageId} type=${contentType}`, { sid: activeSid });
   pushEvent(evt);
   trackMessageOwner(messageId, activeSid);
 }
@@ -762,6 +773,7 @@ export function patchVoiceText(messageId: number, text: string): void {
   if (!versions) return;
   const current = versions.get(CURRENT);
   if (!current || current.content.type !== "voice") return;
+  dlog("route", `voice patch id=${messageId}`, { len: text.length });
   current.content.text = text;
   _queue.notifyWaiters();
   notifySessionWaiters();

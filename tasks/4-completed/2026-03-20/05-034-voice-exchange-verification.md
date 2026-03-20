@@ -29,3 +29,18 @@ Conduct a live voice message exchange with the operator to verify that:
 - This is a live manual test, not a code change
 - Report findings in `## Completion` — include message IDs, routing info, and any issues observed
 - If voice replies are NOT received, document: message IDs, timestamps, routing field values
+
+## Completion
+
+**Result: All voice routing verified — 3 rounds, all targeted correctly.**
+
+| Round | Msg ID | Type | reply_to | routing |
+|-------|--------|------|----------|---------|
+| Worker sent voice | 11522 | voice | — | sid:2 |
+| Op reply voice | 11523 | voice | 11522 | targeted ✓ |
+| Worker text reply | 11524 | text | — | sid:2 |
+| Op reply voice | 11525 | voice | 11524 | targeted ✓ |
+
+Chat history (`get_chat_history`) confirmed all 4 messages visible and accurate.
+
+**Additional finding:** Operator reported earlier incident where a sleeping session didn't respond promptly to voice. Diagnosed as dequeue-timeout gap (not a routing bug): when a session is in a long dequeue timeout (300s), transcribed voice messages wait until the next cycle. Workaround: use shorter dequeue timeouts (30s) during active work. Flagged to overseer.

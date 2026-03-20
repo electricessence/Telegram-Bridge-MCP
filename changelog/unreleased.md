@@ -8,6 +8,8 @@
 - Added debug log lines in `cascade()` and `updateDisplay()` to make cascade events visible in stderr output
 - First session now sends a visible online announcement to the Telegram chat (same format as 2nd+ sessions) so the operator knows a session is active; message is tracked and `announcement_message_id` included in `session_orientation` service event
 - Pinned session announcement message on multi-session join; unpinned on session close
+- Added voice-routing test coverage: voice reply_to routing, governor bypass for targeted voice, ambiguous voice to governor, two-phase voice routing object reference test
+- Added `dlog("route", ...)` calls to `message-store.ts` and `poller.ts`: inbound message/callback/reaction/edit logging, dedup-skip logging, timeline/index eviction logging, outbound message logging, `patchVoiceText` logging, voice Phase 1/2 start/done/failed logging, poll cycle update count
 
 ## Changed
 
