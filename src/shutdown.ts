@@ -1,6 +1,6 @@
 import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
-import { listSessions } from "./session-manager.js";
+import { listSessions, getSessionAnnouncementMessage } from "./session-manager.js";
 import { deliverServiceMessage, notifySessionWaiters } from "./session-queue.js";
 import { RESTART_GUIDANCE } from "./restart-guidance.js";
 
@@ -70,6 +70,18 @@ export async function elegantShutdown(): Promise<never> {
   }
   // Wake up any agents blocked in dequeue_update
   notifySessionWaiters();
+
+  // Unpin all session announcement messages (best-effort)
+  const chatId = resolveChat();
+  if (typeof chatId === "number") {
+    const api = getApi();
+    await Promise.allSettled(
+      sessions
+        .map(s => getSessionAnnouncementMessage(s.sid))
+        .filter((id): id is number => id !== undefined)
+        .map(id => api.unpinChatMessage(chatId, id)),
+    );
+  }
 
   // Give MCP stdio a moment to transmit responses
   await new Promise<void>((r) => setTimeout(r, 2000));

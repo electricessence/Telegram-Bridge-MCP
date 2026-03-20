@@ -2,18 +2,20 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   setMyCommands: vi.fn(),
+  unpinChatMessage: vi.fn((): Promise<void> => Promise.resolve()),
   resolveChat: vi.fn((): number | string => 123),
   sendServiceMessage: vi.fn((): Promise<void> => Promise.resolve()),
   stopPoller: vi.fn(),
   waitForPollerExit: vi.fn((): Promise<void> => Promise.resolve()),
   drainPendingUpdates: vi.fn((): Promise<void> => Promise.resolve()),
   listSessions: vi.fn((): Array<{ sid: number; name: string }> => []),
+  getSessionAnnouncementMessage: vi.fn((_sid: number): number | undefined => undefined),
   deliverServiceMessage: vi.fn((): boolean => true),
   notifySessionWaiters: vi.fn(),
 }));
 
 vi.mock("./telegram.js", () => ({
-  getApi: () => ({ setMyCommands: mocks.setMyCommands }),
+  getApi: () => ({ setMyCommands: mocks.setMyCommands, unpinChatMessage: mocks.unpinChatMessage }),
   resolveChat: mocks.resolveChat,
   sendServiceMessage: mocks.sendServiceMessage,
 }));
@@ -26,6 +28,7 @@ vi.mock("./poller.js", () => ({
 
 vi.mock("./session-manager.js", () => ({
   listSessions: mocks.listSessions,
+  getSessionAnnouncementMessage: mocks.getSessionAnnouncementMessage,
 }));
 
 vi.mock("./session-queue.js", () => ({
@@ -157,6 +160,42 @@ describe("elegantShutdown", () => {
     await elegantShutdown();
     expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
     expect(mocks.notifySessionWaiters).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+
+  it("unpins announcement messages for all sessions on shutdown", async () => {
+    mocks.listSessions.mockReturnValue([
+      { sid: 1, name: "Overseer" },
+      { sid: 2, name: "Worker" },
+    ]);
+    mocks.getSessionAnnouncementMessage.mockImplementation((sid: number) =>
+      sid === 1 ? 1001 : 2002,
+    );
+    await elegantShutdown();
+    expect(mocks.unpinChatMessage).toHaveBeenCalledWith(123, 1001);
+    expect(mocks.unpinChatMessage).toHaveBeenCalledWith(123, 2002);
+  });
+
+  it("skips unpin when session has no announcement message", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Worker" }]);
+    mocks.getSessionAnnouncementMessage.mockReturnValue(undefined);
+    await elegantShutdown();
+    expect(mocks.unpinChatMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not unpin when chat is unconfigured", async () => {
+    mocks.resolveChat.mockReturnValue("not configured");
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Worker" }]);
+    mocks.getSessionAnnouncementMessage.mockReturnValue(999);
+    await elegantShutdown();
+    expect(mocks.unpinChatMessage).not.toHaveBeenCalled();
+  });
+
+  it("continues shutdown even if unpin fails", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Worker" }]);
+    mocks.getSessionAnnouncementMessage.mockReturnValue(888);
+    mocks.unpinChatMessage.mockRejectedValue(new Error("unpin failed"));
+    await expect(elegantShutdown()).resolves.toBeUndefined();
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 });
