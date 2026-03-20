@@ -60,11 +60,11 @@ When a worker session is active:
 
 ### 2. Subagents (fallback)
 
-When no worker sessions are active, use `runSubagent` with `agentName: "Worker"` (Claude Sonnet 4.6):
+When no worker sessions are active, use `runSubagent` with `agentName: "Task Runner"` (Claude Sonnet 4.6):
 - **Ask operator first** before launching a subagent for implementation tasks. Investigation tasks are pre-approved.
 - **Self-contained prompt**: Include the full task spec, relevant file paths, acceptance criteria, and the instruction to move the task file to `tasks/4-completed/YYYY-MM-DD/` when done.
 - **One task per subagent** — keep scope tight and focused.
-- **Review the result**: Subagents return a single report. Verify their work (read diffs, run tests) before considering the task complete.
+- **Review the result**: Subagents return a single report. Verify their work (read diffs, run tests) before committing.
 
 ## Server Restart Procedure
 
