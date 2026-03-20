@@ -830,6 +830,22 @@ describe("built-in-commands", () => {
       );
       expect(thirdParty).toHaveLength(0);
     });
+
+    it("governor:set dismisses panel with notice when < 2 sessions (stale panel)", async () => {
+      const panelId = await createGovernorPanel();
+      // Simulate session closure after panel was opened
+      mocks.listSessions.mockReturnValue([SESSIONS[0]]);
+      mocks.activeSessionCount.mockReturnValue(1);
+      mocks.editMessageText.mockResolvedValue(true);
+      await handleIfBuiltIn(callbackUpdate(panelId, "governor:set:2"));
+      expect(mocks.setGovernorSid).not.toHaveBeenCalled();
+      expect(mocks.editMessageText).toHaveBeenCalledWith(
+        123,
+        panelId,
+        expect.stringContaining("2 or more active sessions"),
+        expect.anything(),
+      );
+    });
   });
 
   // -- refreshGovernorCommand ----------------------------------------------

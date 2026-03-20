@@ -364,6 +364,13 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
  * whether 2+ sessions are active. Call after session creation and closure.
  * Fire-and-forget: errors are suppressed.
  */
+/** Returns the /governor command entry if 2+ sessions are active, null otherwise. */
+export function getGovernorCommandEntry(): { command: string; description: string } | null {
+  return activeSessionCount() >= 2
+    ? { command: "governor", description: "Switch the governor session" }
+    : null;
+}
+
 export function refreshGovernorCommand(): void {
   const chatId = resolveChat();
   if (typeof chatId !== "number") return;
@@ -378,9 +385,8 @@ export function refreshGovernorCommand(): void {
       );
 
       const merged: { command: string; description: string }[] = [...BUILT_IN_COMMANDS];
-      if (activeSessionCount() >= 2) {
-        merged.push({ command: "governor", description: "Switch the governor session" });
-      }
+      const govEntry = getGovernorCommandEntry();
+      if (govEntry) merged.push(govEntry);
       merged.push(...custom);
 
       return api.setMyCommands(merged, { scope: { type: "chat", chat_id: chatId } });
@@ -434,6 +440,21 @@ async function handleGovernorCallback(
     if (isNaN(newSid)) return;
 
     const sessions = listSessions();
+
+    // Guard: refuse governor changes when < 2 sessions (panel may be stale)
+    if (sessions.length < 2) {
+      _activePanels.delete(panelMsgId);
+      try {
+        await api.editMessageText(
+          chatId,
+          panelMsgId,
+          "ℹ️ Governor selection requires 2 or more active sessions.",
+          { reply_markup: { inline_keyboard: [] } },
+        );
+      } catch { /* ignore */ }
+      return;
+    }
+
     const newGovernor = sessions.find(s => s.sid === newSid);
     if (!newGovernor) return;
 
