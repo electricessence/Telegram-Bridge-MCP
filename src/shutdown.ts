@@ -2,6 +2,7 @@ import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
 import { listSessions } from "./session-manager.js";
 import { deliverServiceMessage, notifySessionWaiters } from "./session-queue.js";
+import { RESTART_GUIDANCE } from "./restart-guidance.js";
 
 /**
  * Clears all registered slash-command menus on shutdown.
@@ -63,7 +64,7 @@ export async function elegantShutdown(): Promise<never> {
   for (const s of sessions) {
     deliverServiceMessage(
       s.sid,
-      "⛔ Server shutting down. Your session will be invalidated on restart. Do not retry dequeue_update. Wait ~60s, then call session_start to establish a new session.",
+      "⛔ Server shutting down. Your session will be invalidated on restart. " + RESTART_GUIDANCE,
       "shutdown",
     );
   }

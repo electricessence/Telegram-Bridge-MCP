@@ -4,12 +4,12 @@ import { toResult, toError } from "../telegram.js";
 import { requireAuth } from "../session-gate.js";
 import { listSessions } from "../session-manager.js";
 import { deliverDirectMessage } from "../session-queue.js";
+import { RESTART_GUIDANCE } from "../restart-guidance.js";
 import { IDENTITY_SCHEMA } from "./identity-schema.js";
 
-const DEFAULT_MESSAGE =
+const BASE_WARNING =
   "⛔ Shutdown warning: the server is restarting soon. " +
-  "Complete any in-progress work. Do not retry dequeue_update after shutdown. " +
-  "Wait ~60s, then call session_start to re-establish your session.";
+  "Complete any in-progress work. " + RESTART_GUIDANCE;
 
 const DESCRIPTION =
   "Send a pre-shutdown advisory DM to all other active sessions. " +
@@ -26,6 +26,7 @@ export function register(server: McpServer) {
         identity: IDENTITY_SCHEMA,
         reason: z
           .string()
+          .min(1)
           .optional()
           .describe("Optional reason for the restart (e.g. \"code update\", \"config change\")"),
         wait_seconds: z
@@ -45,7 +46,7 @@ export function register(server: McpServer) {
         return toResult({ notified: 0, message: "No other sessions active" });
       }
 
-      const parts: string[] = [DEFAULT_MESSAGE];
+      const parts: string[] = [BASE_WARNING];
       if (reason) parts.push(`Reason: ${reason}`);
       if (typeof wait_seconds === "number") {
         parts.push(`Estimated restart time: ~${wait_seconds}s`);
