@@ -344,10 +344,14 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
       return true;
     }
 
-    // Expired approval callback — panel no longer active but button was pressed late
+    // Expired callback — panel no longer active but button was pressed late
     const data = update.callback_query.data ?? "";
     if (data.startsWith("approval:")) {
       try { await getApi().answerCallbackQuery(update.callback_query.id, { text: "This approval has expired." }); } catch { /* ignore */ }
+      return true;
+    }
+    if (data.startsWith("governor:")) {
+      try { await getApi().answerCallbackQuery(update.callback_query.id, { text: "This panel has expired." }); } catch { /* ignore */ }
       return true;
     }
   }

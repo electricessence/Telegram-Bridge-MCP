@@ -66,7 +66,7 @@ vi.mock("../built-in-commands.js", () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Real session infrastructure (no mock)
+// Real session infrastructure (refreshGovernorCommand stubbed above)
 // ---------------------------------------------------------------------------
 
 import {

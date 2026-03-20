@@ -53,7 +53,7 @@ vi.mock("./built-in-commands.js", () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Real module imports — NOT mocked
+// Real module imports — only refreshGovernorCommand is stubbed above
 // ---------------------------------------------------------------------------
 
 import {
