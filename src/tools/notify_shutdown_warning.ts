@@ -38,10 +38,10 @@ export function register(server: McpServer) {
       },
     },
     ({ identity, reason, wait_seconds }) => {
-      const callerSid = requireAuth(identity);
-      if (typeof callerSid !== "number") return toError(callerSid);
+      const _sid = requireAuth(identity);
+      if (typeof _sid !== "number") return toError(_sid);
 
-      const others = listSessions().filter(s => s.sid !== callerSid);
+      const others = listSessions().filter(s => s.sid !== _sid);
       if (others.length === 0) {
         return toResult({ notified: 0, message: "No other sessions active" });
       }
@@ -55,7 +55,7 @@ export function register(server: McpServer) {
 
       let notified = 0;
       for (const s of others) {
-        if (deliverDirectMessage(callerSid, s.sid, text)) notified++;
+        if (deliverDirectMessage(_sid, s.sid, text)) notified++;
       }
 
       return toResult({ notified });

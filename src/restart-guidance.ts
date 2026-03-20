@@ -1,3 +1,3 @@
 /** Shared restart guidance appended to both shutdown and pre-warning messages. */
 export const RESTART_GUIDANCE =
-  "Do not retry dequeue_update. Wait for the server to restart, then call session_start to establish a new session.";
+  "When you receive a shutdown event, stop retrying dequeue_update. After the server restarts, call session_start to establish a new session.";
