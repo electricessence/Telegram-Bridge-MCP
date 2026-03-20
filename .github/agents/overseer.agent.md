@@ -44,6 +44,7 @@ Reference [LOOP-PROMPT.md](../../LOOP-PROMPT.md) for the canonical loop recipe.
 - **Don't touch in-progress work.** The owning worker has exclusive control.
 - **Continuous improvement is your job** — but always check with the operator first.
 - **When authorized, update agent files** (`.github/agents/`) and governance docs directly.
+- **Investigative tasks are pre-approved.** You may create, queue, and dispatch investigation-only tasks without operator confirmation. The spec must clearly state it's investigation (no fixes). Worker reports findings back.
 
 ## Post-Compaction Recovery
 

@@ -62,6 +62,7 @@ When using a worktree, code edits happen inside the worktree. Exception: moving 
 - Do **not** create or delete task files
 - Do **not** move other sessions' tasks
 - Discovered new work → DM overseer
+- **Investigation tasks** — report findings only, do not fix. Append results to the task file under `## Findings`.
 
 ## Idle Protocol
 
