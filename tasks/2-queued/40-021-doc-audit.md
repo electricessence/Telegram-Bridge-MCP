@@ -3,7 +3,6 @@
 | Field    | Value                                            |
 | -------- | ------------------------------------------------ |
 | Priority | 40 (low — polish, no functional impact)          |
-| Status   | Draft                                            |
 | Created  | 2026-03-19                                       |
 
 ## Goal

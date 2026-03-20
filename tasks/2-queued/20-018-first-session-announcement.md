@@ -3,7 +3,6 @@
 | Field    | Value                                          |
 | -------- | ---------------------------------------------- |
 | Priority | 20 (medium-high — UX gap noticed by operator)  |
-| Status   | Draft                                          |
 | Created  | 2026-03-19 (refined from backlog)              |
 
 ## Goal

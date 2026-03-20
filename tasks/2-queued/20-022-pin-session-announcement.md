@@ -2,8 +2,7 @@
 
 | Field    | Value                                              |
 | -------- | -------------------------------------------------- |
-| Priority | 20 (high — improves multi-session UX)             |
-| Status   | Draft                                              |
+| Priority | 20 (high — improves multi-session UX)              |
 | Created  | 2026-03-19                                         |
 
 ## Goal
