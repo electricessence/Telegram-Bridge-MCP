@@ -55,3 +55,17 @@ MD031 (fenced blocks need blank lines) at lines ~100, 105. MD032 (lists need bla
 - All seven issues resolved
 - `pnpm lint` passes
 - Markdown diagnostics clean for edited files
+
+## Completion
+
+All seven issues resolved. `pnpm lint` passed clean.
+
+### Files Modified
+
+| File | Change |
+| --- | --- |
+| `.github/agents/worker.agent.md` | Removed `interval_ms=2000` from all `set_default_animation()` examples; removed the explanatory blockquote about `interval_ms` |
+| `.github/agents/overseer.agent.md` | Fixed Post-Compaction Recovery step 4: drain pending with `dequeue_update(timeout: 0)` before notifying operator |
+| `tasks/worktree-workflow.md` | Updated task file rule to reflect workers moving their own tasks; replaced `v4-multi-session` with `dev`; added blank lines around fenced code blocks (MD031) and lists (MD032) |
+| `README.md` | Updated Docker tag from `4.1.0` to `4.3.0` |
+| `Dockerfile` | Pinned both `corepack prepare pnpm@latest` to `pnpm@10.0.0` (matching `package.json` `packageManager` field) |

@@ -95,7 +95,7 @@ To restart the MCP server (e.g., after `pnpm build` to pick up code changes):
 1. `list_sessions` → find your session
 2. `session_start` with `reconnect: true` if needed
 3. Re-set all startup reminders (they don't persist)
-4. `notify` the operator: "Recovered from compaction" → `dequeue_update` → re-enter loop
+4. `dequeue_update(timeout: 0)` to drain pending → `notify` the operator: "Recovered from compaction" → `dequeue_update` → re-enter loop
 
 ---
 
