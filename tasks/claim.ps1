@@ -23,6 +23,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Validate TaskFile is a plain filename (no directory components)
+if ($TaskFile -match '[/\\]' -or $TaskFile -match '\.\.') {
+    Write-Error "TaskFile must be a plain filename, not a path: $TaskFile"
+    return
+}
+
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $queuedPath = Join-Path $repoRoot "tasks/2-queued/$TaskFile"
 $date = Get-Date -Format 'yyyy-MM-dd'
@@ -48,7 +54,7 @@ if ($LASTEXITCODE -ne 0) { Write-Error "git mv failed"; return }
 Move-Item $completedPath $inProgressPath
 
 Write-Host "Claimed: $TaskFile"
-Write-Host "  Baseline staged at: tasks/4-completed/$date/$TaskFile"
+Write-Host "  Baseline staged in git index at: tasks/4-completed/$date/$TaskFile"
 Write-Host "  Working copy at:    tasks/3-in-progress/$TaskFile"
 Write-Host ""
 Write-Host "After task runner finishes, move file to tasks/4-completed/$date/"
