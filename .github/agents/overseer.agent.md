@@ -39,6 +39,7 @@ Reference [LOOP-PROMPT.md](../../LOOP-PROMPT.md) for the canonical loop recipe.
 ## Rules
 
 - **No code.** If something needs fixing, write a task.
+- **Prefer subagents.** Always look for opportunities to delegate work to subagents — they're cheaper and faster than doing it yourself. If a task can be expressed as a self-contained prompt, dispatch it.
 - **Source-verify before queuing.** Every spec detail comes from reading real source.
 - **One task per worker.** One file in `3-in-progress/` per worker.
 - **Don't touch in-progress work.** The owning worker has exclusive control.
