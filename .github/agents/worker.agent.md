@@ -45,7 +45,7 @@ dequeue → messages? → handle → dequeue
 **Review after delegation** — when the Task Runner returns:
 
 | Task Type | Review Action |
-|---|---|
+| --- | --- |
 | Investigation | Read findings in the task file. No code to verify. |
 | Direct (docs, config, small fixes) | `git diff` to see changes. Run tests/lint if code was touched. If good, `git add` the changed files. |
 | Worktree (branch) | Review commits in the worktree branch. Run tests inside worktree. |
@@ -129,7 +129,7 @@ All substantive communication goes through Telegram.
 
 Each preset embeds your **session name** so multiple workers are visually distinct in chat. Replace `{name}` with your actual session name (e.g., `Worker`, `Worker 2`).
 
-```
+```text
 set_default_animation(name="{name}: thinking", frames=["⏳ {name}: thinking…", "⌛ {name}: thinking…"])
 set_default_animation(name="{name}: working",  frames=["⏳ {name}: working…",  "⌛ {name}: working…"])
 set_default_animation(name="{name}: testing",  frames=["⏳ {name}: testing…",  "⌛ {name}: testing…"])
@@ -137,7 +137,7 @@ set_default_animation(name="{name}: waiting",  frames=["⏳ {name}: waiting…",
 ```
 
 | Preset Name | When to Use |
-|---|---|
+| --- | --- |
 | `{name}: thinking` | Analyzing, reading code, planning |
 | `{name}: working` | Editing code, running builds |
 | `{name}: testing` | Running test suite, verifying |

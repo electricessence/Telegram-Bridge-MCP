@@ -45,7 +45,7 @@ When the task spec includes a `## Worktree` section:
 
 ## Task File Lifecycle
 
-```
+```text
 Read spec (in 3-in-progress/) → Do the work → Append Completion → Move to 4-completed/YYYY-MM-DD/ → Report
 ```
 

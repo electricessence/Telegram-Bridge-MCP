@@ -61,7 +61,7 @@ When a worker session is active:
 ### 2. Subagents (fallback)
 
 When no worker sessions are active, use `runSubagent` with `agentName: "Task Runner"` (Claude Sonnet 4.6):
-- **Claim first**: Run `tasks/claim.ps1 <filename>` to stage a baseline and move to `3-in-progress/`.
+- **Claim first**: Run `tasks/claim.ps1 <filename>` to stage a baseline in the git index and move the working copy to `3-in-progress/`.
 - **Ask operator first** before launching a subagent for implementation tasks. Investigation tasks are pre-approved.
 - **Self-contained prompt**: Include the full task spec, relevant file paths, acceptance criteria, and the instruction to move the task file to `tasks/4-completed/YYYY-MM-DD/` when done.
 - **One task per subagent** — keep scope tight and focused.
@@ -72,7 +72,7 @@ When no worker sessions are active, use `runSubagent` with `agentName: "Task Run
 When work is reported complete (by worker or subagent):
 
 | Change Type | Action |
-|---|---|
+| --- | --- |
 | Investigation | Read findings. No merge needed. Commit task file only. |
 | Direct (staged by worker) | Review staged changes, commit. |
 | Worktree (branch) | Review the branch. **Small/safe** → merge directly. **Large/risky** → push PR for CI + review. |

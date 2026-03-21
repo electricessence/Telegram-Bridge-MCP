@@ -47,7 +47,9 @@ if (-not (Test-Path $completedDir)) {
 }
 
 # Step 1: git mv to completed (stages the baseline snapshot)
-git mv $queuedPath $completedPath
+Push-Location $repoRoot
+git mv "tasks/2-queued/$TaskFile" "tasks/4-completed/$date/$TaskFile"
+Pop-Location
 if ($LASTEXITCODE -ne 0) { Write-Error "git mv failed"; return }
 
 # Step 2: Move working copy to in-progress
