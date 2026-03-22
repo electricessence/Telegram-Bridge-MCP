@@ -32,8 +32,8 @@ export function register(server: McpServer) {
       },
     },
     ({ key, identity }) => {
-      const sid = requireAuth(identity);
-      if (typeof sid !== "number") return toError(sid);
+      const _sid = requireAuth(identity);
+      if (typeof _sid !== "number") return toError(_sid);
 
       let profile;
       try {
@@ -53,33 +53,42 @@ export function register(server: McpServer) {
         applied.voice = profile.voice;
       }
 
-      if (profile.animation_default !== undefined) {
-        setSessionDefault(sid, profile.animation_default);
-        applied.animation_default = true;
-      }
-
-      const appliedPresets: string[] = [];
-      if (profile.animation_presets !== undefined) {
-        for (const [name, frames] of Object.entries(profile.animation_presets)) {
-          registerPreset(sid, name, frames);
-          appliedPresets.push(name);
+      try {
+        if (profile.animation_default !== undefined) {
+          setSessionDefault(_sid, profile.animation_default);
+          applied.animation_default = true;
         }
-      }
-      if (appliedPresets.length > 0) applied.presets = appliedPresets;
 
-      const appliedReminders: string[] = [];
-      if (profile.reminders !== undefined) {
-        for (const r of profile.reminders) {
-          const reminder = addReminder({
-            id: r.id ?? crypto.randomUUID(),
-            text: r.text,
-            delay_seconds: r.delay_seconds,
-            recurring: r.recurring,
-          });
-          appliedReminders.push(reminder.id);
+        const appliedPresets: string[] = [];
+        if (profile.animation_presets !== undefined) {
+          for (const [name, frames] of Object.entries(profile.animation_presets)) {
+            registerPreset(_sid, name, frames);
+            appliedPresets.push(name);
+          }
         }
+        if (appliedPresets.length > 0) applied.presets = appliedPresets;
+
+        const appliedReminders: string[] = [];
+        if (profile.reminders !== undefined) {
+          for (const r of profile.reminders) {
+            const reminder = addReminder({
+              id: r.id ?? crypto.randomUUID(),
+              text: r.text,
+              delay_seconds: r.delay_seconds,
+              recurring: r.recurring,
+            });
+            appliedReminders.push(reminder.id);
+          }
+        }
+        if (appliedReminders.length > 0) applied.reminders = appliedReminders;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const isReminderLimit = message.includes("MAX_REMINDERS_PER_SESSION");
+        return toError({
+          code: isReminderLimit ? "REMINDER_LIMIT_EXCEEDED" : "APPLY_FAILED",
+          message,
+        });
       }
-      if (appliedReminders.length > 0) applied.reminders = appliedReminders;
 
       return toResult({ loaded: true, key, applied });
     },

@@ -11,8 +11,7 @@ import { listReminders } from "../reminder-state.js";
 const DESCRIPTION =
   "Snapshot the current session's voice, animation, and reminder configuration " +
   "to a profile file for later restoration via load_profile. " +
-  "Bare keys (e.g. \"Overseer\") save to data/profiles/{key}.json (gitignored). " +
-  "Path keys (e.g. \"profiles/Overseer\") save relative to the repo root.";
+  "Saves to data/profiles/{key}.json (gitignored). Use load_profile with a path key to load from a checked-in profile.";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -25,21 +24,24 @@ export function register(server: McpServer) {
           .min(1)
           .max(200)
           .describe(
-            "Profile key. Bare name (e.g. \"Overseer\") saves to data/profiles/. " +
-            "Path key (e.g. \"profiles/Overseer\") saves relative to repo root.",
+            "Profile key. Must be a bare name (e.g. \"Overseer\"). Saves to data/profiles/{key}.json (gitignored).",
           ),
         identity: IDENTITY_SCHEMA,
       },
     },
     ({ key, identity }) => {
-      const sid = requireAuth(identity);
-      if (typeof sid !== "number") return toError(sid);
+      const _sid = requireAuth(identity);
+      if (typeof _sid !== "number") return toError(_sid);
+
+      if (key.includes("/")) {
+        return toError({ code: "INVALID_KEY", message: "Path keys are not allowed in save_profile. Use a bare key (e.g. \"Overseer\")." });
+      }
 
       const sections: string[] = [];
 
-      const voice = getSessionVoiceFor(sid);
-      const animationDefault = getDefaultFrames(sid);
-      const presetNames = listPresets(sid);
+      const voice = getSessionVoiceFor(_sid);
+      const animationDefault = getDefaultFrames(_sid);
+      const presetNames = listPresets(_sid);
       const reminders = listReminders();
 
       const data: Record<string, unknown> = {};
@@ -56,7 +58,7 @@ export function register(server: McpServer) {
       if (presetNames.length > 0) {
         const presets: Record<string, string[]> = {};
         for (const name of presetNames) {
-          const frames = getPreset(sid, name);
+          const frames = getPreset(_sid, name);
           if (frames) presets[name] = [...frames];
         }
         data.animation_presets = presets;
@@ -65,6 +67,7 @@ export function register(server: McpServer) {
 
       if (reminders.length > 0) {
         data.reminders = reminders.map(r => ({
+          id: r.id,
           text: r.text,
           delay_seconds: r.delay_seconds,
           recurring: r.recurring,

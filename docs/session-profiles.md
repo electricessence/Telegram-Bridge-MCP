@@ -6,8 +6,10 @@ Persist session configuration across server restarts. A **profile** is a JSON fi
 
 A profile key is either a bare name or a relative path:
 
-- **Bare key** (`Overseer`) → `data/profiles/Overseer.json` (gitignored, default)
-- **Path key** (`profiles/Overseer`) → `profiles/Overseer.json` (as given, relative to repo root)
+- **Bare key** (`Overseer`) → `data/profiles/Overseer.json` (gitignored)
+- **Path key** (`profiles/Overseer`) → `profiles/Overseer.json` (relative to repo root) — **load only**
+
+`save_profile` only accepts bare keys — path keys are rejected to keep tool-written files in the gitignored tier. `load_profile` accepts both, allowing agents to load hand-curated checked-in profiles.
 
 Path traversal (`..`) and absolute paths are rejected. The `data/` directory is gitignored.
 
@@ -15,7 +17,7 @@ Path traversal (`..`) and absolute paths are rejected. The `data/` directory is 
 
 ### `save_profile(key)`
 
-Snapshots the current session's state to `data/profiles/{key}.json`. Always saves to the gitignored tier — checked-in profiles are hand-curated, not tool-written.
+Snapshots the current session's state to `data/profiles/{key}.json`. Only bare keys are accepted — path keys are rejected to prevent tool-written files outside the gitignored tier. Checked-in profiles are hand-curated.
 
 Captures:
 
@@ -56,8 +58,8 @@ No listing, no discovery. The agent must know its profile key.
     "working": ["Working.", "Working..", "Working..."]
   },
   "reminders": [
-    { "text": "Check task board for hygiene", "delay_min": 15, "recurring": true },
-    { "text": "Git state audit", "delay_min": 15, "recurring": true }
+    { "text": "Check task board for hygiene", "delay_seconds": 900, "recurring": true },
+    { "text": "Git state audit", "delay_seconds": 900, "recurring": true }
   ]
 }
 ```
@@ -80,9 +82,9 @@ session_start(name: "Worker")         → SID 2, PIN 123456
 set_voice(voice: "nova")
 set_default_animation(name: "thinking", frames: [...])
 set_default_animation(name: "working", frames: [...])
-set_reminder(text: "...", delay: 15, recurring: true)
-set_reminder(text: "...", delay: 15, recurring: true)
-set_reminder(text: "...", delay: 10, recurring: true)
+set_reminder(text: "...", delay_seconds: 15, recurring: true)
+set_reminder(text: "...", delay_seconds: 15, recurring: true)
+set_reminder(text: "...", delay_seconds: 10, recurring: true)
 ```
 
 7+ tool calls, large prompt context for reminder definitions.
