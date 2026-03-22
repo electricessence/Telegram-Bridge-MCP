@@ -1,7 +1,7 @@
 ---
 name: Code Reviewer
 description: Adversarial code reviewer — finds bugs, security issues, and yellow flags in changed files
-model: Claude Sonnet 4.6
+model: GPT-5.3-Codex
 tools: [read, search]
 ---
 
