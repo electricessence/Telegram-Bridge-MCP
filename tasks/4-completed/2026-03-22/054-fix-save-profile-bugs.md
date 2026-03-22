@@ -118,7 +118,7 @@ export interface ReminderDef {
 ## Files
 
 | File | Action |
-|---|---|
+| --- | --- |
 | `src/reminder-state.ts` | Add `reminderContentHash` helper |
 | `src/tools/set_reminder.ts` | Use content hash as default ID |
 | `src/animation-state.ts` | Add `hasSessionDefault` export |
@@ -135,18 +135,24 @@ export interface ReminderDef {
 
 ### Files Modified
 
-- src/reminder-state.ts — added eminderContentHash(text, recurring) export (SHA-256/16 hex)
+- src/reminder-state.ts — added 
+eminderContentHash(text, recurring) export (SHA-256/16 hex)
 - src/animation-state.ts — added hasSessionDefault(sid) export
 - src/tools/save_profile.ts — only saves nimation_default when custom; strips id from reminder serialization
-- src/tools/set_reminder.ts — uses eminderContentHash as default ID instead of crypto.randomUUID()
-- src/tools/load_profile.ts — uses eminderContentHash for IDs; tracks added vs updated; returns enriched reminder summary with eview_recommended
+- src/tools/set_reminder.ts — uses 
+eminderContentHash as default ID instead of crypto.randomUUID()
+- src/tools/load_profile.ts — uses 
+eminderContentHash for IDs; tracks added vs updated; returns enriched reminder summary with 
+eview_recommended
 - src/profile-store.ts — removed id? field from ReminderDef interface
 - changelog/unreleased.md — added Fixed and Changed entries per spec
 
 ### Tests Added/Updated
 
-- src/reminder-state.test.ts — added eminderContentHash suite (4 tests: deterministic, length, recurring diff, text diff)
-- src/tools/set_reminder.test.ts — added content hash mock; added test for default ID via content hash; updated module mock to include eminderContentHash
+- src/reminder-state.test.ts — added 
+eminderContentHash suite (4 tests: deterministic, length, recurring diff, text diff)
+- src/tools/set_reminder.test.ts — added content hash mock; added test for default ID via content hash; updated module mock to include 
+eminderContentHash
 - src/tools/save_profile.test.ts — new file, 9 tests covering: omits animation_default when no custom default, includes when custom, reminders never contain id, identity gate, etc.
 - src/tools/load_profile.test.ts — new file, 8 tests covering: uses content hash IDs, idempotent double-load, added vs updated tracking, review_recommended flag, identity gate
 
