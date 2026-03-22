@@ -44,10 +44,21 @@ The description should say: "Yes/No confirmation variant. Same as confirm but de
 
 ## Acceptance Criteria
 
-- [ ] `confirm` defaults to OK (primary) / Cancel (unstyled), no emoji
-- [ ] `confirmYN` defaults to 🟢 Yes / 🔴 No, no style
-- [ ] Both tools accept the same parameters and share the same handler
-- [ ] Existing tests updated for new defaults
-- [ ] New tests for `confirmYN` defaults
-- [ ] Build passes, tests pass, lint passes
-- [ ] Changelog updated
+- [x] `confirm` defaults to OK (primary) / Cancel (unstyled), no emoji
+- [x] `confirmYN` defaults to 🟢 Yes / 🔴 No, no style
+- [x] Both tools accept the same parameters and share the same handler
+- [x] Existing tests updated for new defaults
+- [x] New tests for `confirmYN` defaults
+- [x] Build passes, tests pass, lint passes
+- [x] Changelog updated
+
+## Completion
+
+**Commit:** `4acda16`
+
+**Files changed:**
+- `src/tools/confirm.ts` — extracted `confirmHandler` + `makeInputSchema` helpers; changed `confirm` defaults to `OK`/`Cancel`/`primary`; registered `confirmYN` with old `🟢 Yes`/`🔴 No` defaults; removed unnecessary `as ButtonStyle` casts (lint)
+- `src/tools/confirm.test.ts` — updated `ackAndEditSelection` hook test to expect `"OK"`; added `defaults to OK/Cancel` button label/style test; added `confirmYN tool` describe block (6 tests covering defaults, labels, custom overrides); fixed mock state leak (`sessionQueue.pendingCount.mockReturnValue(0)` in confirmYN's beforeEach)
+- `changelog/unreleased.md` — added `Added` entry for `confirmYN`; added `Changed` entries for new `confirm` defaults
+
+**Test results:** 1670 passed, 0 failed (90 test files)
