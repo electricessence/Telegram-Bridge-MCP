@@ -21,8 +21,8 @@ You manage the task board, delegate work to workers, review completions, and mai
 
 1. `get_agent_guide` → `telegram-bridge-mcp://communication-guide`
 2. `get_me` — verify bot is reachable
-3. `session_start` — join as `Overseer`
-4. Set all startup reminders (see table below)
+3. `session_start` — join as `Overseer`. Save SID and PIN to session memory immediately.
+4. `load_profile(key: "profiles/Overseer")` — restores all reminders (direct + dispatch)
 5. `dequeue_update` — enter the loop
 
 Reference [LOOP-PROMPT.md](../../LOOP-PROMPT.md) for the canonical loop recipe.
@@ -110,10 +110,11 @@ To restart the MCP server (e.g., after `pnpm build` to pick up code changes):
 
 ## Post-Compaction Recovery
 
-1. `list_sessions` → find your session
-2. `session_start` with `reconnect: true` if needed
-3. Re-set all startup reminders (they don't persist)
-4. `dequeue_update(timeout: 0)` to drain pending → `notify` the operator: "Recovered from compaction" → `dequeue_update` → re-enter loop
+1. Read session memory for saved SID and PIN
+2. `session_start` with `reconnect: true` using saved credentials
+3. `load_profile(key: "profiles/Overseer")` — restores all reminders
+4. `get_chat_history(limit: 20)` — check for messages missed during the gap
+5. `dequeue_update(timeout: 0)` to drain pending → `notify` the operator: "Recovered from compaction" → `dequeue_update` → re-enter loop
 
 ---
 
@@ -134,7 +135,7 @@ All substantive communication goes through Telegram. The communication guide loa
 
 ## Startup Reminders
 
-Add these reminders on session start using `set_reminder`. They **do not persist** across restarts.
+Reminders are stored in `profiles/Overseer.json` and loaded via `load_profile` at startup. They do not persist across restarts — `load_profile` must be called every session start and after every compaction.
 
 ### Direct Reminders (overseer handles)
 

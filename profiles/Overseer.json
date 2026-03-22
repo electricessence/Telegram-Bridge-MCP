@@ -11,8 +11,38 @@
       "recurring": true
     },
     {
+      "text": "Dispatch subagent: Task Build Lint",
+      "delay_seconds": 1200,
+      "recurring": true
+    },
+    {
+      "text": "Dispatch subagent: Task Test Suite",
+      "delay_seconds": 1800,
+      "recurring": true
+    },
+    {
+      "text": "Dispatch subagent: Task Changelog Audit",
+      "delay_seconds": 3600,
+      "recurring": true
+    },
+    {
+      "text": "Dispatch subagent: Task Doc Hygiene",
+      "delay_seconds": 1800,
+      "recurring": true
+    },
+    {
       "text": "If no operator contact in 10 min, notify current status.",
       "delay_seconds": 600,
+      "recurring": true
+    },
+    {
+      "text": "Dispatch subagent: Task PR Review",
+      "delay_seconds": 600,
+      "recurring": true
+    },
+    {
+      "text": "Dispatch subagent: Task PR Health",
+      "delay_seconds": 1200,
       "recurring": true
     },
     {

@@ -16,11 +16,11 @@ Your #1 priority: **stay in the loop**. Never go silent.
 
 1. `get_agent_guide` → `telegram-bridge-mcp://communication-guide`
 2. `get_me` — verify bot is reachable
-3. `session_start` — join as `Worker` (if taken: `Worker 2`, etc). Pick a color: 🟩🟨🟧🟪🟥
+3. `session_start` — join as `Worker` (if taken: `Worker 2`, etc). Pick a color: 🟩🟨🟧🟪🟥. **Save SID and PIN to session memory immediately.**
 4. `list_sessions` — identify the overseer. If none, operator is your overseer.
 5. DM the overseer: *"Worker online — standing by."*
 6. **Register animation presets** (see Animation Presets section below) — required every session start
-7. Set startup reminders (see table below)
+7. `load_profile(key: "profiles/Worker")` — restores all reminders
 8. `dequeue_update` — enter the loop
 
 Reference [LOOP-PROMPT.md](../../LOOP-PROMPT.md) for the canonical loop recipe.
@@ -99,12 +99,11 @@ When you receive a `shutdown` service event (`event_type: "shutdown"` in a `dequ
 
 ## Post-Compaction Recovery
 
-1. `list_sessions` → find your session
-2. `session_start` with `reconnect: true` if needed
-3. Re-set all startup reminders (they don't persist)
-4. Check session memory for in-progress work context
-5. `dequeue_update` → re-enter loop
-6. DM overseer: "Recovered from compaction"
+1. Read session memory for saved SID, PIN, and in-progress work context
+2. `session_start` with `reconnect: true` using saved SID/PIN (or `list_sessions` first if missing)
+3. `load_profile(key: "profiles/Worker")` — restores all reminders
+4. `get_chat_history` — scan recent messages for anything missed during compaction
+5. `dequeue_update(timeout: 0)` — drain pending → DM overseer: "Recovered from compaction" → `dequeue_update` → re-enter loop
 
 ---
 
@@ -155,7 +154,7 @@ set_default_animation(name="{name}: waiting",  frames=["⏳ {name}: waiting…",
 
 ## Startup Reminders
 
-Add these reminders on session start to stay on track when idle using `set_reminder`:
+Reminders are stored in `profiles/Worker.json` and loaded via `load_profile` at startup. They do not persist across restarts — `load_profile` must be called every session start and after every compaction.
 
 | # | Reminder Text | Delay | Recurring |
 |---|---|---|---|

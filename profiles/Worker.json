@@ -1,0 +1,14 @@
+{
+  "reminders": [
+    {
+      "text": "Check tasks/2-queued/ for unassigned tasks — pick up and DM overseer",
+      "delay_seconds": 300,
+      "recurring": true
+    },
+    {
+      "text": "DM overseer with current status (working/idle/blocked)",
+      "delay_seconds": 300,
+      "recurring": true
+    }
+  ]
+}
