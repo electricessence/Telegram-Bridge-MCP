@@ -307,7 +307,7 @@ export function register(server: McpServer) {
             code: "NAME_CONFLICT",
             message:
               `A session named "${existing.name}" already exists (SID ${existing.sid}). ` +
-              `If you still have the PIN, resume with dequeue_update(sid=${existing.sid}). ` +
+              `If you still have the PIN, resume with dequeue_update(identity: [${existing.sid}, <pin>]). ` +
               `To start a new session, choose a different name. ` +
               `To reclaim this session, call session_start again with reconnect: true.`,
           });

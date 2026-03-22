@@ -10,3 +10,8 @@
 
 - `confirm` tool now defaults to `OK` (primary/blue) and `Cancel` (unstyled/gray) buttons instead of 🟢 Yes / 🔴 No.
 - `confirm` tool `yes_style` now defaults to `primary` so the OK button is visually prominent by default.
+
+### Fixed
+
+- `NAME_CONFLICT` error message now correctly references `dequeue_update(identity: [sid, <pin>])` instead of the misleading `dequeue_update(sid=N)`.
+- Injected `sid` field description on all tools now marks it as deprecated and points to `identity: [sid, pin]`.
