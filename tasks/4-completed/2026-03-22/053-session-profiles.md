@@ -82,6 +82,39 @@ Add `data/` to `.gitignore`.
 
 Register both tools in `src/server.ts`.
 
+## Completion
+
+**Date:** 2026-03-22
+
+### Files Created
+
+- `src/profile-store.ts` — `resolveProfilePath`, `readProfile`, `writeProfile`, `ProfileData`, `ReminderDef` interfaces
+- `src/tools/save_profile.ts` — `save_profile` tool (snapshots voice, animation_default, animation_presets, reminders)
+- `src/tools/load_profile.ts` — `load_profile` tool (sparse-merges profile into current session)
+- `src/profile-store.test.ts` — 17 tests covering path resolution, security validation, read/write, round-trip
+
+### Files Modified
+
+- `src/server.ts` — imported and registered `save_profile` and `load_profile`
+- `src/tools/session_start.ts` — added `profile_hint` to the result object
+- `src/tools/session_start.test.ts` — updated two exact-equality tests to include `profile_hint`
+- `.gitignore` — added `data/` line
+- `changelog/unreleased.md` — documented all additions
+
+### Results
+
+- Build: clean (`pnpm build`)
+- Tests: 1687/1687 passed, 91 test files (`pnpm test`)
+- Lint: clean (`pnpm lint`)
+
+### Notes
+
+- Path traversal (`..`), absolute paths, and null bytes are rejected in `resolveProfilePath`
+- Bare keys (no `/`) → `data/profiles/{key}.json` (gitignored); path keys (contain `/`) → relative to repo root
+- `animation_default` is always snapshotted (includes built-in default if no custom was set)
+- Sparse merge on load: present keys overwrite, absent keys untouched; multiple loads stack
+- Version bump deferred to operator as instructed
+
 ## Acceptance Criteria
 
 1. `save_profile("test")` captures voice + animation + reminders to `data/profiles/test.json`.

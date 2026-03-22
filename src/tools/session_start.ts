@@ -344,6 +344,7 @@ export function register(server: McpServer) {
           sessions_active: session.sessionsActive,
           action: reconnect ? "reconnected" : "fresh",
           pending: 0,
+          profile_hint: "Call load_profile(key) to restore saved session configuration.",
         };
         if (discarded > 0) res.discarded = discarded;
         if (isFirstSession) {

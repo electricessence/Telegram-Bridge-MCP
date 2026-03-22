@@ -122,6 +122,7 @@ describe("session_start tool", () => {
       action: "fresh",
       pending: 0,
       discarded: 3,
+      profile_hint: "Call load_profile(key) to restore saved session configuration.",
     });
   });
 
@@ -136,6 +137,7 @@ describe("session_start tool", () => {
       sessions_active: 1,
       action: "fresh",
       pending: 0,
+      profile_hint: "Call load_profile(key) to restore saved session configuration.",
     });
   });
 
