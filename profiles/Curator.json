@@ -1,6 +1,6 @@
 {
   "voice": "am_onyx",
-  "voice_speed": 1.25,
+  "voice_speed": 1.1,
   "animation_presets": {
     "thinking": ["🤔 thinking…", "🤔 thinking…", "🧐 thinking…"],
     "working": ["⏳ working… 🔨", "⌛ working… 🔨", "⏳ working… 🔧", "⌛ working… 🔧"],

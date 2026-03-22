@@ -1,6 +1,6 @@
 {
   "voice": "am_onyx",
-  "voice_speed": 1.25,
+  "voice_speed": 1.1,
   "reminders": [
     {
       "text": "HOUSEKEEPING: Run git status --short. Scan tasks/ for files in the wrong column (e.g. completed work still in 3-in-progress). If workers are active, check they're responsive — DM any silent >10 min.",

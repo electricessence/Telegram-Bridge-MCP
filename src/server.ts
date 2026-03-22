@@ -56,6 +56,7 @@ import { register as registerGetDebugLog } from "./tools/get_debug_log.js";
 import { register as registerNotifyShutdownWarning } from "./tools/notify_shutdown_warning.js";
 import { register as registerSaveProfile } from "./tools/save_profile.js";
 import { register as registerLoadProfile } from "./tools/load_profile.js";
+import { register as registerImportProfile } from "./tools/import_profile.js";
 
 import { createRequire } from "module";
 
@@ -122,6 +123,7 @@ export function createServer(): McpServer {
   registerSetVoice(server);
   registerSaveProfile(server);
   registerLoadProfile(server);
+  registerImportProfile(server);
   registerSetReminder(server);
   registerCancelReminder(server);
   registerListReminders(server);

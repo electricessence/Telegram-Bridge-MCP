@@ -86,9 +86,26 @@ Add to `changelog/unreleased.md`:
 
 ## Acceptance Criteria
 
-- [ ] `import_profile` tool exists and works
-- [ ] `load_profile` refactored to use shared apply logic (no behavior change)
-- [ ] All existing tests pass (`pnpm test`)
-- [ ] New tests for `import_profile`
-- [ ] Voice speed updated to 1.1 in both profiles
-- [ ] Changelog updated
+- [x] `import_profile` tool exists and works
+- [x] `load_profile` refactored to use shared apply logic (no behavior change)
+- [x] All existing tests pass (`pnpm test`)
+- [x] New tests for `import_profile`
+- [x] Voice speed updated to 1.1 in both profiles
+- [x] Changelog updated
+
+## Completion
+
+**Date:** 2026-03-22
+
+**Files changed:**
+- `src/tools/apply-profile.ts` — new; extracted apply logic from `load_profile.ts`
+- `src/tools/import_profile.ts` — new; `import_profile` tool using `applyProfile()`
+- `src/tools/import_profile.test.ts` — new; 10 tests covering voice/speed, presets, reminders, sparse merge, idempotency, auth gate, empty call
+- `src/tools/load_profile.ts` — refactored to use `applyProfile()` from `apply-profile.ts`
+- `src/server.ts` — registered `import_profile` tool
+- `profiles/Overseer.json` — `voice_speed` 1.25 → 1.1
+- `profiles/Worker.json` — `voice_speed` 1.25 → 1.1
+- `profiles/Curator.json` — `voice_speed` 1.25 → 1.1
+- `changelog/unreleased.md` — added `import_profile` entry and voice speed change
+
+**Test results:** 94 test files passed (1218 tests), lint clean.
