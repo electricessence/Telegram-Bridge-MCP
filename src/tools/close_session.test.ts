@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   answerCallbackQuery: vi.fn(),
   unpinChatMessage: vi.fn().mockResolvedValue(undefined),
   resolveChat: vi.fn().mockReturnValue(1001),
+  stopPoller: vi.fn(),
+  activeSessionCount: vi.fn().mockReturnValue(0),
 }));
 
 vi.mock("../session-manager.js", () => ({
@@ -30,6 +32,7 @@ vi.mock("../session-manager.js", () => ({
   getActiveSession: mocks.getActiveSession,
   setActiveSession: mocks.setActiveSession,
   listSessions: mocks.listSessions,
+  activeSessionCount: () => mocks.activeSessionCount(),
   getSessionAnnouncementMessage: (...args: unknown[]) => mocks.getSessionAnnouncementMessage(...args),
 }));
 
@@ -73,6 +76,10 @@ vi.mock("../telegram.js", async (importOriginal) => {
   };
 });
 
+vi.mock("../poller.js", () => ({
+  stopPoller: (...args: unknown[]) => mocks.stopPoller(...args),
+}));
+
 import { register } from "./close_session.js";
 
 describe("close_session tool", () => {
@@ -84,6 +91,7 @@ describe("close_session tool", () => {
     mocks.closeSession.mockReturnValue(true);
     mocks.getGovernorSid.mockReturnValue(0);
     mocks.listSessions.mockReturnValue([]);
+    mocks.activeSessionCount.mockReturnValue(0);
     mocks.sendServiceMessage.mockResolvedValue(undefined);
     mocks.getSession.mockReturnValue({ identity: [1, 123456], name: "Alpha", createdAt: "2026-03-17" });
     mocks.drainQueue.mockReturnValue([]);
@@ -560,4 +568,39 @@ describe("close_session tool", () => {
 
     expect(mocks.unpinChatMessage).not.toHaveBeenCalled();
   });
+
+  // =========================================================================
+  // Lazy poller lifecycle (task 055)
+  // =========================================================================
+
+  it("stops poller when last session closes", async () => {
+    mocks.listSessions.mockReturnValue([]);
+    mocks.activeSessionCount.mockReturnValue(0);
+
+    await call({ identity: [1, 123456] });
+
+    expect(mocks.stopPoller).toHaveBeenCalledOnce();
+  });
+
+  it("does not stop poller when sessions remain after close", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 2, name: "Worker", createdAt: "2026-03-22" }]);
+    mocks.activeSessionCount.mockReturnValue(1);
+
+    await call({ identity: [1, 123456] });
+
+    expect(mocks.stopPoller).not.toHaveBeenCalled();
+  });
+
+  it("does not stop poller when multiple sessions remain", async () => {
+    mocks.listSessions.mockReturnValue([
+      { sid: 2, name: "Worker", createdAt: "2026-03-22" },
+      { sid: 3, name: "Scout", createdAt: "2026-03-22" },
+    ]);
+    mocks.activeSessionCount.mockReturnValue(2);
+
+    await call({ identity: [1, 123456] });
+
+    expect(mocks.stopPoller).not.toHaveBeenCalled();
+  });
 });
+

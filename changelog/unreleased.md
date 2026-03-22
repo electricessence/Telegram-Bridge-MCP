@@ -1,5 +1,9 @@
 # [Unreleased]
 
+## Changed
+
+- Poller starts lazily on first `session_start` and stops on last `close_session`; idle MCP instances no longer consume updates
+
 ## Added
 
 - `set_voice` tool now accepts optional `speed` parameter (0.25–4.0) for per-session TTS speed control

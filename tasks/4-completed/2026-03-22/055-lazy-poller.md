@@ -74,3 +74,28 @@ Verify shutdown still calls `stopPoller()` — it should already. No change expe
 | `src/shutdown.ts` | Verify stopPoller still called |
 | Tests | New test coverage |
 | `changelog/unreleased.md` | Document change |
+
+## Completion
+
+**Date:** 2026-03-22
+
+### Changes made
+
+| File | Change |
+|---|---|
+| `src/index.ts` | Removed `startPoller` from import and removed `startPoller()` boot call + log line |
+| `src/tools/session_start.ts` | Added `import { startPoller, isPollerRunning }` from poller; added `if (!isPollerRunning()) startPoller()` after `setActiveSession()` |
+| `src/tools/close_session.ts` | Added `stopPoller` import from poller; added `activeSessionCount` to session-manager import; added `if (activeSessionCount() === 0) stopPoller()` before `refreshGovernorCommand()` |
+| `src/poller.ts` | No change — `isPollerRunning()` already exported |
+| `src/shutdown.ts` | No change — shutdown already calls `stopPoller()` |
+| `src/tools/session_start.test.ts` | Added `startPoller`/`isPollerRunning` mocks and 2 new poller lifecycle tests |
+| `src/tools/close_session.test.ts` | Added `stopPoller`/`activeSessionCount` mocks and 3 new poller lifecycle tests |
+| `changelog/unreleased.md` | Added `Changed` entry |
+
+### Results
+
+- `pnpm build`: clean
+- `pnpm lint`: clean
+- `pnpm test`: **1698 / 1698 passed** (91 test files, no regressions)
+- 5 new tests added (2 in session_start, 3 in close_session)
+

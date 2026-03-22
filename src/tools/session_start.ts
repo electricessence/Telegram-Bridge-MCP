@@ -9,6 +9,7 @@ import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMes
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { runInSessionContext } from "../session-context.js";
 import { refreshGovernorCommand } from "../built-in-commands.js";
+import { startPoller, isPollerRunning } from "../poller.js";
 
 const APPROVAL_TIMEOUT_MS = 60_000;
 const APPROVAL_NO = "approve_no";
@@ -332,6 +333,7 @@ export function register(server: McpServer) {
       const session = createSession(effectiveName, chosenColor);
       createSessionQueue(session.sid);
       setActiveSession(session.sid);
+      if (!isPollerRunning()) startPoller();
 
       try {
         // Auto-drain any pending messages (always start fresh)

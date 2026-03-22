@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   resolveChat: vi.fn(() => 42 as number),
   registerCallbackHook: vi.fn(),
   clearCallbackHook: vi.fn(),
+  startPoller: vi.fn(),
+  isPollerRunning: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -82,6 +84,11 @@ vi.mock("../session-queue.js", () => ({
   drainQueue: mocks.drainQueue,
 }));
 
+vi.mock("../poller.js", () => ({
+  startPoller: (...args: unknown[]) => mocks.startPoller(...args),
+  isPollerRunning: () => mocks.isPollerRunning(),
+}));
+
 import { register } from "./session_start.js";
 
 describe("session_start tool", () => {
@@ -93,6 +100,7 @@ describe("session_start tool", () => {
     mocks.answerCallbackQuery.mockResolvedValue(true);
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.listSessions.mockReturnValue([]);
+    mocks.isPollerRunning.mockReturnValue(false);
     mocks.createSession.mockReturnValue({
       sid: 1,
       pin: 123456,
@@ -1426,6 +1434,32 @@ describe("session_start tool", () => {
     expect(mocks.createSession).toHaveBeenCalled();
     expect(result.sid).toBe(2);
     expect(result.action).toBe("reconnected");
+  });
+
+  // =========================================================================
+  // Lazy poller lifecycle (task 055)
+  // =========================================================================
+
+  it("starts poller when first session is created and poller is idle", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.isPollerRunning.mockReturnValue(false);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+
+    await call({});
+
+    expect(mocks.startPoller).toHaveBeenCalledOnce();
+  });
+
+  it("does not start poller when it is already running", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.isPollerRunning.mockReturnValue(true);
+    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
+
+    await call({});
+
+    expect(mocks.startPoller).not.toHaveBeenCalled();
   });
 });
 

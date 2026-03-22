@@ -1,12 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getApi, toResult, toError, sendServiceMessage, resolveChat } from "../telegram.js";
-import { closeSession, getSession, getActiveSession, setActiveSession, listSessions, getSessionAnnouncementMessage } from "../session-manager.js";
+import { closeSession, getSession, getActiveSession, setActiveSession, listSessions, activeSessionCount, getSessionAnnouncementMessage } from "../session-manager.js";
 import { removeSessionQueue, drainQueue, deliverDirectMessage, deliverServiceMessage, routeToSession } from "../session-queue.js";
 import { revokeAllForSession } from "../dm-permissions.js";
 import { getGovernorSid, setGovernorSid } from "../routing-mode.js";
 import { requireAuth } from "../session-gate.js";
 import { replaceSessionCallbackHooks } from "../message-store.js";
 import { dlog } from "../debug-log.js";
+import { stopPoller } from "../poller.js";
 import { IDENTITY_SCHEMA } from "./identity-schema.js";
 import { refreshGovernorCommand } from "../built-in-commands.js";
 
@@ -154,6 +155,7 @@ export function register(server: McpServer) {
         }
       });
 
+      if (activeSessionCount() === 0) stopPoller();
       void refreshGovernorCommand();
       return toResult({ closed: true, sid });
     },
