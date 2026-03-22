@@ -92,8 +92,8 @@ export function createServer(): McpServer {
     if (schema && !("sid" in schema)) {
       schema.sid = z.number()
         .int().positive().optional()
-        .describe("Session ID (from session_start). " +
-          "Pass this in multi-session setups.");
+        .describe("Deprecated session-context hint. " +
+          "Prefer identity: [sid, pin] for authentication.");
     }
     const original = cb as unknown as CallableCb;
     const wrappedCb = (

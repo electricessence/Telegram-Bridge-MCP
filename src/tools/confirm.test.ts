@@ -126,7 +126,7 @@ describe("confirm tool", () => {
     // Wait for async void in hook
     await new Promise((r) => setTimeout(r, 0));
     expect(mocks.ackAndEditSelection).toHaveBeenCalledWith(
-      42, 5, "Proceed?", "🟢 Yes", "cq1",
+      42, 5, "Proceed?", "OK", "cq1",
     );
   });
 
@@ -157,6 +157,18 @@ describe("confirm tool", () => {
     const data = parseResult(result);
     expect(data.confirmed).toBe(true);
     expect(data.value).toBe("approve");
+  });
+
+  it("defaults to OK / Cancel button labels", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_yes"));
+    await call({ text: "Proceed?", identity: [1, 123456] });
+    const sendOpts = mocks.sendMessage.mock.calls[0][2];
+    const buttons = sendOpts.reply_markup.inline_keyboard[0];
+    expect(buttons[0].text).toBe("OK");
+    expect(buttons[0].style).toBe("primary");
+    expect(buttons[1].text).toBe("Cancel");
+    expect(buttons[1].style).toBeUndefined();
   });
 
   it("returns timed_out:true when no response arrives", async () => {
@@ -369,5 +381,83 @@ describe("identity gate", () => {
   });
 
 });
+
+});
+
+describe("confirmYN tool", () => {
+  let call: (args: Record<string, unknown>) => Promise<unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.ackAndEditSelection.mockResolvedValue(undefined);
+    mocks.editWithSkipped.mockResolvedValue(undefined);
+    mocks.sessionQueue.pendingCount.mockReturnValue(0);
+    const server = createMockServer();
+    register(server);
+    call = server.getHandler("confirmYN");
+  });
+
+  it("defaults to 🟢 Yes / 🔴 No labels", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_yes"));
+    await call({ text: "Are you sure?", identity: [1, 123456] });
+    const hookFn = mocks.registerCallbackHook.mock.calls[0][1];
+    hookFn({ content: { data: "confirm_yes", qid: "cq1" } });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mocks.ackAndEditSelection).toHaveBeenCalledWith(
+      42, 5, "Are you sure?", "🟢 Yes", "cq1",
+    );
+  });
+
+  it("hook shows 🔴 No label when No is pressed", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_no"));
+    await call({ text: "Are you sure?", identity: [1, 123456] });
+    const hookFn = mocks.registerCallbackHook.mock.calls[0][1];
+    hookFn({ content: { data: "confirm_no", qid: "cq1" } });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mocks.ackAndEditSelection).toHaveBeenCalledWith(
+      42, 5, "Are you sure?", "🔴 No", "cq1",
+    );
+  });
+
+  it("returns confirmed:true when Yes is pressed", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_yes"));
+    const result = await call({ text: "Proceed?", identity: [1, 123456] });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.confirmed).toBe(true);
+    expect(data.value).toBe("confirm_yes");
+  });
+
+  it("returns confirmed:false when No is pressed", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_no"));
+    const result = await call({ text: "Proceed?", identity: [1, 123456] });
+    const data = parseResult(result);
+    expect(data.confirmed).toBe(false);
+  });
+
+  it("sends buttons without yes_style by default", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_yes"));
+    await call({ text: "Proceed?", identity: [1, 123456] });
+    const sendOpts = mocks.sendMessage.mock.calls[0][2];
+    const yesButton = sendOpts.reply_markup.inline_keyboard[0][0];
+    expect(yesButton.text).toBe("🟢 Yes");
+    expect(yesButton.style).toBeUndefined();
+  });
+
+  it("accepts custom yes_text and no_text overrides", async () => {
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeButtonResult("confirm_yes"));
+    await call({ text: "Proceed?", yes_text: "✔️ Yep", no_text: "✖️ Nope", identity: [1, 123456] });
+    const sendOpts = mocks.sendMessage.mock.calls[0][2];
+    const buttons = sendOpts.reply_markup.inline_keyboard[0];
+    expect(buttons[0].text).toBe("✔️ Yep");
+    expect(buttons[1].text).toBe("✖️ Nope");
+  });
 
 });
