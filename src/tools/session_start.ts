@@ -142,8 +142,8 @@ async function requestReconnectApproval(chatId: number, name: string): Promise<b
 
 const DESCRIPTION =
   "Call once at the start of every session. Creates a session " +
-  "with a unique ID and PIN, and auto-drains any pending messages " +
-  "from a previous session. " +
+  "with a unique ID and PIN. Fresh sessions auto-drain pending messages; " +
+  "reconnects preserve queued messages and return the actual pending count. " +
   "If you lost your PIN (context loss, crash), call with reconnect: true " +
   "and the same name to trigger an operator re-authorization dialog; on " +
   "approval the same SID and PIN are returned. " +

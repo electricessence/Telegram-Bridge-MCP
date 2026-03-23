@@ -1335,6 +1335,24 @@ describe("session_start tool", () => {
     expect(result.pending).toBe(5);
   });
 
+  it("reconnect: true + approved → returns pending 0 when queue is missing", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
+    mocks.getSession.mockReturnValue({
+      sid: 1, pin: 999999, name: "Overseer", color: "🟦",
+      createdAt: "2026-03-17", lastPollAt: 99999, healthy: false,
+    });
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 401 });
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "reconnect_yes", qid: "rq2" } }); });
+    });
+    mocks.getSessionQueue.mockReturnValue(undefined);
+
+    const result = parseResult(await call({ name: "Overseer", reconnect: true }));
+
+    expect(result.pending).toBe(0);
+  });
+
   it("reconnect: true + operator denies → SESSION_DENIED, no session created", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.sendMessage.mockResolvedValue({ message_id: 402 });
