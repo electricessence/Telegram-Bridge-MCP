@@ -102,8 +102,21 @@ Add to `changelog/unreleased.md`:
 
 ## Acceptance Criteria
 
-- [ ] File captions use `formatted` header (with code tags) matching the file's parse_mode
-- [ ] Auto-inject `parse_mode: "Markdown"` when a header is added but no parse_mode exists
-- [ ] Existing tests still pass
-- [ ] New tests verify formatted header and parse_mode injection
-- [ ] `pnpm build` clean
+- [x] File captions use `formatted` header (with code tags) matching the file's parse_mode
+- [x] Auto-inject `parse_mode: "Markdown"` when a header is added but no parse_mode exists
+- [x] Existing tests still pass
+- [x] New tests verify formatted header and parse_mode injection
+- [x] `pnpm build` clean
+
+## Completion
+
+**Date:** 2026-03-26
+
+**Files changed:**
+- `src/outbound-proxy.ts` — Changed `const parseMode` to `let`, replaced `{ plain: captionHeader }` with `{ formatted: captionHeaderFormatted }`, added `parse_mode: "Markdown"` auto-injection when header is added and no parse mode was set.
+- `src/outbound-proxy.test.ts` — Updated existing caption test to expect backtick-formatted header and injected `parse_mode`. Added two new tests: parse_mode auto-injection, and HTML mode preservation with `<code>` tag header.
+- `changelog/unreleased.md` — Added Fixed entry.
+
+**Test results:** 1751 tests passed (94 test files)  
+**Build:** Clean  
+**Review:** Code Reviewer — no findings

@@ -559,7 +559,7 @@ describe("outbound-proxy", () => {
       expect(sentOpts?.parse_mode).toBe("Markdown");
     });
 
-    it("prepends header to file caption in multi-session mode (sendPhoto)", async () => {
+    it("prepends formatted header (backtick code) to file caption in multi-session mode (sendPhoto)", async () => {
       mocks.activeSessionCount.mockReturnValue(2);
       mocks.getCallerSid.mockReturnValue(1);
       mocks.getSession.mockReturnValue({ name: "Scout" });
@@ -571,8 +571,42 @@ describe("outbound-proxy", () => {
         42, "file_id_123", { caption: "A photo caption" },
       );
 
-      const [, , opts] = raw.sendPhoto.mock.calls[0] as [number, string, { caption: string }];
-      expect(opts.caption).toBe("🤖 Scout\nA photo caption");
+      const [, , opts] = raw.sendPhoto.mock.calls[0] as [number, string, { caption: string; parse_mode?: string }];
+      expect(opts.caption).toBe("🤖 `Scout`\nA photo caption");
+      expect(opts.parse_mode).toBe("Markdown");
+    });
+
+    it("auto-injects parse_mode Markdown into caption when header added and none set", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout" });
+
+      const raw = fakeApi();
+      raw.sendPhoto.mockResolvedValue({ message_id: 10, photo: [{ file_id: "f1" }] });
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendPhoto(
+        42, "file_id_123", { caption: "My caption" },
+      );
+
+      const [, , opts] = raw.sendPhoto.mock.calls[0] as [number, string, Record<string, unknown>];
+      expect(opts.parse_mode).toBe("Markdown");
+    });
+
+    it("uses HTML code tags in caption header and preserves parse_mode HTML (sendPhoto)", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout" });
+
+      const raw = fakeApi();
+      raw.sendPhoto.mockResolvedValue({ message_id: 10, photo: [{ file_id: "f1" }] });
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendPhoto(
+        42, "file_id_123", { caption: "My caption", parse_mode: "HTML" },
+      );
+
+      const [, , opts] = raw.sendPhoto.mock.calls[0] as [number, string, { caption: string; parse_mode: string }];
+      expect(opts.caption).toBe("🤖 <code>Scout</code>\nMy caption");
+      expect(opts.parse_mode).toBe("HTML");
     });
 
     it("omits caption header when no caption provided (sendPhoto)", async () => {
