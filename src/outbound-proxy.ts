@@ -265,11 +265,15 @@ export function createOutboundProxy(realApi: Api): Api {
           try {
             // Inject session header into caption if multi-session active
             const optsArg = args[2] as Record<string, unknown> | undefined;
-            const parseMode = optsArg?.parse_mode as string | undefined;
-            const { plain: captionHeader } = buildHeader(parseMode);
-            if (captionHeader && optsArg?.caption) {
+            let parseMode = optsArg?.parse_mode as string | undefined;
+            const { formatted: captionHeaderFormatted } = buildHeader(parseMode);
+            if (captionHeaderFormatted && optsArg?.caption) {
+              if (!parseMode) {
+                (args[2] as Record<string, unknown>).parse_mode = "Markdown";
+                parseMode = "Markdown";
+              }
               (args[2] as Record<string, unknown>).caption =
-                captionHeader + (optsArg.caption as string);
+                captionHeaderFormatted + (optsArg.caption as string);
             }
 
             const msg = await fn(...args);
