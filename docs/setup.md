@@ -161,6 +161,44 @@ Add a **project-scoped** `.mcp.json` in your project root:
 
 > **Do not add this to global `~/.claude.json` `mcpServers`.** Global MCP servers are spawned in *every* Claude Code session. If you have multiple sessions open, each one starts its own Telegram MCP process — all competing for the same bot token's `getUpdates` poll. Only the first instance receives updates; the rest get nothing or cause conflicts. Always use a project-scoped `.mcp.json` so the server only runs in sessions opened from that directory.
 
+### Shared server mode (Streamable HTTP)
+
+Instead of each MCP host spawning its own stdio process, you can run **one** server instance and connect any number of clients over HTTP:
+
+```bash
+MCP_PORT=3099 pnpm start
+```
+
+Then point your MCP hosts at it:
+
+**Claude Code** (`.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "telegram": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:3099/mcp"
+    }
+  }
+}
+```
+
+**VS Code** (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "telegram": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:3099/mcp"
+    }
+  }
+}
+```
+
+Each client gets its own MCP session with an isolated queue. This avoids the `getUpdates` conflict problem entirely — one server handles polling, all clients connect to it.
+
 ---
 
 ## Voice Configuration

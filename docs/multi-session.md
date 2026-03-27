@@ -19,7 +19,7 @@ Documentation must emphasize this clearly: if you want multiple agents, connect 
 
 ## Problem Statement
 
-Today, Telegram Bridge MCP is strictly single-session: one stdio transport, one agent client, one message queue. If you want two agents working in parallel (e.g., two VS Code windows), you need two separate bot tokens — which is impractical.
+Today, Telegram Bridge MCP supports both stdio and Streamable HTTP transports. With stdio, each MCP host spawns its own process — limiting it to one agent client per process. With Streamable HTTP (`MCP_PORT`), multiple clients connect to a single server instance, each getting their own session and queue.
 
 The goal: enable multiple agent sessions to share a single bot and Telegram chat, with clear routing so messages reach the right session and don't cause confusion.
 

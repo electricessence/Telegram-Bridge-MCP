@@ -66,6 +66,14 @@ Follow the wizard to create `.env` with your bot credentials.
 
 > **Important:** Use the **absolute path** to your local clone. The `cwd` or path in `args` ensures the MCP runs from your repo directory and can access `.env`.
 
+**Shared server mode** — If you prefer running one persistent server instead of having each editor spawn its own process:
+
+```bash
+MCP_PORT=3099 pnpm start
+```
+
+Then use `"type": "streamable-http"` with `"url": "http://127.0.0.1:3099/mcp"` in your MCP host config instead of the stdio examples above. See the [setup guide](setup.md) for full config snippets.
+
 ### 4. Start a loop session
 
 Open your AI assistant (VS Code Copilot, Claude Desktop, etc.) and paste the contents of `LOOP-PROMPT.md`. The assistant will:

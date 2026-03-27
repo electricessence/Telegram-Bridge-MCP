@@ -8,7 +8,7 @@
 
 ```text
 AI Assistant (MCP Client)
-        │  MCP over stdio
+        │  MCP over stdio or Streamable HTTP
         ▼
 ┌──────────────────────────┐
 │  Telegram Bridge MCP     │  (Node.js / TypeScript)
@@ -21,7 +21,7 @@ AI Assistant (MCP Client)
   api.telegram.org/bot<token>/...
 ```
 
-The server runs as a **stdio MCP server**, spawned by the MCP host. It holds a Telegram Bot token (via environment variable) and translates MCP tool calls into Telegram Bot API HTTP requests using **`grammy`** — chosen for its complete, always-up-to-date TypeScript-typed Bot API coverage including all keyboard/button types.
+The server runs as an **MCP server** using either stdio (default, spawned by the MCP host) or Streamable HTTP (when `MCP_PORT` is set, allowing multiple clients to connect over HTTP). It holds a Telegram Bot token (via environment variable) and translates MCP tool calls into Telegram Bot API HTTP requests using **`grammy`** — chosen for its complete, always-up-to-date TypeScript-typed Bot API coverage including all keyboard/button types.
 
 A **background poller** (`poller.ts`) runs a continuous `getUpdates` long-poll loop as soon as the server starts. All incoming updates are fed into an always-on **message store** (`message-store.ts`). Tools consume updates via `dequeue_update` — they never call the Telegram API directly for polling.
 
@@ -33,6 +33,7 @@ A **background poller** (`poller.ts`) runs a continuous `getUpdates` long-poll l
 | --- | --- | --- |
 | `BOT_TOKEN` | Yes | Telegram Bot API token from @BotFather |
 | `ALLOWED_USER_ID` | Recommended | Numeric Telegram user ID; inbound updates from others are dropped; also the outbound chat target |
+| `MCP_PORT` | No | When set, starts a Streamable HTTP server on this port instead of stdio |
 
 Set via environment variable, or a `.env` file (loaded with `dotenv`).
 
@@ -176,7 +177,7 @@ See `formatting.md` (or the `telegram-bridge-mcp://formatting-guide` resource) f
 ```text
 telegram-bridge-mcp/
 ├── src/
-│   ├── index.ts              # Entry point — starts MCP server over stdio, background poller
+│   ├── index.ts              # Entry point — starts MCP server (stdio or Streamable HTTP), background poller
 │   ├── server.ts             # McpServer definition, tool registration, resource registration
 │   ├── telegram.ts           # grammy Api wrapper, security enforcement,
 │   │                         #   pre-send validators, error classification

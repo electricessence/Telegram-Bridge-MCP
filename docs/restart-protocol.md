@@ -43,7 +43,7 @@ Before issuing the actual shutdown, the Overseer notifies all active worker sess
    - Stops the Telegram poller (10 s cap).
    - Drains any remaining pending updates.
    - Delivers a **system-level service message** to every active session — this wakes blocked `dequeue_update` calls.
-   - Waits 2 s for MCP stdio to flush.
+   - Waits 2 s for MCP transport to flush.
    - Sends a final operator notification and calls `process.exit(0)`.
 
 ---
