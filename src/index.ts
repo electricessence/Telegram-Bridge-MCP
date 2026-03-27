@@ -2,7 +2,12 @@ import "dotenv/config";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { randomUUID } from "crypto";
+import type { Request, Response } from "express";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "./server.js";
 import { getSecurityConfig, getApi, resolveChat, installOutboundProxy, sendServiceMessage } from "./telegram.js";
 import { clearCommandsOnShutdown } from "./shutdown.js";
@@ -40,6 +45,8 @@ if (process.env.STT_HOST && !process.env.STT_HOST.startsWith("https://")) {
 }
 
 let _shuttingDown = false;
+const httpTransports = new Map<string, StreamableHTTPServerTransport>();
+
 for (const sig of ["SIGTERM", "SIGINT"] as const) {
   process.on(sig, () => {
     process.stderr.write(`[shutdown] received ${sig}\n`);
@@ -47,6 +54,11 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
     _shuttingDown = true;
     stopPoller();
     const shutdownSequence = (async () => {
+      // Close all HTTP transports
+      for (const [sid, t] of httpTransports) {
+        try { await t.close(); } catch { /* best effort */ }
+        httpTransports.delete(sid);
+      }
       // Wait for the poll loop to finish (completes in-flight transcriptions)
       await waitForPollerExit();
       // Drain any updates received since the last poll iteration
@@ -66,17 +78,84 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
   });
 }
 
-const server = createServer();
-
 // Install the outbound proxy before any API calls
 installOutboundProxy(createOutboundProxy);
 
 // Apply session log config (wires up auto-dump if configured)
 applySessionLogConfig();
 
-const transport = new StdioServerTransport();
+const mcpPort = process.env.MCP_PORT ? parseInt(process.env.MCP_PORT, 10) : undefined;
 
-await server.connect(transport);
+if (mcpPort) {
+  // ── Streamable HTTP mode (shared server, multiple clients) ──
+  const app = createMcpExpressApp();
+
+  app.post("/mcp", async (req: Request, res: Response) => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    let transport: StreamableHTTPServerTransport;
+
+    if (sessionId && httpTransports.has(sessionId)) {
+      transport = httpTransports.get(sessionId) as StreamableHTTPServerTransport;
+    } else if (!sessionId && isInitializeRequest(req.body)) {
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid: string) => {
+          process.stderr.write(`[http] session initialized: ${sid}\n`);
+          httpTransports.set(sid, transport);
+        },
+      });
+      transport.onclose = () => {
+        const sid = transport.sessionId;
+        if (sid && httpTransports.has(sid)) {
+          process.stderr.write(`[http] session closed: ${sid}\n`);
+          httpTransports.delete(sid);
+        }
+      };
+      const server = createServer();
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+      return;
+    } else {
+      res.status(400).json({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+        id: null,
+      });
+      return;
+    }
+
+    await transport.handleRequest(req, res, req.body);
+  });
+
+  app.get("/mcp", async (req: Request, res: Response) => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const transport = sessionId ? httpTransports.get(sessionId) : undefined;
+    if (!transport) {
+      res.status(400).send("Invalid or missing session ID");
+      return;
+    }
+    await transport.handleRequest(req, res);
+  });
+
+  app.delete("/mcp", async (req: Request, res: Response) => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const transport = sessionId ? httpTransports.get(sessionId) : undefined;
+    if (!transport) {
+      res.status(400).send("Invalid or missing session ID");
+      return;
+    }
+    await transport.handleRequest(req, res);
+  });
+
+  app.listen(mcpPort, () => {
+    process.stderr.write(`[info] MCP Streamable HTTP server listening on http://127.0.0.1:${mcpPort}/mcp\n`);
+  });
+} else {
+  // ── stdio mode (original behavior) ──
+  const server = createServer();
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
 
 // Register built-in commands and start the background poller after connecting.
 // Both are best-effort — don't block startup.
