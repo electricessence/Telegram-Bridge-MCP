@@ -84,18 +84,35 @@ installOutboundProxy(createOutboundProxy);
 // Apply session log config (wires up auto-dump if configured)
 applySessionLogConfig();
 
-const mcpPort = process.env.MCP_PORT ? parseInt(process.env.MCP_PORT, 10) : undefined;
+const rawMcpPort = process.env.MCP_PORT;
+let mcpPort: number | undefined;
+
+if (typeof rawMcpPort === "string" && rawMcpPort.length > 0) {
+  const parsed = parseInt(rawMcpPort, 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    process.stderr.write(`[error] Invalid MCP_PORT "${rawMcpPort}". Expected an integer between 1 and 65535.\n`);
+    process.exit(1);
+  }
+  mcpPort = parsed;
+}
 
 if (mcpPort) {
   // ── Streamable HTTP mode (shared server, multiple clients) ──
   const app = createMcpExpressApp();
 
+  /** Normalize header that may be string | string[] | undefined → string | undefined */
+  const getSessionId = (req: Request): string | undefined => {
+    const raw = req.headers["mcp-session-id"];
+    return Array.isArray(raw) ? raw[0] : raw;
+  };
+
   app.post("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const sessionId = getSessionId(req);
     let transport: StreamableHTTPServerTransport;
 
-    if (sessionId && httpTransports.has(sessionId)) {
-      transport = httpTransports.get(sessionId) as StreamableHTTPServerTransport;
+    const existing = sessionId ? httpTransports.get(sessionId) : undefined;
+    if (existing) {
+      transport = existing;
     } else if (!sessionId && isInitializeRequest(req.body)) {
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
@@ -128,7 +145,7 @@ if (mcpPort) {
   });
 
   app.get("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const sessionId = getSessionId(req);
     const transport = sessionId ? httpTransports.get(sessionId) : undefined;
     if (!transport) {
       res.status(400).send("Invalid or missing session ID");
@@ -138,7 +155,7 @@ if (mcpPort) {
   });
 
   app.delete("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const sessionId = getSessionId(req);
     const transport = sessionId ? httpTransports.get(sessionId) : undefined;
     if (!transport) {
       res.status(400).send("Invalid or missing session ID");
@@ -147,7 +164,7 @@ if (mcpPort) {
     await transport.handleRequest(req, res);
   });
 
-  app.listen(mcpPort, () => {
+  app.listen(mcpPort, "127.0.0.1", () => {
     process.stderr.write(`[info] MCP Streamable HTTP server listening on http://127.0.0.1:${mcpPort}/mcp\n`);
   });
 } else {
@@ -157,8 +174,8 @@ if (mcpPort) {
   await server.connect(transport);
 }
 
-// Register built-in commands and start the background poller after connecting.
-// Both are best-effort — don't block startup.
+// Register built-in commands and start the background poller after server startup.
+// In HTTP mode this may happen before any MCP client connects. Both are best-effort — don't block startup.
 void (async () => {
   const chatId = resolveChat();
   if (typeof chatId !== "number") return;
