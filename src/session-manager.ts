@@ -69,18 +69,22 @@ function assignColor(requested?: string): string {
 // ── Public API ─────────────────────────────────────────────
 
 /**
- * Returns colors available for a new session (not already in use by any active
- * session). If `hint` is a valid palette color that is available, it is placed
- * first. If all 6 colors are taken, returns all 6 (duplicates allowed).
+ * Returns all palette colors for a new session, sorted so fresh colors appear
+ * first and colors already in use are pushed to the end. If `hint` is a valid
+ * palette color, it is placed first regardless of whether it is already in use.
+ * When all 6 colors are taken, returns all 6 in palette order.
  */
 export function getAvailableColors(hint?: string): string[] {
   const usedColors = new Set([..._sessions.values()].map((s) => s.color));
-  const available = (COLOR_PALETTE as readonly string[]).filter((c) => !usedColors.has(c));
-  if (available.length === 0) return [...COLOR_PALETTE];
-  if (hint && available.includes(hint)) {
-    return [hint, ...available.filter((c) => c !== hint)];
+  const allColors = COLOR_PALETTE as readonly string[];
+  const fresh = allColors.filter((c) => !usedColors.has(c));
+  const used = allColors.filter((c) => usedColors.has(c));
+
+  if (hint && allColors.includes(hint)) {
+    const rest = [...fresh, ...used].filter((c) => c !== hint);
+    return [hint, ...rest];
   }
-  return available;
+  return [...fresh, ...used];
 }
 
 export function createSession(name = "", colorHint?: string): SessionCreateResult {

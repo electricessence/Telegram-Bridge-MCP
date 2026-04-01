@@ -378,13 +378,19 @@ describe("getAvailableColors", () => {
     expect(colors).toEqual([...COLOR_PALETTE]);
   });
 
-  it("excludes colors already taken by active sessions", () => {
+  it("sorts used colors to end, fresh colors first", () => {
     createSession("A"); // takes 🟦
     createSession("B"); // takes 🟩
     const colors = getAvailableColors();
-    expect(colors).not.toContain("🟦");
-    expect(colors).not.toContain("🟩");
-    expect(colors).toHaveLength(4);
+    expect(colors).toHaveLength(6);
+    expect(colors).toContain("🟦");
+    expect(colors).toContain("🟩");
+    // Used colors must be at the end; first fresh color comes before them
+    const freshIndex = colors.indexOf("🟨");
+    const usedIndex1 = colors.indexOf("🟦");
+    const usedIndex2 = colors.indexOf("🟩");
+    expect(freshIndex).toBeLessThan(usedIndex1);
+    expect(freshIndex).toBeLessThan(usedIndex2);
   });
 
   it("places valid available hint first", () => {
@@ -393,11 +399,11 @@ describe("getAvailableColors", () => {
     expect(colors).toHaveLength(6);
   });
 
-  it("hint that is already taken is not placed first — falls back to natural order", () => {
+  it("hint placed first even when already in use", () => {
     createSession("A"); // takes 🟦
-    const colors = getAvailableColors("🟦"); // 🟦 taken, ignore hint
-    expect(colors[0]).not.toBe("🟦");
-    expect(colors).not.toContain("🟦");
+    const colors = getAvailableColors("🟦"); // 🟦 taken but hint honored
+    expect(colors[0]).toBe("🟦");
+    expect(colors).toHaveLength(6);
   });
 
   it("hint that is not in palette is ignored", () => {
@@ -412,7 +418,7 @@ describe("getAvailableColors", () => {
     expect(colors).toEqual([...COLOR_PALETTE]);
   });
 
-  it("hint first when only one color available and hint matches", () => {
+  it("hint first when hint is the only fresh color", () => {
     // Take 5 colors, leave only 🟪
     createSession("A", "🟦");
     createSession("B", "🟩");
@@ -420,6 +426,8 @@ describe("getAvailableColors", () => {
     createSession("D", "🟧");
     createSession("E", "🟥");
     const colors = getAvailableColors("🟪");
-    expect(colors).toEqual(["🟪"]);
+    expect(colors).toHaveLength(6);
+    expect(colors[0]).toBe("🟪"); // hint (only fresh) goes first
+    expect(colors.slice(1)).toEqual(expect.arrayContaining(["🟦", "🟩", "🟨", "🟧", "🟥"]));
   });
 });

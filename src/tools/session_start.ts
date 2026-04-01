@@ -32,10 +32,14 @@ async function requestApproval(
   const label = reconnect ? "Session reconnecting:" : "New session requesting access:";
   const text = `🤖 *${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:`;
   const availableColors = getAvailableColors(colorHint);
+  const usedColors = new Set(listSessions().map((s) => s.color));
+  const primaryColor = colorHint && !usedColors.has(colorHint)
+    ? colorHint
+    : availableColors.find((c) => !usedColors.has(c));
   const colorButtons = availableColors.map((c) => ({
     text: c,
     callback_data: `${APPROVE_PREFIX}${COLOR_PALETTE.indexOf(c as (typeof COLOR_PALETTE)[number])}`,
-    ...(c === colorHint ? { style: "primary" } : {}),
+    ...(c === primaryColor ? { style: "primary" } : {}),
   }));
   const sent = await getApi().sendMessage(chatId, text, {
     parse_mode: "MarkdownV2",
