@@ -33,8 +33,9 @@ async function requestApproval(
   const text = `🤖 *${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:`;
   const availableColors = getAvailableColors(colorHint);
   const usedColors = new Set(listSessions().map((s) => s.color));
-  const primaryColor = colorHint && !usedColors.has(colorHint)
-    ? colorHint
+  const validHint = colorHint && (COLOR_PALETTE as readonly string[]).includes(colorHint) ? colorHint : undefined;
+  const primaryColor = validHint && !usedColors.has(validHint)
+    ? validHint
     : availableColors.find((c) => !usedColors.has(c));
   const colorButtons = availableColors.map((c) => ({
     text: c,

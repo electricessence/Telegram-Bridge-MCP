@@ -1142,6 +1142,33 @@ describe("session_start tool", () => {
     expect(firstFreshButton?.style).toBe("primary");
   });
 
+  it("invalid colorHint (not in palette) is ignored — first fresh color gets primary style", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.listSessions
+      .mockReturnValueOnce([{ sid: 1, name: "Primary", createdAt: "2026-03-17" }])
+      .mockReturnValue([{ sid: 1, name: "Primary", color: "🟦", createdAt: "2026-03-17" }]);
+    // getAvailableColors correctly ignores invalid hint; 🟩 is first fresh
+    mocks.getAvailableColors.mockReturnValue(["🟩", "🟨", "🟧", "🟥", "🟪", "🟦"]);
+    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
+      void Promise.resolve().then(() => { fn({ content: { data: "approve_0", qid: "q1" } }); });
+    });
+    mocks.sendMessage.mockResolvedValueOnce({ message_id: 50 });
+    mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", color: "🟩", sessionsActive: 2 });
+
+    await call({ name: "Worker", color: "❌" }); // invalid hint — not in COLOR_PALETTE
+
+    const promptOpts = (mocks.sendMessage.mock.calls[0] as unknown[])[2] as Record<string, unknown>;
+    const keyboard = (promptOpts.reply_markup as Record<string, unknown>).inline_keyboard as unknown[][];
+    const buttons = keyboard[0] as Array<Record<string, unknown>>;
+    // Invalid hint must not appear as a button
+    const invalidButton = buttons.find(b => b.text === "❌");
+    expect(invalidButton).toBeUndefined();
+    // First fresh palette color should be the primary button
+    const firstFreshButton = buttons.find(b => b.text === "🟩");
+    expect(firstFreshButton?.style).toBe("primary");
+  });
+
   it("reconnect variant color-picker still works", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(1);
