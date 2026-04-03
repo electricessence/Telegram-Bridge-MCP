@@ -116,3 +116,29 @@ Emit deprecation warnings for `identity`. Remove in next major.
 ## Reversal Plan
 
 Revert to `identity: [sid, pin]` format. Re-add 10-178 string coercion handling.
+
+## Completion
+
+**Branch:** `10-201`
+**Commits:** `66fb5b9`, `f2bbc8b`
+**All 1790 tests pass.**
+
+### Code Review Summary
+- **Reviewer:** Code Reviewer subagent (2 rounds)
+- **Round 1 findings:** 1 Major, 3 Minor, 2 Info
+- **Round 2 findings:** APPROVED — Major finding resolved, no new issues
+
+### What was done
+- All 50+ tool schemas updated: `identity: [number, number]` → `token: number`
+- `session_start` returns `{ token, sid, pin, ... }` with self-describing breakdown
+- Central `decodeToken()` in `identity-schema.ts`, `requireAuth()` in `session-gate.ts`
+- 10-178 string coercion workarounds removed
+- All test files updated; new edge-case tests for encode/decode
+- `package.json` bumped to `5.0.0`
+- `changelog/2026-04-03_v5.0.0.md` added
+- `AGENTS.md`, `README.md`, `docs/multi-session-flow.md` updated
+
+### Minor findings (noted, not blocking)
+- Stale comments in `dequeue_update.test.ts` (lines 562, 716) referencing old param shape
+- Spurious `identity` key in mock data in `send_direct_message.test.ts` and `route_message.test.ts`
+- Indentation anomaly in `send_message.ts` line 67
