@@ -63,3 +63,10 @@ Structure is not optional. Every file must be in the right place, every director
 
 - If a file doesn't clearly belong somewhere, flag it — don't leave it floating.
 - All planned work is tracked as task documents. Nothing is done ad-hoc.
+
+### Pull Request Merge Policy
+
+All PRs from `dev` to `master` **must use squash-and-merge** — never a regular
+merge or rebase. This collapses the full commit history into a single clean
+commit, preventing internal work details from leaking into the public `master`
+branch history.
