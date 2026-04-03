@@ -43,48 +43,77 @@ const PIN_MAX = 999_999;
 let _nextId = 1;
 const _sessions = new Map<number, Session>();
 
+/**
+ * LRU color queue. Index 0 = least recently used (freshest for next assignment);
+ * last index = most recently used. Initialized to palette definition order —
+ * all colors are equally "never used" at startup.
+ */
+let _colorLRU: string[] = [...COLOR_PALETTE];
+
+/** Colors that have been assigned at least once since last reset. */
+const _everUsedColors = new Set<string>();
+
 // ── Helpers ────────────────────────────────────────────────
 
 function generatePin(): number {
   return randomInt(PIN_MIN, PIN_MAX + 1);
 }
 
+/** Move a color to the MRU (far right) position in the LRU queue and mark it as ever-used. */
+function recordColorUse(color: string): void {
+  _everUsedColors.add(color);
+  const idx = _colorLRU.indexOf(color);
+  if (idx !== -1) {
+    _colorLRU.splice(idx, 1);
+    _colorLRU.push(color);
+  }
+}
+
 /**
  * Pick a color from the palette. If `requested` is a valid palette color
- * not already in use, use it. Otherwise auto-assign the first unused
- * palette color. If all 6 are taken, wrap around by session count.
+ * not already in use, use it. Otherwise auto-assign the least-recently-used
+ * color that is currently free. If all 6 are taken, wrap around by session count.
+ * Records the assigned color in the LRU queue.
  */
 function assignColor(requested?: string): string {
   const usedColors = new Set([..._sessions.values()].map((s) => s.color));
+  let color: string;
   if (requested && (COLOR_PALETTE as readonly string[]).includes(requested) && !usedColors.has(requested)) {
-    return requested;
+    color = requested;
+  } else {
+    // Auto-assign: pick the least-recently-used free color (leftmost in LRU)
+    color = _colorLRU.find(c => !usedColors.has(c))
+      ?? COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length]
+      ?? COLOR_PALETTE[0];
   }
-  for (const c of COLOR_PALETTE) {
-    if (!usedColors.has(c)) return c;
-  }
-  // All 6 taken — wrap around
-  return COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length] ?? COLOR_PALETTE[0];
+  recordColorUse(color);
+  return color;
 }
 
 // ── Public API ─────────────────────────────────────────────
 
 /**
- * Returns all palette colors for a new session, sorted so fresh colors appear
- * first and colors already in use are pushed to the end. If `hint` is a valid
- * palette color, it is placed first regardless of whether it is already in use.
- * When all 6 colors are taken, returns all 6 in palette order.
+ * Returns all palette colors ordered by the LRU queue: leftmost = least recently
+ * used (freshest for next assignment), rightmost = most recently used.
+ *
+ * If `hint` is a valid palette color that has **never** been assigned, it is
+ * moved to the far left (position 0) as the top recommendation. If `hint` has
+ * been used before, it stays at its natural LRU position.
+ *
+ * All 6 colors are always returned regardless of current active-session usage.
  */
 export function getAvailableColors(hint?: string): string[] {
-  const usedColors = new Set([..._sessions.values()].map((s) => s.color));
-  const allColors = COLOR_PALETTE as readonly string[];
-  const fresh = allColors.filter((c) => !usedColors.has(c));
-  const used = allColors.filter((c) => usedColors.has(c));
+  const allColors = [..._colorLRU]; // LRU order: [0]=least-recently-used … [5]=most-recently-used
 
-  if (hint && allColors.includes(hint)) {
-    const rest = [...fresh, ...used].filter((c) => c !== hint);
-    return [hint, ...rest];
+  if (hint && (COLOR_PALETTE as readonly string[]).includes(hint)) {
+    if (!_everUsedColors.has(hint)) {
+      // Never-used hint: place at far left (top recommendation)
+      return [hint, ...allColors.filter(c => c !== hint)];
+    }
+    // Previously-used hint: leave at natural LRU position
+    return allColors;
   }
-  return [...fresh, ...used];
+  return allColors;
 }
 
 export function createSession(name = "", colorHint?: string): SessionCreateResult {
@@ -197,11 +226,13 @@ export function getActiveSession(): number {
   return _activeSessionId;
 }
 
-/** Clear all sessions and reset the ID counter. Test-only. */
+/** Clear all sessions, reset the ID counter, and reset the color LRU queue. Test-only. */
 export function resetSessions(): void {
   _sessions.clear();
   _nextId = 1;
   _activeSessionId = 0;
+  _colorLRU = [...COLOR_PALETTE];
+  _everUsedColors.clear();
 }
 
 /** Store the message ID of the session's online announcement for later unpin. */
