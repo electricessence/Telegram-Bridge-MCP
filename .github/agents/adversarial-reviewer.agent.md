@@ -5,7 +5,6 @@ model: Claude Opus 4.6
 tools:
   - read
   - search
-  - execute
 ---
 
 # Adversarial Reviewer
