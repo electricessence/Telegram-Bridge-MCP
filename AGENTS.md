@@ -27,21 +27,21 @@ First-Time Setup:
 
 Connect Your Client:
 └── What MCP client are you in?
-    ├── Claude Code  → add to .mcp.json in project root (HTTP mode)
-    ├── VS Code      → add to .vscode/mcp.json (HTTP mode)
-    ├── Cursor       → add to .cursor/mcp.json (HTTP mode)
-    ├── Claude Desktop → add to claude_desktop_config.json (stdio mode)
-    └── Other / unsure → use stdio mode with dist/launcher.js (zero extra config)
+    ├── Claude Code    → add to .mcp.json in project root (HTTP mode)
+    ├── VS Code        → add to .vscode/mcp.json (HTTP mode)
+    ├── Cursor         → add to .cursor/mcp.json (HTTP mode)
+    ├── Claude Desktop → add to claude_desktop_config.json (HTTP mode)
+    └── Other / unsure → HTTP mode (see snippets below); stdio as fallback only
 
 Transport mode:
-├── HTTP (recommended for most users)
+├── HTTP ← USE THIS (works for every client, supports multi-session, no conflicts)
 │   → start server once: MCP_PORT=3099 pnpm start (or Docker)
 │   → all clients point at http://127.0.0.1:3099/mcp
-│   → multiple clients can connect simultaneously
-└── stdio (simpler, single client only)
-    → no separate server process needed
-    → each client spawns its own process
-    → only one client at a time — multiple will conflict
+│   → multiple clients can connect simultaneously — no getUpdates conflicts
+└── stdio ← FALLBACK ONLY (use when you cannot run a persistent server)
+    → each client spawns its own process — only ONE client at a time
+    → multiple stdio instances will fight over getUpdates and miss messages
+    → use dist/launcher.js to avoid hardcoding credentials in config
 ```
 
 ---
@@ -127,7 +127,24 @@ Add to `.cursor/mcp.json` in your project root:
 }
 ```
 
-### Stdio mode — launcher (any client, zero credentials in config)
+### Claude Desktop — HTTP mode
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "telegram": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:3099/mcp"
+    }
+  }
+}
+```
+
+Start server first: `MCP_PORT=3099 pnpm start`
+
+### Stdio mode — launcher (fallback: any client, zero credentials in config)
 
 Uses `dist/launcher.js` which reads credentials from `.env` and auto-starts the HTTP
 server. No credentials needed in your editor config.
@@ -173,9 +190,9 @@ server. No credentials needed in your editor config.
 }
 ```
 
-### Stdio mode — direct (requires credentials in config)
+### Stdio mode — direct (last resort: no .env available)
 
-Only use if `.env` files are not available. Pass credentials explicitly:
+Only use if `.env` files are not available and you cannot run the server. Pass credentials explicitly:
 
 ```json
 {
