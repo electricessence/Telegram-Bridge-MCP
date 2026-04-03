@@ -48,6 +48,44 @@ describe("IDENTITY_SCHEMA", () => {
   });
 
   // -----------------------------------------------------------------------
+  // String coercion via z.preprocess()
+  // -----------------------------------------------------------------------
+  describe("String coercion (preprocess)", () => {
+    it("coerces a JSON string array to a real array", () => {
+      const result = IDENTITY_SCHEMA.safeParse("[2, 573602]");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual([2, 573602]);
+      }
+    });
+
+    it("coerces a stringified single-element array", () => {
+      const result = IDENTITY_SCHEMA.safeParse("[1]");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual([1]);
+      }
+    });
+
+    it("rejects a non-parseable string", () => {
+      expect(IDENTITY_SCHEMA.safeParse("hello").success).toBe(false);
+    });
+
+    it("rejects a stringified object", () => {
+      // '{"sid":2,"pin":573602}' parses to object, not array
+      expect(IDENTITY_SCHEMA.safeParse('{"sid":2,"pin":573602}').success).toBe(false);
+    });
+
+    it("rejects a bare number passed as string", () => {
+      expect(IDENTITY_SCHEMA.safeParse("123").success).toBe(false);
+    });
+
+    it("rejects a stringified array with non-integer elements", () => {
+      expect(IDENTITY_SCHEMA.safeParse('["a","b"]').success).toBe(false);
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // JSON Schema output — the critical regression guard.
   //
   // OpenAI (and GitHub Copilot) validators require `items` to be an object

@@ -89,14 +89,12 @@ function assignColor(requested?: string, force = false): string {
     } else {
       // Suggested color is in use and not forced — fall back to LRU auto-assign
       color = _colorLRU.find(c => !usedColors.has(c))
-        ?? COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length]
-        ?? COLOR_PALETTE[0];
+        ?? COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length];
     }
   } else {
     // No valid suggestion — auto-assign least-recently-used free color
     color = _colorLRU.find(c => !usedColors.has(c))
-      ?? COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length]
-      ?? COLOR_PALETTE[0];
+      ?? COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length];
   }
   recordColorUse(color);
   return color;

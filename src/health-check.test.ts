@@ -613,7 +613,7 @@ describe("health-check", () => {
       // Make sendServiceMessage slow so the first tick is still in-flight
       let resolveFirst!: () => void;
       const firstCallPromise = new Promise<number>((resolve) => {
-        resolveFirst = () => resolve(42);
+        resolveFirst = () => { resolve(42); };
       });
 
       mocks.getUnhealthySessions.mockReturnValue([s]);
