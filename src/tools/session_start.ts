@@ -339,7 +339,9 @@ export function register(server: McpServer) {
         chosenColor = decision.color;
       }
 
-      const session = createSession(effectiveName, chosenColor);
+      // forceColor = true when the operator explicitly tapped a color button;
+      // for the first session (no approval dialog) the agent hint is a suggestion only.
+      const session = createSession(effectiveName, chosenColor, !isFirstSession);
       createSessionQueue(session.sid);
       setActiveSession(session.sid);
       if (!isPollerRunning()) startPoller();

@@ -106,6 +106,18 @@ describe("color assignment", () => {
     expect(s7.color).toBe(COLOR_PALETTE[0]);
   });
 
+  it("forceColor=true assigns the requested color even when already in use", () => {
+    createSession("A", "🟦"); // 🟦 now in use
+    const s2 = createSession("B", "🟦", true); // force: operator explicitly chose 🟦
+    expect(s2.color).toBe("🟦");
+  });
+
+  it("forceColor=false (default) falls back when requested color is in use", () => {
+    createSession("A", "🟦"); // 🟦 now in use
+    const s2 = createSession("B", "🟦"); // no force: fall back to LRU auto-assign
+    expect(s2.color).not.toBe("🟦");
+  });
+
   it("listSessions includes color", () => {
     createSession("A");
     createSession("B");

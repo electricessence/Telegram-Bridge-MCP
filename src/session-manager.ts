@@ -70,18 +70,30 @@ function recordColorUse(color: string): void {
 }
 
 /**
- * Pick a color from the palette. If `requested` is a valid palette color
- * not already in use, use it. Otherwise auto-assign the least-recently-used
- * color that is currently free. If all 6 are taken, wrap around by session count.
- * Records the assigned color in the LRU queue.
+ * Pick a color from the palette.
+ *
+ * - `force = true` (operator explicit tap): assign `requested` unconditionally —
+ *   even if it is already held by another active session.
+ * - `force = false` (agent suggestion / auto): use `requested` only when it is
+ *   free; otherwise auto-assign the least-recently-used free color (leftmost in
+ *   the LRU queue). If all 6 colors are taken, wrap around by session count.
+ *
+ * Records the assigned color in the LRU queue regardless of how it was chosen.
  */
-function assignColor(requested?: string): string {
+function assignColor(requested?: string, force = false): string {
   const usedColors = new Set([..._sessions.values()].map((s) => s.color));
   let color: string;
-  if (requested && (COLOR_PALETTE as readonly string[]).includes(requested) && !usedColors.has(requested)) {
-    color = requested;
+  if (requested && (COLOR_PALETTE as readonly string[]).includes(requested)) {
+    if (force || !usedColors.has(requested)) {
+      color = requested;
+    } else {
+      // Suggested color is in use and not forced — fall back to LRU auto-assign
+      color = _colorLRU.find(c => !usedColors.has(c))
+        ?? COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length]
+        ?? COLOR_PALETTE[0];
+    }
   } else {
-    // Auto-assign: pick the least-recently-used free color (leftmost in LRU)
+    // No valid suggestion — auto-assign least-recently-used free color
     color = _colorLRU.find(c => !usedColors.has(c))
       ?? COLOR_PALETTE[_sessions.size % COLOR_PALETTE.length]
       ?? COLOR_PALETTE[0];
@@ -116,7 +128,7 @@ export function getAvailableColors(hint?: string): string[] {
   return allColors;
 }
 
-export function createSession(name = "", colorHint?: string): SessionCreateResult {
+export function createSession(name = "", colorHint?: string, forceColor = false): SessionCreateResult {
   const sid = _nextId++;
   const usedPins = new Set([..._sessions.values()].map((s) => s.pin));
   let pin: number;
@@ -131,7 +143,7 @@ export function createSession(name = "", colorHint?: string): SessionCreateResul
       `[session-manager] Failed to generate a unique PIN after ${MAX_PIN_ATTEMPTS} attempts.`,
     );
   }
-  const color = assignColor(colorHint);
+  const color = assignColor(colorHint, forceColor);
   const session: Session = {
     sid,
     pin,
