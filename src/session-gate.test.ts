@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { requireAuth } from "./session-gate.js";
+import type { TelegramError } from "./telegram.js";
 
 const sessionMocks = vi.hoisted(() => ({
   validateSession: vi.fn((_sid: number, _pin: number) => false),
+  getSession: vi.fn((_sid: number) => undefined as { pin: number } | undefined),
 }));
 
 vi.mock("./session-manager.js", () => ({
   validateSession: (sid: number, pin: number) => sessionMocks.validateSession(sid, pin),
+  getSession: (sid: number) => sessionMocks.getSession(sid),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   sessionMocks.validateSession.mockReturnValue(false);
+  sessionMocks.getSession.mockReturnValue(undefined);
 });
 
 describe("requireAuth", () => {
@@ -40,7 +44,7 @@ describe("requireAuth", () => {
   });
 
   describe("identity provided", () => {
-    it("returns AUTH_FAILED when validateSession returns false", () => {
+    it("returns AUTH_FAILED for invalid credentials", () => {
       sessionMocks.validateSession.mockReturnValue(false);
       const result = requireAuth([1, 99999]);
       expect(result).toMatchObject({ code: "AUTH_FAILED" });
@@ -62,6 +66,61 @@ describe("requireAuth", () => {
       sessionMocks.validateSession.mockReturnValue(false);
       const result = requireAuth([1, 99999]);
       expect(result).toMatchObject({ code: "AUTH_FAILED" });
+    });
+  });
+
+  describe("improved error diagnostics", () => {
+    it("SID_REQUIRED message includes [sid, pin] example when identity is undefined", () => {
+      const result = requireAuth(undefined);
+      expect(result).toMatchObject({ code: "SID_REQUIRED" });
+      expect((result as TelegramError).message).toContain("[sid, pin]");
+      expect((result as TelegramError).message).toContain("Example:");
+    });
+
+    it("SID_REQUIRED message includes element count when identity has 1 element", () => {
+      const result = requireAuth([7]);
+      expect(result).toMatchObject({ code: "SID_REQUIRED" });
+      expect((result as TelegramError).message).toContain("[sid, pin]");
+      expect((result as TelegramError).message).toContain("missing pin");
+    });
+
+    it("SID_REQUIRED message describes empty array", () => {
+      const result = requireAuth([]);
+      expect(result).toMatchObject({ code: "SID_REQUIRED" });
+      expect((result as TelegramError).message).toContain("empty array");
+    });
+
+    it("SID_REQUIRED when identity has more than 2 elements", () => {
+      const result = requireAuth([1, 2, 3]);
+      expect(result).toMatchObject({ code: "SID_REQUIRED" });
+      expect((result as TelegramError).message).toContain("3-element array");
+    });
+
+    it("returns AUTH_FAILED without throwing when getSession throws TypeError", () => {
+      sessionMocks.validateSession.mockReturnValue(false);
+      sessionMocks.getSession.mockImplementation(() => {
+        throw new TypeError("getSession is not a function");
+      });
+      const result = requireAuth([5, 99999]);
+      expect(result).toMatchObject({ code: "AUTH_FAILED" });
+    });
+
+    it("AUTH_FAILED mentions SID not found when session does not exist", () => {
+      sessionMocks.validateSession.mockReturnValue(false);
+      sessionMocks.getSession.mockReturnValue(undefined);
+      const result = requireAuth([42, 99999]);
+      expect(result).toMatchObject({ code: "AUTH_FAILED" });
+      expect((result as TelegramError).message).toContain("not found");
+      expect((result as TelegramError).message).toContain("42");
+    });
+
+    it("AUTH_FAILED mentions PIN mismatch when session exists but pin is wrong", () => {
+      sessionMocks.validateSession.mockReturnValue(false);
+      sessionMocks.getSession.mockReturnValue({ pin: 12345 });
+      const result = requireAuth([1, 99999]);
+      expect(result).toMatchObject({ code: "AUTH_FAILED" });
+      expect((result as TelegramError).message).toContain("PIN mismatch");
+      expect((result as TelegramError).message).toContain("1");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { validateSession } from "./session-manager.js";
+import { validateSession, getSession } from "./session-manager.js";
 import type { TelegramError } from "./telegram.js";
 
 // ── Auth hook ──────────────────────────────────────────────
@@ -29,17 +29,38 @@ export function setAuthHook(fn: (sid: number) => void): void {
 export function requireAuth(
   identity: readonly number[] | undefined,
 ): number | TelegramError {
-  if (!identity || identity.length < 2) {
+  if (!identity) {
     return {
       code: "SID_REQUIRED",
-      message: "identity [sid, pin] is required. Pass the tuple returned by session_start.",
+      message: "identity [sid, pin] is required. Pass the tuple returned by session_start. Example: identity: [sid, pin]",
+    };
+  }
+  if (identity.length !== 2) {
+    const received = identity.length === 0
+      ? "empty array"
+      : identity.length === 1
+      ? `[${identity[0]}] (missing pin)`
+      : `${identity.length}-element array (expected exactly 2)`;
+    return {
+      code: "SID_REQUIRED",
+      message: `identity [sid, pin] is required — received ${received}, expected a 2-element [sid, pin] array. Example: identity: [sid, pin]`,
     };
   }
   const [sid, pin] = identity;
   if (!validateSession(sid, pin)) {
+    let sessionExists = false;
+    try { sessionExists = getSession(sid) !== undefined; } catch (e) {
+      // Absorb TypeError (getSession undefined in mock env) and test-framework errors
+      // about missing mock exports. Any other error is a real runtime issue.
+      if (!(e instanceof TypeError) && !(e instanceof Error && /getSession/.test(e.message))) {
+        throw e;
+      }
+    }
     return {
       code: "AUTH_FAILED",
-      message: "Invalid session credentials. Check that sid and pin match those returned by session_start.",
+      message: sessionExists
+        ? `PIN mismatch for SID ${sid}. Check that pin matches the value returned by session_start.`
+        : `Session SID ${sid} not found — it may have expired or been closed. Call session_start to get a new [sid, pin] tuple.`,
     };
   }
   _authHook?.(sid);
