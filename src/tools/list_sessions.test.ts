@@ -1,14 +1,21 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createMockServer, parseResult, type ToolHandler } from "./test-utils.js";
+import { createMockServer, parseResult, isError, errorCode, type ToolHandler } from "./test-utils.js";
 
-interface ListSessionsResult {
-  sessions: Array<{ sid: number; name: string; createdAt: string }>;
+// Unauthenticated response shape
+interface UnauthenticatedResult {
+  sessions: number[];
+}
+
+// Authenticated response shape
+interface AuthenticatedResult {
+  sessions: Array<{ sid: number; name: string; color: string; createdAt: string }>;
   active_sid: number;
 }
 
 const mocks = vi.hoisted(() => ({
   listSessions: vi.fn(),
   getActiveSession: vi.fn(),
+  requireAuth: vi.fn(),
 }));
 
 vi.mock("../session-manager.js", () => ({
@@ -16,7 +23,14 @@ vi.mock("../session-manager.js", () => ({
   getActiveSession: mocks.getActiveSession,
 }));
 
+vi.mock("../session-gate.js", () => ({
+  requireAuth: mocks.requireAuth,
+}));
+
 import { register } from "./list_sessions.js";
+
+// A valid encoded token for sid=1, pin=123456: 1 * 1_000_000 + 123456 = 1_123_456
+const VALID_TOKEN = 1_123_456;
 
 describe("list_sessions tool", () => {
   let call: ToolHandler;
@@ -25,42 +39,115 @@ describe("list_sessions tool", () => {
     vi.clearAllMocks();
     mocks.listSessions.mockReturnValue([]);
     mocks.getActiveSession.mockReturnValue(0);
+    mocks.requireAuth.mockReturnValue(1); // default: auth succeeds, returns sid=1
     const server = createMockServer();
     register(server);
     call = server.getHandler("list_sessions");
   });
 
-  it("returns empty array when no sessions exist", async () => {
-    const result = parseResult<ListSessionsResult>(await call({}));
-    expect(result).toEqual({ sessions: [], active_sid: 0 });
-  });
+  // ── Unauthenticated path ───────────────────────────────────
 
-  it("returns all sessions without PINs", async () => {
-    mocks.listSessions.mockReturnValue([
-      { sid: 1, name: "alpha", createdAt: "2026-01-01T00:00:00.000Z" },
-      { sid: 2, name: "beta", createdAt: "2026-01-01T00:01:00.000Z" },
-    ]);
-    mocks.getActiveSession.mockReturnValue(2);
-
-    const result = parseResult<ListSessionsResult>(await call({}));
-
-    expect(result.sessions).toHaveLength(2);
-    expect(result.sessions[0]).toEqual({
-      sid: 1,
-      name: "alpha",
-      createdAt: "2026-01-01T00:00:00.000Z",
+  describe("unauthenticated (no token)", () => {
+    it("returns empty session ID array when no sessions exist", async () => {
+      const result = parseResult<UnauthenticatedResult>(await call({}));
+      expect(result).toEqual({ sessions: [] });
     });
-    expect(result.sessions[1].sid).toBe(2);
-    expect(result.active_sid).toBe(2);
+
+    it("returns only SID numbers, not full session objects", async () => {
+      mocks.listSessions.mockReturnValue([
+        { sid: 1, name: "alpha", color: "🟦", createdAt: "2026-01-01T00:00:00.000Z" },
+        { sid: 2, name: "beta", color: "🟩", createdAt: "2026-01-01T00:01:00.000Z" },
+        { sid: 6, name: "gamma", color: "🟥", createdAt: "2026-01-01T00:02:00.000Z" },
+      ]);
+
+      const result = parseResult<UnauthenticatedResult>(await call({}));
+      expect(result).toEqual({ sessions: [1, 2, 6] });
+    });
+
+    it("does not expose names, colors, PINs, or active_sid when unauthenticated", async () => {
+      mocks.listSessions.mockReturnValue([
+        { sid: 3, name: "secret", color: "🟨", createdAt: "2026-01-01T00:00:00.000Z" },
+      ]);
+      mocks.getActiveSession.mockReturnValue(3);
+
+      const result = parseResult<Record<string, unknown>>(await call({}));
+      expect(result).not.toHaveProperty("active_sid");
+      expect(Array.isArray(result.sessions)).toBe(true);
+      // Each element must be a plain number, not an object
+      for (const entry of result.sessions as unknown[]) {
+        expect(typeof entry).toBe("number");
+      }
+    });
+
+    it("does not call requireAuth when token is omitted", async () => {
+      await call({});
+      expect(mocks.requireAuth).not.toHaveBeenCalled();
+    });
   });
 
-  it("includes active_sid of 0 when no session is active", async () => {
-    mocks.listSessions.mockReturnValue([
-      { sid: 1, name: "", createdAt: "2026-01-01T00:00:00.000Z" },
-    ]);
-    mocks.getActiveSession.mockReturnValue(0);
+  // ── Authenticated path ─────────────────────────────────────
 
-    const result = parseResult<ListSessionsResult>(await call({}));
-    expect(result.active_sid).toBe(0);
+  describe("authenticated (with valid token)", () => {
+    it("returns full session details and active_sid", async () => {
+      mocks.listSessions.mockReturnValue([
+        { sid: 1, name: "alpha", color: "🟦", createdAt: "2026-01-01T00:00:00.000Z" },
+        { sid: 2, name: "beta", color: "🟩", createdAt: "2026-01-01T00:01:00.000Z" },
+      ]);
+      mocks.getActiveSession.mockReturnValue(2);
+      mocks.requireAuth.mockReturnValue(1); // auth succeeds
+
+      const result = parseResult<AuthenticatedResult>(await call({ token: VALID_TOKEN }));
+
+      expect(result.active_sid).toBe(2);
+      expect(result.sessions).toHaveLength(2);
+      expect(result.sessions[0]).toEqual({
+        sid: 1,
+        name: "alpha",
+        color: "🟦",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      expect(result.sessions[1].sid).toBe(2);
+    });
+
+    it("returns empty sessions array and active_sid 0 when authenticated but no sessions exist", async () => {
+      mocks.listSessions.mockReturnValue([]);
+      mocks.getActiveSession.mockReturnValue(0);
+      mocks.requireAuth.mockReturnValue(1);
+
+      const result = parseResult<AuthenticatedResult>(await call({ token: VALID_TOKEN }));
+      expect(result).toEqual({ sessions: [], active_sid: 0 });
+    });
+
+    it("returns active_sid 0 when authenticated and no session is currently active", async () => {
+      mocks.listSessions.mockReturnValue([
+        { sid: 1, name: "", color: "🟦", createdAt: "2026-01-01T00:00:00.000Z" },
+      ]);
+      mocks.getActiveSession.mockReturnValue(0);
+      mocks.requireAuth.mockReturnValue(1);
+
+      const result = parseResult<AuthenticatedResult>(await call({ token: VALID_TOKEN }));
+      expect(result.active_sid).toBe(0);
+    });
+
+    it("calls requireAuth with the provided token", async () => {
+      mocks.requireAuth.mockReturnValue(1);
+      await call({ token: VALID_TOKEN });
+      expect(mocks.requireAuth).toHaveBeenCalledWith(VALID_TOKEN);
+    });
+  });
+
+  // ── Auth failure path ──────────────────────────────────────
+
+  describe("invalid token", () => {
+    it("returns AUTH_FAILED error when token is invalid", async () => {
+      mocks.requireAuth.mockReturnValue({
+        code: "AUTH_FAILED",
+        message: "Invalid session credentials",
+      });
+
+      const result = await call({ token: 9_999_999 });
+      expect(isError(result)).toBe(true);
+      expect(errorCode(result)).toBe("AUTH_FAILED");
+    });
   });
 });
