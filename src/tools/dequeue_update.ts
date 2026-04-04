@@ -16,6 +16,9 @@ import {
   buildReminderEvent,
 } from "../reminder-state.js";
 
+/** Maximum milliseconds for a single setTimeout call — Node.js overflows above ~2^31-1 ms. */
+const MAX_SET_TIMEOUT_MS = 2_000_000_000;
+
 /** Seconds an active reminder must be idle before it fires within dequeue_update. */
 const REMINDER_IDLE_THRESHOLD_MS = 60_000;
 
@@ -190,7 +193,7 @@ export function register(server: McpServer) {
         let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
         await Promise.race([
           waitForEnqueueAny(),
-          new Promise<void>((r) => { timeoutHandle = setTimeout(r, Math.min(Math.max(0, waitMs), 2_000_000_000)); }),
+          new Promise<void>((r) => { timeoutHandle = setTimeout(r, Math.min(Math.max(0, waitMs), MAX_SET_TIMEOUT_MS)); }),
           abortPromise,
         ]);
         clearTimeout(timeoutHandle);
