@@ -333,7 +333,6 @@ Five MCP resources available to any client:
 
 ```text
 ghcr.io/electricessence/telegram-bridge-mcp:latest
-ghcr.io/electricessence/telegram-bridge-mcp:4.7.1
 ```
 
 > **Pairing first:** Run steps 2–3 on a machine with Node.js to create your `.env` file, or manually create one from `.env.example`. Docker reads it via `--env-file`.
