@@ -8,6 +8,11 @@
 
 - **Identity token redesign** — all tools now accept `token: number` (single integer) instead of `identity: [sid, pin]` (array tuple). See `changelog/2026-04-03_v5.0.0.md`.
 
+## Security
+
+- `list_sessions` now requires a valid auth token — unauthenticated callers receive an auth error instead of an empty or partial session list. (#15-251)
+- Auth failure responses now use a single generic message (`"Invalid token"`) for both SID-not-found and wrong-PIN cases, eliminating the SID/PIN oracle that allowed session enumeration. (#15-251)
+
 ## Fixed
 
 - `dequeue_update`: `timeout` parameter is now **optional** (was `.default(300)`) — omitting it uses the per-session default configured via `set_dequeue_default` (server fallback: 300 s). The parameter is also **capped at 300 s** via schema; values above 300 s are rejected at the schema level. For waits longer than 300 s, call `set_dequeue_default` to raise the session default and omit `timeout`. (#10-249)
