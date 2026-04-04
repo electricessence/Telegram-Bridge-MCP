@@ -16,7 +16,7 @@ import {
   buildReminderEvent,
 } from "../reminder-state.js";
 
-/** Maximum milliseconds for a single setTimeout call — Node.js overflows above ~2^31-1 ms. */
+/** Defensive clamp for a single setTimeout call, kept below Node.js's ~2^31-1 ms overflow limit. */
 const MAX_SET_TIMEOUT_MS = 2_000_000_000;
 
 /** Seconds an active reminder must be idle before it fires within dequeue_update. */
