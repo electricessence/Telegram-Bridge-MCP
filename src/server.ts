@@ -56,6 +56,7 @@ import { register as registerNotifyShutdownWarning } from "./tools/notify_shutdo
 import { register as registerSaveProfile } from "./tools/save_profile.js";
 import { register as registerLoadProfile } from "./tools/load_profile.js";
 import { register as registerImportProfile } from "./tools/import_profile.js";
+import { register as registerSetDequeueDefault } from "./tools/set_dequeue_default.js";
 
 import { createRequire } from "module";
 
@@ -123,6 +124,7 @@ export function createServer(): McpServer {
 
   // ── Polling ─────────────────────────────────────────────────────────────
   registerDequeueUpdate(server);
+  registerSetDequeueDefault(server);
   registerGetMessage(server);
   registerGetChatHistory(server);
 

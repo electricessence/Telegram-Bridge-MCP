@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { TOKEN_SCHEMA, decodeToken } from "./identity-schema.js";
+import { TOKEN_SCHEMA, decodeToken, consumeTokenStringHint } from "./identity-schema.js";
 
 // ---------------------------------------------------------------------------
 // Replicate the MCP SDK's Zod v4 → JSON Schema conversion.
@@ -45,8 +45,16 @@ describe("TOKEN_SCHEMA", () => {
       expect(TOKEN_SCHEMA.safeParse(1.5).success).toBe(false);
     });
 
-    it("rejects string", () => {
-      expect(TOKEN_SCHEMA.safeParse("1000000").success).toBe(false);
+    it("accepts numeric string (coerces to integer)", () => {
+      expect(TOKEN_SCHEMA.safeParse("1000000").success).toBe(true);
+    });
+
+    it("rejects non-numeric string", () => {
+      expect(TOKEN_SCHEMA.safeParse("abc").success).toBe(false);
+    });
+
+    it("rejects mixed alphanumeric string", () => {
+      expect(TOKEN_SCHEMA.safeParse("123abc").success).toBe(false);
     });
 
     it("rejects undefined (required)", () => {
@@ -160,5 +168,32 @@ describe("decodeToken", () => {
       const token = sid * 1_000_000 + pin;
       expect(decodeToken(token)).toEqual({ sid, pin });
     }
+  });
+});
+
+describe("consumeTokenStringHint", () => {
+  it("returns hint string when token was passed as a numeric string", () => {
+    TOKEN_SCHEMA.safeParse("1000000");
+    const hint = consumeTokenStringHint();
+    expect(hint).toBe("token was passed as a string — use a plain integer for better performance");
+  });
+
+  it("returns undefined when token was passed as an integer", () => {
+    TOKEN_SCHEMA.safeParse(1000000);
+    const hint = consumeTokenStringHint();
+    expect(hint).toBeUndefined();
+  });
+
+  it("resets the flag after consumption (second call returns undefined)", () => {
+    TOKEN_SCHEMA.safeParse("1000000");
+    consumeTokenStringHint(); // consume
+    const second = consumeTokenStringHint();
+    expect(second).toBeUndefined();
+  });
+
+  it("returns undefined when a non-numeric string is rejected (flag not set)", () => {
+    TOKEN_SCHEMA.safeParse("abc");
+    const hint = consumeTokenStringHint();
+    expect(hint).toBeUndefined();
   });
 });

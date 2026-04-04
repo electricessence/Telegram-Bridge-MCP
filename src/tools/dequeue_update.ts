@@ -5,9 +5,9 @@ import { requireAuth } from "../session-gate.js";
 import {
   type TimelineEvent,
 } from "../message-store.js";
-import { setActiveSession, touchSession } from "../session-manager.js";
+import { setActiveSession, touchSession, getDequeueDefault } from "../session-manager.js";
 import { getSessionQueue, getMessageOwner } from "../session-queue.js";
-import { TOKEN_SCHEMA } from "./identity-schema.js";
+import { TOKEN_SCHEMA, consumeTokenStringHint } from "./identity-schema.js";
 import {
   promoteDeferred,
   getActiveReminders,
@@ -55,6 +55,8 @@ const DESCRIPTION =
   "pending > 0 means more updates are queued — call again. " +
   "Two modes: omit timeout (default 300 s) to block up to 300 s for the next update; " +
   "pass timeout: 0 for an instant non-blocking poll (use only for startup drain loops). " +
+  "timeout values above the session default are rejected unless force: true is passed. " +
+  "Use set_dequeue_default to raise your session default for persistent agents. " +
   "token is always required — pass the session token returned by session_start.";
 
 export function register(server: McpServer) {
@@ -67,16 +69,32 @@ export function register(server: McpServer) {
           .number()
           .int()
           .min(0)
-          .max(300)
           .default(300)
-          .describe("Seconds to block when queue is empty. Default 300 (5 min) blocks up to 300 s for the next update — optimized for agent listen loops. Pass 0 for an instant non-blocking poll (drain loops only). Max 300."),
+          .describe("Seconds to block when queue is empty. Default 300 (5 min) blocks up to 300 s for the next update — optimized for agent listen loops. Pass 0 for an instant non-blocking poll (drain loops only). Values above the session default require force: true or set_dequeue_default."),
+        force: z
+          .boolean()
+          .default(false)
+          .describe("Pass true to allow a one-time override when timeout exceeds your current default."),
         token: TOKEN_SCHEMA,
       },
     },
-    async ({ timeout, token }, { signal }) => {
+    async ({ timeout, force, token }, { signal }) => {
       const _sid = requireAuth(token);
       if (typeof _sid !== "number") return toError(_sid);
       const sid = _sid;
+
+      // Capture the token-string hint now (before any early returns consume it).
+      const tokenHint = consumeTokenStringHint();
+
+      // Gate: reject timeout values above the session default unless force is set
+      const sessionDefault = getDequeueDefault(sid);
+      if (timeout > sessionDefault && !force) {
+        return toResult({
+          error: "TIMEOUT_EXCEEDS_DEFAULT",
+          message: `timeout ${timeout} exceeds your current default of ${sessionDefault}s.`,
+          hint: `Pass force: true for a one-time override, or call set_dequeue_default(${timeout}) to raise your default.`,
+        });
+      }
 
       const sessionQueue = getSessionQueue(sid);
 
@@ -123,12 +141,15 @@ export function register(server: McpServer) {
         const pending = pendingCountAny();
         const result: Record<string, unknown> = { updates: compactBatch(batch, sid) };
         if (pending > 0) result.pending = pending;
+        if (tokenHint) result.hint = tokenHint;
         resyncActiveSession();
         return toResult(result);
       }
 
       if (timeout === 0) {
-        return toResult({ empty: true, pending: pendingCountAny() });
+        const emptyResult: Record<string, unknown> = { empty: true, pending: pendingCountAny() };
+        if (tokenHint) emptyResult.hint = tokenHint;
+        return toResult(emptyResult);
       }
 
       // Block until something arrives or timeout expires
@@ -149,7 +170,9 @@ export function register(server: McpServer) {
         if (idleDuration >= REMINDER_IDLE_THRESHOLD_MS && activeReminders.length > 0) {
           const fired = popActiveReminders(sid);
           resyncActiveSession();
-          return toResult({ updates: fired.map(buildReminderEvent), pending: pendingCountAny() });
+          const reminderResult: Record<string, unknown> = { updates: fired.map(buildReminderEvent), pending: pendingCountAny() };
+          if (tokenHint) reminderResult.hint = tokenHint;
+          return toResult(reminderResult);
         }
 
         const remaining = deadline - now;
@@ -176,13 +199,16 @@ export function register(server: McpServer) {
           const pending = pendingCountAny();
           const result: Record<string, unknown> = { updates: compactBatch(batch, sid) };
           if (pending > 0) result.pending = pending;
+          if (tokenHint) result.hint = tokenHint;
           resyncActiveSession();
           return toResult(result);
         }
       }
 
       resyncActiveSession();
-      return toResult({ timed_out: true, pending: pendingCountAny() });
+      const timedOutResult: Record<string, unknown> = { timed_out: true, pending: pendingCountAny() };
+      if (tokenHint) timedOutResult.hint = tokenHint;
+      return toResult(timedOutResult);
     },
   );
 }
