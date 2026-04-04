@@ -137,7 +137,6 @@ import {
 } from "./built-in-commands.js";
 import {
   activateAutoApproveOne,
-  activateAutoApproveTimed,
   cancelAutoApprove,
   getAutoApproveState,
 } from "./auto-approve.js";

@@ -13,7 +13,7 @@ export function resolveHttpPort(
   const httpFlagIdx = argv.indexOf("--http");
 
   if (httpFlagIdx !== -1) {
-    const nextArg = argv[httpFlagIdx + 1];
+    const nextArg = argv[httpFlagIdx + 1] as string | undefined;
     if (nextArg !== undefined && /^\d+$/.test(nextArg)) {
       const parsed = parseInt(nextArg, 10);
       if (parsed < 1 || parsed > 65535) {

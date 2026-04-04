@@ -44,14 +44,11 @@ export function checkAndConsumeAutoApprove(): boolean {
     _state = { mode: "none" };
     return true;
   }
-  if (_state.mode === "timed") {
-    if (_state.expiresAt !== undefined && Date.now() >= _state.expiresAt) {
-      _state = { mode: "none" };
-      return false;
-    }
-    return true;
+  if (_state.expiresAt !== undefined && Date.now() >= _state.expiresAt) {
+    _state = { mode: "none" };
+    return false;
   }
-  return false;
+  return true;
 }
 
 /** Returns the current auto-approve state (for status display). */
