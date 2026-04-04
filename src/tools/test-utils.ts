@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import { z, type ZodRawShape } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TelegramError } from "../telegram.js";
+import { runInTokenHintContext } from "./identity-schema.js";
 
 // ---------------------------------------------------------------------------
 // Minimal McpServer mock that captures tool registrations
@@ -22,27 +23,29 @@ export function createMockServer(): MockServer & McpServer {
     (_name: string, config: { description?: string; inputSchema?: ZodRawShape }, handler: ToolHandler) => {
       const schema = config.inputSchema ?? {};
       handlers[_name] = async (args, extra) => {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = z.object(schema).parse(args);
-        } catch (err) {
-          // Map ZodError for missing/invalid `token` to a SID_REQUIRED response
-          // so identity-gate tests remain meaningful after the token redesign.
-          if (err instanceof z.ZodError) {
-            const tokenIssue = err.issues.find(i => i.path[0] === "token");
-            if (tokenIssue) {
-              return {
-                isError: true,
-                content: [{ type: "text", text: JSON.stringify({
-                  code: "SID_REQUIRED",
-                  message: "token is required. Pass the token returned by session_start.",
-                }) }],
-              };
+        return runInTokenHintContext(async () => {
+          let parsed: Record<string, unknown>;
+          try {
+            parsed = z.object(schema).parse(args);
+          } catch (err) {
+            // Map ZodError for missing/invalid `token` to a SID_REQUIRED response
+            // so identity-gate tests remain meaningful after the token redesign.
+            if (err instanceof z.ZodError) {
+              const tokenIssue = err.issues.find(i => i.path[0] === "token");
+              if (tokenIssue) {
+                return {
+                  isError: true,
+                  content: [{ type: "text", text: JSON.stringify({
+                    code: "SID_REQUIRED",
+                    message: "token is required. Pass the token returned by session_start.",
+                  }) }],
+                };
+              }
             }
+            throw err;
           }
-          throw err;
-        }
-        return handler(parsed, extra ?? _defaultExtra);
+          return handler(parsed, extra ?? _defaultExtra);
+        });
       };
     }
   );

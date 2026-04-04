@@ -21,7 +21,7 @@ export function register(server: McpServer) {
         token: TOKEN_SCHEMA,
         target_sid: z
           .preprocess(
-            (v) => typeof v === "string" && /^\d+$/.test(v as string) ? parseInt(v as string, 10) : v,
+            (v) => typeof v === "string" && /^\d+$/.test(v) ? parseInt(v, 10) : v,
             z.number().int().positive(),
           )
           .describe("Session ID of the recipient"),

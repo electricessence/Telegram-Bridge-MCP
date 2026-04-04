@@ -62,3 +62,13 @@ https://github.com/grammyjs/grammY/releases periodically.
 
 Revert `package.json` and `package-lock.json` to previous versions. Run
 `npm install`.
+
+## Completion
+
+- **Completed:** 2026-04-04
+- **Executed by:** Overseer (background subagent via task-queue-scanner)
+- **grammY version:** 1.41.1 → 1.42.0 (Bot API 9.6 same-day support confirmed)
+- **Build:** PASSED — zero TypeScript errors
+- **Tests:** 1824/1824 passed
+- **Commits:** `6980d85` (package.json + pnpm-lock.yaml) on dev branch, merged to master via PR #112 (v5.0.0)
+- **Note:** pnpm used (not npm). Lockfile reverted `@mcp/sdk` to 1.28.0 and vitest to 4.1.0 (both pinned in package.json — expected behavior).

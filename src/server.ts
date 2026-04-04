@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runInSessionContext } from "./session-context.js";
 import { getActiveSession } from "./session-manager.js";
+import { runInTokenHintContext } from "./tools/identity-schema.js";
 
 import { register as registerDequeueUpdate } from "./tools/dequeue_update.js";
 import { register as registerGetMessage } from "./tools/get_message.js";
@@ -92,16 +93,21 @@ export function createServer(): McpServer {
       (args: Record<string, unknown>, extra: unknown) => {
         // Decode sid from token (sid * 1_000_000 + pin) for session context.
         // Falls back to active session for tools that don't require auth.
+        // Each call is also wrapped in a token-hint context so the TOKEN_SCHEMA
+        // preprocess and the handler share per-request hint state, preventing
+        // concurrent requests from corrupting each other's hint flag.
         const token = args.token;
         const sid = (typeof token === "number" && token > 0)
           ? Math.floor(token / 1_000_000)
           : getActiveSession();
         if (sid > 0) {
-          return runInSessionContext(sid, () =>
-            original(args, extra),
+          return runInTokenHintContext(() =>
+            runInSessionContext(sid, () =>
+              original(args, extra),
+            ),
           );
         }
-        return original(args, extra);
+        return runInTokenHintContext(() => original(args, extra));
       }
     ) as typeof cb;
     return _origRegisterTool(name, config, wrappedCb);
