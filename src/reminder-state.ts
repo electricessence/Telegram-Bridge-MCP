@@ -65,22 +65,21 @@ export function addReminder(params: {
   }
   const now = Date.now();
   const trigger = params.trigger ?? "time";
+  const normalizedDelay = trigger === "startup" ? 0 : params.delay_seconds;
   let state: Reminder["state"];
   let activated_at: number | null;
   if (trigger === "startup") {
-    // Startup reminders don't use delay — silently normalize to 0
-    params = { ...params, delay_seconds: 0 };
     state = "startup";
     activated_at = null;
   } else {
-    const isActive = params.delay_seconds === 0;
+    const isActive = normalizedDelay === 0;
     state = isActive ? "active" : "deferred";
     activated_at = isActive ? now : null;
   }
   const reminder: Reminder = {
     id: params.id,
     text: params.text,
-    delay_seconds: params.delay_seconds,
+    delay_seconds: normalizedDelay,
     recurring: params.recurring,
     trigger,
     created_at: now,
