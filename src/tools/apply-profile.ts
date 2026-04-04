@@ -65,7 +65,7 @@ export function applyProfile(sid: number, profile: ProfileData): ApplyResult | A
           }
         } else {
           // Time reminder — delay_seconds is required; skip if missing/invalid
-          if (typeof r.delay_seconds !== "number") continue;
+          if (typeof r.delay_seconds !== "number" || isNaN(r.delay_seconds)) continue;
           const reminderId = reminderContentHash(r.text, r.recurring, "time");
           const alreadyExists = existing.some(e => e.id === reminderId);
           const added = addReminder({

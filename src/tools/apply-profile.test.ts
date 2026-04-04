@@ -98,6 +98,16 @@ describe("applyProfile — reminder guard behavior", () => {
     expect(applied.reminders).toBeUndefined();
   });
 
+  it("time reminder with delay_seconds: NaN is silently skipped", () => {
+    const result = applyProfile(1, {
+      reminders: [{ text: "NaN delay", recurring: false, delay_seconds: NaN }],
+    });
+    expect("applied" in result).toBe(true);
+    expect(mocks.addReminder).not.toHaveBeenCalled();
+    const applied = (result as { applied: Record<string, unknown> }).applied;
+    expect(applied.reminders).toBeUndefined();
+  });
+
   it("startup reminder uses content hash with trigger='startup'", () => {
     const result = applyProfile(1, {
       reminders: [{ trigger: "startup", text: "On boot", recurring: true }],
