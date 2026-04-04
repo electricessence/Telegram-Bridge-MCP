@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { TOKEN_SCHEMA, decodeToken, consumeTokenStringHint } from "./identity-schema.js";
+import { TOKEN_SCHEMA, decodeToken, consumeTokenStringHint, runInTokenHintContext } from "./identity-schema.js";
 
 // ---------------------------------------------------------------------------
 // Replicate the MCP SDK's Zod v4 → JSON Schema conversion.
@@ -173,26 +173,70 @@ describe("decodeToken", () => {
 
 describe("consumeTokenStringHint", () => {
   it("returns hint string when token was passed as a numeric string", () => {
-    TOKEN_SCHEMA.safeParse("1000000");
-    const hint = consumeTokenStringHint();
+    const hint = runInTokenHintContext(() => {
+      TOKEN_SCHEMA.safeParse("1000000");
+      return consumeTokenStringHint();
+    });
     expect(hint).toBe("token was passed as a string — use a plain integer for better performance");
   });
 
   it("returns undefined when token was passed as an integer", () => {
-    TOKEN_SCHEMA.safeParse(1000000);
-    const hint = consumeTokenStringHint();
+    const hint = runInTokenHintContext(() => {
+      TOKEN_SCHEMA.safeParse(1000000);
+      return consumeTokenStringHint();
+    });
     expect(hint).toBeUndefined();
   });
 
   it("resets the flag after consumption (second call returns undefined)", () => {
-    TOKEN_SCHEMA.safeParse("1000000");
-    consumeTokenStringHint(); // consume
-    const second = consumeTokenStringHint();
+    const second = runInTokenHintContext(() => {
+      TOKEN_SCHEMA.safeParse("1000000");
+      consumeTokenStringHint(); // consume
+      return consumeTokenStringHint();
+    });
     expect(second).toBeUndefined();
   });
 
   it("returns undefined when a non-numeric string is rejected (flag not set)", () => {
-    TOKEN_SCHEMA.safeParse("abc");
+    const hint = runInTokenHintContext(() => {
+      TOKEN_SCHEMA.safeParse("abc");
+      return consumeTokenStringHint();
+    });
+    expect(hint).toBeUndefined();
+  });
+
+  it("isolates hint state between concurrent contexts (race-condition guard)", async () => {
+    // Simulate two concurrent requests: first parses a string token, second an integer.
+    // Each should see only its own hint.
+    const results = await Promise.all([
+      new Promise<string | undefined>((resolve) => {
+        runInTokenHintContext(() => {
+          TOKEN_SCHEMA.safeParse("1000000"); // string → wasString = true
+          // Yield to allow the other context to run, then consume hint.
+          Promise.resolve().then(() => {
+            resolve(consumeTokenStringHint());
+          });
+        });
+      }),
+      new Promise<string | undefined>((resolve) => {
+        runInTokenHintContext(() => {
+          TOKEN_SCHEMA.safeParse(1000000); // integer → wasString = false
+          Promise.resolve().then(() => {
+            resolve(consumeTokenStringHint());
+          });
+        });
+      }),
+    ]);
+
+    // First context should see the string hint; second should see undefined.
+    expect(results[0]).toBe("token was passed as a string — use a plain integer for better performance");
+    expect(results[1]).toBeUndefined();
+  });
+
+  it("returns undefined outside any async context (safe fallback)", () => {
+    // Calling consumeTokenStringHint with no runInTokenHintContext active
+    // should return undefined gracefully, not throw.
+    TOKEN_SCHEMA.safeParse("1000000");
     const hint = consumeTokenStringHint();
     expect(hint).toBeUndefined();
   });

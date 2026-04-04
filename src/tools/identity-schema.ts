@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 /**
  * Human-readable description for the `token` parameter used in all tool schemas.
@@ -12,26 +13,31 @@ export const TOKEN_PARAM_DESCRIPTION =
 // ---------------------------------------------------------------------------
 
 /**
- * Module-level flag: set to true when the most recent TOKEN_SCHEMA parse
- * received a string digit instead of an integer. Consumed by
- * `consumeTokenStringHint()`.
+ * Per-request AsyncLocalStorage for the token string-coercion hint.
  *
- * Safe for stdio (one tool call at a time). For HTTP transport with
- * concurrent tool calls from different sessions, replace with
- * AsyncLocalStorage — concurrent parses would race and corrupt this flag.
+ * Stores `true` when the current request's TOKEN_SCHEMA parse received a
+ * numeric string instead of an integer. Using AsyncLocalStorage ensures that
+ * concurrent HTTP requests cannot observe each other's hint state — each
+ * tool-handler invocation runs inside its own async context (established by
+ * the `runInSessionContext` wrapper in server.ts).
+ *
+ * Falls back gracefully to `false` outside any async context (e.g. tests
+ * that call TOKEN_SCHEMA.safeParse directly without a session wrapper).
  */
-let _tokenWasString = false;
+const _tokenStringHintAls = new AsyncLocalStorage<{ wasString: boolean }>();
 
 /**
- * Returns a hint string if the last token parse coerced a string to an integer,
- * then resets the flag. Returns undefined if the token was already an integer.
+ * Returns a hint string if the current request's token parse coerced a string
+ * to an integer, then resets the hint. Returns undefined if the token was
+ * already an integer.
  *
  * Call this in tool handlers that want to nudge the LLM toward passing the
- * correct type. Currently used by `dequeue_update` and `session_start`.
+ * correct type. Currently used by `dequeue_update`.
  */
 export function consumeTokenStringHint(): string | undefined {
-  if (_tokenWasString) {
-    _tokenWasString = false;
+  const store = _tokenStringHintAls.getStore();
+  if (store?.wasString) {
+    store.wasString = false;
     return "token was passed as a string — use a plain integer for better performance";
   }
   return undefined;
@@ -52,12 +58,30 @@ export function consumeTokenStringHint(): string | undefined {
 export const TOKEN_SCHEMA = z
   .preprocess(
     (v) => {
-      _tokenWasString = typeof v === "string" && /^\d+$/.test(v as string);
-      return _tokenWasString ? parseInt(v as string, 10) : v;
+      const wasString = typeof v === "string" && /^\d+$/.test(v as string);
+      const store = _tokenStringHintAls.getStore();
+      if (store !== undefined) {
+        // Running inside a tool-handler async context — store hint there.
+        store.wasString = wasString;
+      }
+      return wasString ? parseInt(v as string, 10) : v;
     },
     z.number().int().positive(),
   )
   .describe(TOKEN_PARAM_DESCRIPTION);
+
+/**
+ * Execute `fn` within a fresh token-hint async context. Each tool-handler
+ * invocation must be wrapped with this (or the combined session+hint wrapper)
+ * so that concurrent requests track their hint state independently.
+ *
+ * In practice, server.ts wraps every tool call via `runInSessionContext`.
+ * Call `runInTokenHintContext` around the same boundary so the preprocess
+ * callback and the handler share one mutable hint store.
+ */
+export function runInTokenHintContext<T>(fn: () => T): T {
+  return _tokenStringHintAls.run({ wasString: false }, fn);
+}
 
 /**
  * Decode a session token into its constituent sid and pin.
