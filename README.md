@@ -30,6 +30,15 @@ Works with VS Code Copilot, Claude Desktop, Claude Code, Cursor, Windsurf, and a
 
 ---
 
+## What's New in v5.1
+
+- **Startup reminders** — `set_reminder` now supports `trigger: "startup"`, firing once when the agent session starts. Useful for persistent policies (e.g., "always check task queue on connect").
+- **`set_dequeue_default`** — new tool that sets a persistent default wait time for `dequeue_update` calls in the current session (up to 3600 s). Set once, applies for the session lifetime — no need to pass a timeout on every poll call.
+- **Launcher bridge (`dist/launcher.js`)** — stdio entry point that auto-starts the HTTP server if none is running, then bridges stdio ↔ HTTP transparently. Drop-in replacement for `dist/index.js` in any stdio config; credentials come from `.env`.
+- **Token-based auth** — `session_start` now returns a single `token` integer instead of a `[sid, pin]` tuple. Pass `token` on every subsequent tool call — no more tracking two values. Encoding: `token = sid × 1_000_000 + pin`.
+
+---
+
 ## Supported Platforms
 
 The bridge is a standard MCP server — it works with any MCP-compatible host.
