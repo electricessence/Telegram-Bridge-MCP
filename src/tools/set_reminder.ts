@@ -53,7 +53,7 @@ export function register(server: McpServer) {
       const _sid = requireAuth(token);
       if (typeof _sid !== "number") return toError(_sid);
 
-      const reminderId = id ?? reminderContentHash(text, recurring);
+      const reminderId = id ?? reminderContentHash(text, recurring, trigger);
 
       let reminder;
       try {

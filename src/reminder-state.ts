@@ -14,12 +14,12 @@ import { getCallerSid } from "./session-context.js";
 
 /**
  * Deterministic reminder ID derived from content.
- * Same text+recurring always yields the same 16-char hex string.
- * Different `recurring` flag → different hash (one-shot and recurring coexist).
+ * Same text+recurring+trigger always yields the same 16-char hex string.
+ * Different `recurring` flag or `trigger` → different hash (they coexist).
  */
-export function reminderContentHash(text: string, recurring: boolean): string {
+export function reminderContentHash(text: string, recurring: boolean, trigger: "time" | "startup" = "time"): string {
   return createHash("sha256")
-    .update(`${text}\0${recurring}`)
+    .update(`${text}\0${recurring}\0${trigger}`)
     .digest("hex")
     .slice(0, 16);
 }

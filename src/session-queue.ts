@@ -348,17 +348,29 @@ export function deliverReminderEvent(
   const q = _queues.get(targetSid);
   if (!q) return false;
 
+  const src = reminderEvent.content as Record<string, unknown>;
+  const reminderId = src.reminder_id as string | undefined;
   const event: TimelineEvent = {
     id: reminderEvent.id as number,
     timestamp: new Date().toISOString(),
     event: "reminder",
     from: "system",
-    content: reminderEvent.content as import("./message-store.js").EventContent,
+    content: {
+      type: String(src.type ?? "reminder"),
+      ...(src.text !== undefined && { text: String(src.text) }),
+    },
     sid: 0,
   };
+  // Preserve reminder-specific fields that consumers depend on, without unsafe cast.
+  // EventContent allows extra properties at runtime since it's a structural interface.
+  Object.assign(event.content, {
+    reminder_id: reminderId,
+    recurring: src.recurring,
+    trigger: src.trigger,
+  });
 
   q.enqueue(event);
-  dlog("service", `startup reminder → sid=${targetSid}`, { reminderId: (reminderEvent.content as Record<string, unknown>)?.reminder_id });
+  dlog("service", `startup reminder → sid=${targetSid}`, { reminderId });
   return true;
 }
 

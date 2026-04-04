@@ -390,5 +390,17 @@ describe("reminder-state", () => {
       const h2 = reminderContentHash("reminder B", false);
       expect(h1).not.toBe(h2);
     });
+
+    it("different trigger produces different hash for same text and recurring", () => {
+      const hTime = reminderContentHash("Deploy check", false, "time");
+      const hStartup = reminderContentHash("Deploy check", false, "startup");
+      expect(hTime).not.toBe(hStartup);
+    });
+
+    it("default trigger (omitted) equals explicit trigger='time'", () => {
+      const hDefault = reminderContentHash("Deploy check", false);
+      const hTime = reminderContentHash("Deploy check", false, "time");
+      expect(hDefault).toBe(hTime);
+    });
   });
 });
