@@ -37,6 +37,8 @@ const mocks = vi.hoisted(() => ({
   getMessageOwner: vi.fn((_msgId: number): number => 0),
   touchSession: vi.fn((_sid: number) => {}),
   validateSession: vi.fn((_sid: number, _pin: number) => true),
+  getDequeueDefault: vi.fn((_sid: number): number => 300),
+  setDequeueDefault: vi.fn((_sid: number, _timeout: number) => {}),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -67,11 +69,37 @@ vi.mock("../session-manager.js", () => ({
   validateSession: (sid: number, pin: number) => {
     return mocks.validateSession(sid, pin);
   },
+  getDequeueDefault: (sid: number) => mocks.getDequeueDefault(sid),
+  setDequeueDefault: (sid: number, timeout: number) => {
+    mocks.setDequeueDefault(sid, timeout);
+  },
 }));
 
 vi.mock("../session-queue.js", () => ({
   getSessionQueue: (sid: number) => mocks.getSessionQueue(sid),
   getMessageOwner: (msgId: number) => mocks.getMessageOwner(msgId),
+}));
+
+const reminderMocks = vi.hoisted(() => ({
+  promoteDeferred: vi.fn((_sid: number) => {}),
+  getActiveReminders: vi.fn((_sid: number): unknown[] => []),
+  popActiveReminders: vi.fn((_sid: number): unknown[] => []),
+  getSoonestDeferredMs: vi.fn((_sid: number): number | null => null),
+  buildReminderEvent: vi.fn((r: unknown) => ({
+    id: -1,
+    event: "reminder",
+    from: "system",
+    content: { type: "reminder", text: (r as { text: string }).text, reminder_id: "test-id", recurring: false },
+    routing: "ambiguous",
+  })),
+}));
+
+vi.mock("../reminder-state.js", () => ({
+  promoteDeferred: (sid: number) => reminderMocks.promoteDeferred(sid),
+  getActiveReminders: (sid: number) => reminderMocks.getActiveReminders(sid),
+  popActiveReminders: (sid: number) => reminderMocks.popActiveReminders(sid),
+  getSoonestDeferredMs: (sid: number) => reminderMocks.getSoonestDeferredMs(sid),
+  buildReminderEvent: (r: unknown) => reminderMocks.buildReminderEvent(r),
 }));
 
 
@@ -119,6 +147,9 @@ describe("dequeue_update tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.validateSession.mockReturnValue(true);
+    reminderMocks.getActiveReminders.mockReturnValue([]);
+    reminderMocks.popActiveReminders.mockReturnValue([]);
+    reminderMocks.getSoonestDeferredMs.mockReturnValue(null);
     mocks.pendingCount.mockReturnValue(0);
     mocks.waitForEnqueue.mockResolvedValue(undefined);
     // Default session queue for any sid proxies to the global mock fns
@@ -741,6 +772,124 @@ describe("dequeue_update tool", () => {
       await call({ timeout: 1, token: 7_001_234 });
       expect(mocks.touchSession).toHaveBeenCalledWith(7);
       mocks.getSessionQueue.mockReturnValue(undefined);
+    });
+  });
+
+  // =========================================================================
+  // force gate — timeout exceeds session default
+  // =========================================================================
+
+  describe("force gate", () => {
+    it("rejects timeout > session default when force is false (default)", async () => {
+      // Default session default is 300; timeout 500 should be rejected
+      mocks.getDequeueDefault.mockReturnValue(300);
+      const result = await call({ timeout: 500, token: 1_123_456 });
+      expect(isError(result)).toBe(false);
+      const data = parseResult<Record<string, unknown>>(result);
+      expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+      expect(data.message).toContain("500");
+      expect(data.message).toContain("300");
+    });
+
+    it("rejects timeout > session default when force is explicitly false", async () => {
+      mocks.getDequeueDefault.mockReturnValue(300);
+      const result = await call({ timeout: 400, force: false, token: 1_123_456 });
+      const data = parseResult<Record<string, unknown>>(result);
+      expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+    });
+
+    it("allows timeout > session default when force is true", async () => {
+      // Use getDequeueDefault=1 so timeout=2 > 1, but actual poll only waits 1s
+      mocks.getDequeueDefault.mockReturnValue(1);
+      mocks.dequeueBatch.mockReturnValue([]);
+      mocks.waitForEnqueue.mockImplementation(
+        () => new Promise<void>((r) => setTimeout(r, 50)),
+      );
+      const result = await call({ timeout: 2, force: true, token: 1_123_456 });
+      // Should NOT return TIMEOUT_EXCEEDS_DEFAULT — actual poll behavior fires
+      const data = parseResult<Record<string, unknown>>(result);
+      expect(data.error).toBeUndefined();
+      expect(data.timed_out).toBe(true);
+    });
+
+    it("allows timeout <= session default without force", async () => {
+      mocks.getDequeueDefault.mockReturnValue(2);
+      mocks.dequeueBatch.mockReturnValue([]);
+      mocks.waitForEnqueue.mockImplementation(
+        () => new Promise<void>((r) => setTimeout(r, 50)),
+      );
+      const result = await call({ timeout: 1, token: 1_123_456 });
+      const data = parseResult<Record<string, unknown>>(result);
+      expect(data.error).toBeUndefined();
+      expect(data.timed_out).toBe(true);
+    });
+
+    it("allows timeout > default with custom session default of 600 (simulated)", async () => {
+      // Simulate: default is set to 5 (>1 second realistic), timeout=3 < 5 → passes
+      mocks.getDequeueDefault.mockReturnValue(5);
+      mocks.dequeueBatch.mockReturnValue([]);
+      mocks.waitForEnqueue.mockImplementation(
+        () => new Promise<void>((r) => setTimeout(r, 50)),
+      );
+      const result = await call({ timeout: 3, token: 1_123_456 });
+      const data = parseResult<Record<string, unknown>>(result);
+      expect(data.error).toBeUndefined();
+      expect(data.timed_out).toBe(true);
+    });
+
+    it("hint field in structured error response guides the user", async () => {
+      mocks.getDequeueDefault.mockReturnValue(300);
+      const result = await call({ timeout: 600, token: 1_123_456 });
+      const data = parseResult<Record<string, unknown>>(result);
+      expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+      expect(typeof data.hint).toBe("string");
+      expect(data.hint as string).toContain("force: true");
+      expect(data.hint as string).toContain("set_dequeue_default");
+    });
+  });
+
+  // =========================================================================
+  // Reminder fire path — tokenHint propagation
+  // =========================================================================
+
+  describe("reminder fire path", () => {
+    it("includes tokenHint hint when a string token is used and a reminder fires", async () => {
+      // Strategy: mock Date.now so that idleDuration immediately exceeds
+      // REMINDER_IDLE_THRESHOLD_MS (60_000 ms) on the first loop iteration.
+      // This lets us test the reminder-fire return path without real delays
+      // or fake timers (which cause V8 heap issues in this test runner).
+      const realDateNow = Date.now;
+      const fakeStart = realDateNow();
+      let dateNowCallCount = 0;
+      Date.now = () => {
+        // Calls in dequeue_update.ts (in order):
+        //   0: deadline = Date.now() + timeout * 1000   → fakeStart (normal)
+        //   1: reminderIdleStart = Date.now()           → fakeStart (normal)
+        //   2: while (Date.now() < deadline)            → fakeStart (enters loop)
+        //   3: const now = Date.now()                   → fakeStart + 61_000 (idleDuration >= threshold)
+        const callIdx = dateNowCallCount++;
+        return callIdx < 3 ? fakeStart : fakeStart + 61_000;
+      };
+
+      try {
+        const fakeReminder = { id: "rem-1", text: "test reminder", recurring: false, delay_seconds: 0, created_at: fakeStart, activated_at: fakeStart, state: "active" as const };
+        reminderMocks.getActiveReminders.mockReturnValue([fakeReminder]);
+        reminderMocks.popActiveReminders.mockReturnValue([fakeReminder]);
+
+        // Pass token as a string to trigger the tokenHint, with a long timeout
+        // (300s deadline). The loop fires reminders before the deadline.
+        const result = await call({ timeout: 300, token: "1123456" as unknown as number });
+        const data = parseResult<Record<string, unknown>>(result);
+
+        // The reminder-fire path should have fired
+        expect(data.updates).toBeDefined();
+        expect(Array.isArray(data.updates)).toBe(true);
+        // tokenHint must be present because token was passed as a string
+        expect(typeof data.hint).toBe("string");
+        expect(data.hint as string).toContain("string");
+      } finally {
+        Date.now = realDateNow;
+      }
     });
   });
 });

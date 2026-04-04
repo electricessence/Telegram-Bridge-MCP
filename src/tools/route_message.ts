@@ -26,9 +26,10 @@ export function register(server: McpServer) {
           .positive()
           .describe("ID of the message to route"),
         target_sid: z
-          .number()
-          .int()
-          .positive()
+          .preprocess(
+            (v) => typeof v === "string" && /^\d+$/.test(v as string) ? parseInt(v as string, 10) : v,
+            z.number().int().positive(),
+          )
           .describe("Session ID to route the message to"),
       },
     },

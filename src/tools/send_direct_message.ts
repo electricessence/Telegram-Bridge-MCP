@@ -20,9 +20,10 @@ export function register(server: McpServer) {
       inputSchema: {
         token: TOKEN_SCHEMA,
         target_sid: z
-          .number()
-          .int()
-          .positive()
+          .preprocess(
+            (v) => typeof v === "string" && /^\d+$/.test(v as string) ? parseInt(v as string, 10) : v,
+            z.number().int().positive(),
+          )
           .describe("Session ID of the recipient"),
         text: z
           .string()

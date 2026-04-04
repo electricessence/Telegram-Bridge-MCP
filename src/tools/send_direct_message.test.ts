@@ -73,4 +73,13 @@ describe("send_direct_message tool", () => {
     expect(isError(result)).toBe(true);
     expect(parseResult(result).code).toBe("DM_DELIVERY_FAILED");
   });
+
+  it("coerces target_sid from string to integer", async () => {
+    const result = parseResult(
+      await call({ token: 1123456, target_sid: "2", text: "hello" }),
+    );
+    expect(result.delivered).toBe(true);
+    expect(result.target_sid).toBe(2);
+    expect(mocks.deliverDirectMessage).toHaveBeenCalledWith(1, 2, "hello");
+  });
 });

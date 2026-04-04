@@ -16,6 +16,7 @@ export interface Session {
   lastPollAt: number | undefined;
   healthy: boolean;
   announcementMsgId?: number;
+  dequeueDefault?: number; // per-session timeout default, undefined = use server default (300)
 }
 
 /** Public view returned by `listSessions` — no PIN. */
@@ -213,6 +214,29 @@ export function getUnhealthySessions(thresholdMs: number): SessionInfo[] {
   return [..._sessions.values()]
     .filter(s => s.lastPollAt !== undefined && s.lastPollAt < cutoff)
     .map(({ sid, name, color, createdAt }) => ({ sid, name, color, createdAt }));
+}
+
+// ── Dequeue Default ───────────────────────────────────────
+
+const DEFAULT_DEQUEUE_TIMEOUT = 300;
+
+/**
+ * Return the per-session dequeue timeout default for a session.
+ * Returns the server default (300 s) if no per-session default has been set
+ * or the session does not exist.
+ */
+export function getDequeueDefault(sid: number): number {
+  return _sessions.get(sid)?.dequeueDefault ?? DEFAULT_DEQUEUE_TIMEOUT;
+}
+
+/**
+ * Set the per-session dequeue timeout default.
+ * Scoped to the session lifetime — cleared when the session closes.
+ * No-op if the session does not exist.
+ */
+export function setDequeueDefault(sid: number, timeout: number): void {
+  const session = _sessions.get(sid);
+  if (session) session.dequeueDefault = timeout;
 }
 
 // ── Active Session Context ─────────────────────────────────
