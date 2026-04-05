@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "windows": "pwsh -NonInteractive -File .github/hooks/telegram-loop-guard.ps1",
+        "timeout": 10
+      }
+    ]
+  }
+}

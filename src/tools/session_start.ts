@@ -9,6 +9,7 @@ import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMes
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { runInSessionContext } from "../session-context.js";
 import { refreshGovernorCommand } from "../built-in-commands.js";
+import { checkAndConsumeAutoApprove } from "../auto-approve.js";
 import { startPoller, isPollerRunning } from "../poller.js";
 import { fireStartupReminders, buildReminderEvent } from "../reminder-state.js";
 
@@ -29,7 +30,7 @@ async function requestApproval(
   name: string,
   reconnect = false,
   colorHint?: string,
-): Promise<{ approved: boolean; color?: string }> {
+): Promise<{ approved: boolean; color?: string; forceColor?: boolean }> {
   const label = reconnect ? "Session reconnecting:" : "New session requesting access:";
   const text = `🤖 *${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:`;
   const availableColors = getAvailableColors(colorHint);
@@ -38,6 +39,9 @@ async function requestApproval(
   const primaryColor = validHint && !usedColors.has(validHint)
     ? validHint
     : availableColors.find((c) => !usedColors.has(c));
+  if (checkAndConsumeAutoApprove()) {
+    return { approved: true, color: colorHint, forceColor: false };
+  }
   const colorButtons = availableColors.map((c) => ({
     text: c,
     callback_data: `${APPROVE_PREFIX}${COLOR_PALETTE.indexOf(c as (typeof COLOR_PALETTE)[number])}`,
@@ -54,7 +58,7 @@ async function requestApproval(
   } as Record<string, unknown>);
   const msgId: number = sent.message_id;
 
-  const decision = await new Promise<{ approved: boolean; color?: string }>((resolve) => {
+  const decision = await new Promise<{ approved: boolean; color?: string; forceColor?: boolean }>((resolve) => {
     const timer = setTimeout(() => {
       clearCallbackHook(msgId);
       resolve({ approved: false });
@@ -70,7 +74,7 @@ async function requestApproval(
       } else if (data.startsWith(APPROVE_PREFIX)) {
         const idx = parseInt(data.slice(APPROVE_PREFIX.length), 10);
         if (idx >= 0 && idx < COLOR_PALETTE.length) {
-          resolve({ approved: true, color: COLOR_PALETTE[idx] });
+          resolve({ approved: true, color: COLOR_PALETTE[idx], forceColor: true });
         } else {
           resolve({ approved: false });
         }
@@ -101,6 +105,7 @@ async function requestApproval(
  * Returns true if the operator approves, false on denial or timeout.
  */
 async function requestReconnectApproval(chatId: number, name: string): Promise<boolean> {
+  if (checkAndConsumeAutoApprove()) return true;
   const text = `🤖 *Session reconnecting:* ${markdownToV2(name)}\nAuthorize re\\-entry?`;
   const sent = await getApi().sendMessage(chatId, text, {
     parse_mode: "MarkdownV2",
@@ -338,8 +343,9 @@ export function register(server: McpServer) {
 
       // Approval gate: second+ sessions require operator approval
       let chosenColor: string | undefined = color;
+      let decision: { approved: boolean; color?: string; forceColor?: boolean } | undefined;
       if (!isFirstSession) {
-        const decision = await runInSessionContext(0, () =>
+        decision = await runInSessionContext(0, () =>
           requestApproval(chatId, effectiveName, reconnect, color),
         );
         if (!decision.approved) {
@@ -352,8 +358,8 @@ export function register(server: McpServer) {
       }
 
       // forceColor = true when the operator explicitly tapped a color button;
-      // for the first session (no approval dialog) the agent hint is a suggestion only.
-      const session = createSession(effectiveName, chosenColor, !isFirstSession);
+      // forceColor = false for the first session (no dialog) or auto-approve (hint only).
+      const session = createSession(effectiveName, chosenColor, decision?.forceColor ?? !isFirstSession);
       createSessionQueue(session.sid);
       setActiveSession(session.sid);
       if (!isPollerRunning()) startPoller();

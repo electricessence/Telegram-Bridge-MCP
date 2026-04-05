@@ -1,19 +1,21 @@
 # Telegram Bridge MCP
 
-> Two-way Telegram bridge for AI agents — messaging, voice, multi-session, real-time.
-
-![Telegram Bridge MCP](logo.png)
-
 [![CI](https://github.com/electricessence/Telegram-Bridge-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/electricessence/Telegram-Bridge-MCP/actions/workflows/ci.yml)
 [![Docker](https://github.com/electricessence/Telegram-Bridge-MCP/actions/workflows/publish.yml/badge.svg)](https://github.com/electricessence/Telegram-Bridge-MCP/actions/workflows/publish.yml)
 [![Docker Image](https://img.shields.io/badge/ghcr.io-telegram--bridge--mcp-blue?logo=docker)](https://github.com/electricessence/Telegram-Bridge-MCP/pkgs/container/telegram-bridge-mcp)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
+<img align="right" src="interaction.jpg" width="320" alt="AI agents coordinating through Telegram Bridge MCP">
+
+## No Claw? No Problem.
+
+**Anthropic restricted Claude Code's native instance API** — but this bridge doesn't care. It's a standard MCP server. Any IDE, any model, any agent framework that speaks MCP works out of the box.
+
+## What is this?
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server that connects AI assistants to Telegram. Send messages, ask questions, receive voice replies, run multiple agent sessions concurrently — all through a single bot.
 
-Works with VS Code Copilot, Claude Desktop, Claude Code, Cursor, Windsurf, and any MCP-compatible host.
-
----
+Works with any MCP client — VS Code, Copilot CLI, Claude Code, Cursor, Windsurf, and any MCP-compatible host. No proprietary lock-in.
 
 ## Highlights
 
@@ -26,191 +28,47 @@ Works with VS Code Copilot, Claude Desktop, Claude Code, Cursor, Windsurf, and a
 - **Slash commands** — dynamic bot menu; commands arrive as structured events
 - **No webhooks** — long-polling, no public URL needed
 
+## Supported Platforms
+
+The bridge is a standard MCP server — it works with any MCP-compatible host.
+
+### IDEs & Agent Hosts
+
+| Platform | Transport | Notes |
+| --- | --- | --- |
+| VS Code (GitHub Copilot Chat) | Streamable HTTP or stdio | Native MCP support |
+| Claude Code (CLI) | Streamable HTTP or stdio | |
+| Cursor | Streamable HTTP or stdio | |
+| Copilot CLI | stdio | |
+| Any MCP-compatible client | Streamable HTTP or stdio | If it speaks MCP, it works |
+
+### Transports
+
+| Transport | Entry point | Use case |
+| --- | --- | --- |
+| **Streamable HTTP** | `pnpm start -- --http` | Multiple clients share one server (recommended) |
+| **stdio** | `node dist/index.js` | Single client, no persistent server |
+| **Launcher bridge** | `node dist/launcher.js` | Auto-starts HTTP if needed, bridges stdio ↔ HTTP |
+
 ---
 
 ## Quick Start
 
-### 1. Install
+Paste this into your AI assistant's chat:
 
-```bash
-git clone https://github.com/electricessence/Telegram-Bridge-MCP.git
-cd Telegram-Bridge-MCP
-pnpm install && pnpm build
-```
-
-Or use the pre-built [Docker image](#docker) — no Node.js required.
-
-### 2. Create a Telegram bot
-
-Message **@BotFather** → `/newbot` → copy the token.
-
-### 3. Pair
-
-```bash
-pnpm pair
-```
-
-Verifies your token, generates a pairing code, waits for you to send it to the bot, then writes `.env`.
-
-### 4. Configure your MCP host
-
-> **Which mode?**
-> - **Streamable HTTP** — start one server, connect multiple clients (VS Code, Claude Code, Cursor, etc.) simultaneously. Recommended for most users.
-> - **stdio** — no persistent server; each client spawns its own process. Simpler, but only one client at a time.
->
-> For full per-client snippets and advanced options, see [`docs/setup.md`](docs/setup.md).
-
-#### Streamable HTTP (recommended)
-
-Run **one** server instance and connect any number of editors, agents, or Claude Code sessions to it. Each client gets its own MCP session with an isolated queue — no `getUpdates` conflicts.
-
-**1. Start the server** (terminal, tmux, startup script, etc.):
-
-```bash
-MCP_PORT=3099 pnpm start
-```
-
-The server listens on `http://127.0.0.1:3099/mcp` using the [MCP Streamable HTTP](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) transport. All config comes from `.env` — no credentials in your editor config.
-
-**2. Point your MCP hosts at it:**
-
-**VS Code** (`.vscode/mcp.json` or user settings):
-
-```json
-{
-  "servers": {
-    "telegram": {
-      "type": "streamable-http",
-      "url": "http://127.0.0.1:3099/mcp"
-    }
-  }
-}
-```
-
-**Claude Code** (`.mcp.json` in your project root):
-
-```json
-{
-  "mcpServers": {
-    "telegram": {
-      "type": "streamable-http",
-      "url": "http://127.0.0.1:3099/mcp"
-    }
-  }
-}
-```
-
-> Do not add to global `~/.claude.json` — every Claude Code session would connect, generating noise.
-
-**Cursor** (`.cursor/mcp.json` in your project root):
-
-```json
-{
-  "mcpServers": {
-    "telegram": {
-      "type": "streamable-http",
-      "url": "http://127.0.0.1:3099/mcp"
-    }
-  }
-}
+```text
+Set me up: https://github.com/electricessence/Telegram-Bridge-MCP
 ```
 
 <details>
-<summary><strong>stdio mode</strong> (single-instance fallback)</summary>
+<summary><strong>Manual setup</strong></summary>
 
-If you can't run a persistent server, stdio mode spawns a dedicated process per host. Only one host can connect at a time — multiple instances will fight over `getUpdates`.
-
-**VS Code** (`.vscode/mcp.json`):
-
-```json
-{
-  "servers": {
-    "telegram": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["dist/index.js"],
-      "cwd": "/absolute/path/to/telegram-bridge-mcp",
-      "env": { "BOT_TOKEN": "...", "ALLOWED_USER_ID": "..." }
-    }
-  }
-}
-```
-
-**Claude Desktop** (`claude_desktop_config.json`) / **Claude Code** (`.mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "telegram": {
-      "command": "node",
-      "args": ["/absolute/path/to/telegram-bridge-mcp/dist/index.js"],
-      "env": { "BOT_TOKEN": "...", "ALLOWED_USER_ID": "..." }
-    }
-  }
-}
-```
-
-**Cursor** (`.cursor/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "telegram": {
-      "command": "node",
-      "args": ["/absolute/path/to/telegram-bridge-mcp/dist/index.js"],
-      "env": { "BOT_TOKEN": "...", "ALLOWED_USER_ID": "..." }
-    }
-  }
-}
-
-**Launcher bridge** — `dist/launcher.js` auto-starts the HTTP server if none is running, then bridges stdio ↔ HTTP. Use it as a drop-in replacement for `dist/index.js` in any stdio config above. Credentials come from `.env` — no need to set `env` in your editor config:
-
-**VS Code** (`.vscode/mcp.json`):
-
-```json
-{
-  "servers": {
-    "telegram": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["dist/launcher.js"],
-      "cwd": "/absolute/path/to/telegram-bridge-mcp"
-    }
-  }
-}
-```
-
-**Claude Desktop / Claude Code** (`claude_desktop_config.json` / `.mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "telegram": {
-      "command": "node",
-      "args": ["/absolute/path/to/telegram-bridge-mcp/dist/launcher.js"]
-    }
-  }
-}
-```
-
-**Cursor** (`.cursor/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "telegram": {
-      "command": "node",
-      "args": ["/absolute/path/to/telegram-bridge-mcp/dist/launcher.js"]
-    }
-  }
-}
-```
+1. **Clone & build** — `git clone https://github.com/electricessence/Telegram-Bridge-MCP.git && cd Telegram-Bridge-MCP && pnpm install && pnpm build`
+2. **Create a bot** — message @BotFather → `/newbot` → copy the token
+3. **Pair** — `pnpm pair` (writes `.env`)
+4. **Configure your editor** — see [`docs/setup.md`](docs/setup.md) for per-client snippets (VS Code, Claude Code, Cursor, Docker)
 
 </details>
-
-### 5. Start
-
-Paste `LOOP-PROMPT.md` into your AI assistant's chat. It connects, announces itself on Telegram, and waits for instructions.
 
 ---
 
@@ -333,10 +191,9 @@ Five MCP resources available to any client:
 
 ```text
 ghcr.io/electricessence/telegram-bridge-mcp:latest
-ghcr.io/electricessence/telegram-bridge-mcp:4.7.1
 ```
 
-> **Pairing first:** Run steps 2–3 on a machine with Node.js to create your `.env` file, or manually create one from `.env.example`. Docker reads it via `--env-file`.
+> **Pairing first:** Create your `.env` file by running `pnpm pair` on a machine with Node.js, or manually create one from `.env.example`. Docker reads it via `--env-file`.
 
 **Streamable HTTP (recommended)** — run as a long-lived service:
 
@@ -383,6 +240,13 @@ pnpm test           # Run tests
 pnpm coverage       # Coverage report
 pnpm pair           # Re-run pairing wizard
 ```
+
+---
+
+## Agent Setup
+
+To keep agents in the Telegram dequeue loop reliably, install the loop guard hook for your host.
+See [`docs/agent-setup.md`](docs/agent-setup.md) for VS Code (GitHub Copilot Chat) and Claude Code installation instructions.
 
 ---
 

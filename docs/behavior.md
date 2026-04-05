@@ -4,6 +4,8 @@
 
 This is **Telegram Bridge MCP** — a Model Context Protocol server that bridges you (the AI assistant) to a Telegram bot. Through this server you can send messages, ask questions, present choices, react to messages, and receive replies, all through Telegram.
 
+**Platform-agnostic by design.** This server is a standard MCP server — it works with any MCP-compatible host: VS Code Copilot, Claude Code, Cursor, Copilot CLI, or any framework that speaks the Model Context Protocol. The model calling these tools doesn't matter — Claude, GPT, Gemini, or local models via Ollama all work identically.
+
 **Your role:** You are the bot. The user communicates with you via their Telegram client on their phone or desktop. Everything you send appears instantly in their chat. Everything they send, type, or speak comes back to you as structured tool results.
 
 **This is a single-user server.** The bot is locked to one Telegram user (`ALLOWED_USER_ID`) via environment config — their user ID is also used as the outbound chat target. You are never talking to strangers.
@@ -658,3 +660,42 @@ The governor handles ambiguous slash commands exactly as it handles ambiguous te
 ### Don't assume you're alone
 
 When `sessions_active > 1`, a parallel agent may be working on related tasks. Avoid redundant work — check `fellow_sessions` and coordinate before acting on shared resources.
+
+---
+
+## Loop Guard: Keeping Agents Alive
+
+### Why the dequeue loop must never exit
+
+The `dequeue_update` loop is not a polling convenience — it is the agent's heartbeat. If an agent exits the loop without receiving an explicit shutdown signal, messages queue up silently, sessions appear frozen to the operator, and recovery requires a full session restart.
+
+**Agents must never exit the loop except on:**
+
+- A `shutdown` service event (server is restarting)
+- An explicit `close_session` call (graceful shutdown on operator instruction)
+
+Any other exit — context limit, host timeout, unhandled error — is an unclean stop that leaves the session in a degraded state.
+
+### Hook installation
+
+The loop guard hooks intercept the host's Stop event before the agent conversation is terminated. When a session file is present, the hook blocks the stop and prompts the agent to resume the dequeue loop.
+
+Two variants are provided in this repo:
+
+| Hook file | Host | Platform |
+| --- | --- | --- |
+| `.github/hooks/telegram-loop-guard.ps1` + `.json` | VS Code / GitHub Copilot Chat | Windows (PowerShell) |
+| `.claude/hooks/telegram-loop-guard.sh` | Claude Code | macOS / Linux (Bash) |
+
+See [`docs/agent-setup.md`](agent-setup.md) for step-by-step installation instructions for each host.
+
+### What happens without the hook
+
+Without the loop guard:
+
+- The host IDE may terminate the agent conversation after a period of inactivity, a context limit, or any unhandled stop condition.
+- The Telegram session is silently dropped — the operator receives no notification.
+- Pending messages queue up and are delivered to the next agent that calls `session_start`.
+- If another agent is not started promptly, the operator sees silence and has no way to know the session ended.
+
+The hook is not strictly required for basic use, but it is strongly recommended for any agent intended to run long-lived sessions or operate unattended.
