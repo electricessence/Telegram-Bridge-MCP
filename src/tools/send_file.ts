@@ -36,12 +36,17 @@ function detectType(file: string): FileType {
 // Tool
 // ---------------------------------------------------------------------------
 
+const CDN_WARNING =
+  "File persists on Telegram CDN indefinitely. Deleting the message does NOT delete the file. " +
+  "Do not send Tier 2/3 content via send_file.";
+
 const DESCRIPTION =
   "Sends a file (photo, document, video, audio, or voice note) to the chat. " +
   "Accepts a local file path, public HTTPS URL, or Telegram file_id. " +
   "Auto-detects the file type by extension when type=\"auto\" (default). " +
   "For file_id inputs, specify type explicitly since there's no extension to detect. " +
-  "Ensure session_start has been called.";
+  "Ensure session_start has been called. " +
+  "WARNING: " + CDN_WARNING;
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -96,8 +101,8 @@ export function register(server: McpServer) {
           .int()
           .optional()
           .describe("Reply to this message ID"),
-              token: TOKEN_SCHEMA,
-},
+        token: TOKEN_SCHEMA,
+      },
     },
     async ({
       file, type, caption, parse_mode, duration, performer, title,
@@ -153,6 +158,7 @@ export function register(server: McpServer) {
               message_id: msg.message_id,
               type: "photo",
               caption: msg.caption,
+              warning: CDN_WARNING,
             });
           }
 
@@ -174,6 +180,7 @@ export function register(server: McpServer) {
               type: "video",
               file_id: msg.video.file_id,
               duration: msg.video.duration,
+              warning: CDN_WARNING,
             });
           }
 
@@ -195,6 +202,7 @@ export function register(server: McpServer) {
               type: "audio",
               file_id: msg.audio.file_id,
               title: msg.audio.title,
+              warning: CDN_WARNING,
             });
           }
 
@@ -211,6 +219,7 @@ export function register(server: McpServer) {
               message_id: msg.message_id,
               type: "voice",
               file_id: msg.voice?.file_id,
+              warning: CDN_WARNING,
             });
           }
 
@@ -232,6 +241,7 @@ export function register(server: McpServer) {
               type: "document",
               file_id: msg.document.file_id,
               file_name: msg.document.file_name,
+              warning: CDN_WARNING,
             });
           }
         }
