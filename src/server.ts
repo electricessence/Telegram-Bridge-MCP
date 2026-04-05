@@ -47,6 +47,7 @@ import { register as registerRollLog } from "./tools/roll_log.js";
 import { register as registerGetLog } from "./tools/get_log.js";
 import { register as registerListLogs } from "./tools/list_logs.js";
 import { register as registerDeleteLog } from "./tools/delete_log.js";
+import { register as registerToggleLogging } from "./tools/toggle_logging.js";
 import { register as registerShutdownServer } from "./tools/shutdown.js";
 import { register as registerSessionStart } from "./tools/session_start.js";
 import { register as registerCloseSession } from "./tools/close_session.js";
@@ -192,6 +193,7 @@ export function createServer(): McpServer {
   registerGetLog(server);
   registerListLogs(server);
   registerDeleteLog(server);
+  registerToggleLogging(server);
   registerGetDebugLog(server);
 
   // ── System ─────────────────────────────────────────────────────────────

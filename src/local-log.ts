@@ -91,12 +91,6 @@ export function enableLogging(): void {
 
 /**
  * Disable local logging (opt-out).
- *
- * TODO (deferred): This function exists but is not yet reachable at runtime via
- * any MCP tool. A `toggle_logging` (or `set_logging`) tool that calls
- * enableLogging()/disableLogging() based on a boolean parameter should be added
- * and registered in server.ts to expose this control to agents. Deferred because
- * the task spec does not define the exact tool interface for the toggle mechanism.
  */
 export function disableLogging(): void {
   _enabled = false;
