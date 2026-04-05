@@ -17,7 +17,8 @@ import { startHealthCheck } from "./health-check.js";
 import { setAuthHook } from "./session-gate.js";
 import { touchSession } from "./session-manager.js";
 import { createOutboundProxy } from "./outbound-proxy.js";
-import { loadConfig, getSessionLogMode, sessionLogLabel, isDebugConfig } from "./config.js";
+import { loadConfig, getSessionLogMode, sessionLogLabel, isDebugConfig, getPreToolDenyPatterns } from "./config.js";
+import { setPreToolHook, buildDenyPatternHook } from "./tool-hooks.js";
 import { timelineSize, setOnLocalLog } from "./message-store.js";
 import { initDebugLog } from "./debug-log.js";
 import { cleanupStalePins } from "./startup-pin-cleanup.js";
@@ -36,6 +37,13 @@ loadConfig();
 
 // Initialize debug logging from config (or env var fallback)
 initDebugLog(isDebugConfig());
+
+// Register deny-pattern hook from config (if any patterns are configured)
+const _denyPatterns = getPreToolDenyPatterns();
+if (_denyPatterns.length > 0) {
+  setPreToolHook(buildDenyPatternHook(_denyPatterns));
+  process.stderr.write(`[info] pre-tool hook: ${_denyPatterns.length} deny pattern(s) loaded\n`);
+}
 if (isDebugConfig()) process.stderr.write("[info] debug logging enabled\n");
 
 // Warn if TTS/STT remote hosts are using plain HTTP (credentials and audio exposed in transit)

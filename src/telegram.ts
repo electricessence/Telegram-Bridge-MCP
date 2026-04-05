@@ -90,6 +90,7 @@ export type TelegramErrorCode =
   | "SID_REQUIRED"
   | "AUTH_FAILED"
   | "NAME_CONFLICT"
+  | "BLOCKED"
   | "UNKNOWN";
 
 export interface TelegramError {

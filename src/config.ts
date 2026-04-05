@@ -23,6 +23,9 @@ interface McpConfig {
   defaultVoice?: string;
   voices?: VoiceEntry[];
   debug?: boolean;
+  preToolHook?: {
+    denyPatterns?: string[];
+  };
 }
 
 export interface VoiceEntry {
@@ -144,6 +147,30 @@ export function setConfiguredVoices(voices: VoiceEntry[]): void {
     _config.voices = voices;
   } else {
     delete _config.voices;
+  }
+  save();
+}
+
+// ---------------------------------------------------------------------------
+// Pre-tool hook deny patterns
+// ---------------------------------------------------------------------------
+
+/** Get the list of deny patterns for the pre-tool hook (empty if not set). */
+export function getPreToolDenyPatterns(): string[] {
+  return _config.preToolHook?.denyPatterns ?? [];
+}
+
+/** Set deny patterns and persist to disk.  Pass [] to clear. */
+export function setPreToolDenyPatterns(patterns: string[]): void {
+  if (patterns.length > 0) {
+    _config.preToolHook = { ..._config.preToolHook, denyPatterns: patterns };
+  } else {
+    if (_config.preToolHook) {
+      delete _config.preToolHook.denyPatterns;
+      if (Object.keys(_config.preToolHook).length === 0) {
+        delete _config.preToolHook;
+      }
+    }
   }
   save();
 }

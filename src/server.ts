@@ -5,6 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runInSessionContext } from "./session-context.js";
 import { getActiveSession } from "./session-manager.js";
 import { runInTokenHintContext } from "./tools/identity-schema.js";
+import { invokePreToolHook } from "./tool-hooks.js";
+import { toError } from "./telegram.js";
 
 import { register as registerDequeueUpdate } from "./tools/dequeue_update.js";
 import { register as registerGetMessage } from "./tools/get_message.js";
@@ -70,6 +72,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
+/**
+ * Writes a [hook:blocked] log line to stderr.
+ * Exported so it can be tested independently of the full server setup.
+ */
+export function logBlockedToolCall(toolName: string, reason: string): void {
+  process.stderr.write(`[hook:blocked] ${toolName} — ${reason}\n`);
+}
+
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "telegram-bridge-mcp",
@@ -105,14 +115,26 @@ export function createServer(): McpServer {
         const sid = (typeof token === "number" && token > 0)
           ? Math.floor(token / 1_000_000)
           : getActiveSession();
+
+        const run = async () => {
+          // Pre-tool hook fires after auth context is established but before
+          // the original handler executes.  A hook returning allowed:false
+          // short-circuits the call and returns a 403-style error.
+          const hookResult = await invokePreToolHook(name, args);
+          if (!hookResult.allowed) {
+            const reason = hookResult.reason ?? "Blocked by pre-tool hook";
+            logBlockedToolCall(name, reason);
+            return toError({ code: "BLOCKED", message: reason });
+          }
+          return original(args, extra);
+        };
+
         if (sid > 0) {
           return runInTokenHintContext(() =>
-            runInSessionContext(sid, () =>
-              original(args, extra),
-            ),
+            runInSessionContext(sid, run),
           );
         }
-        return runInTokenHintContext(() => original(args, extra));
+        return runInTokenHintContext(run);
       }
     ) as typeof cb;
     return _origRegisterTool(name, config, wrappedCb);
