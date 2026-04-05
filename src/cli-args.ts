@@ -35,7 +35,11 @@ export function resolveHttpPort(
 
   const rawMcpPort = env["MCP_PORT"];
   if (typeof rawMcpPort === "string" && rawMcpPort.length > 0) {
-    if (!DIGITS_ONLY.test(rawMcpPort)) return undefined;
+    if (!DIGITS_ONLY.test(rawMcpPort)) {
+      throw new RangeError(
+        `Invalid MCP_PORT "${rawMcpPort}". Expected a numeric value.`
+      );
+    }
     const parsed = parseInt(rawMcpPort, 10);
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
       throw new RangeError(`Invalid MCP_PORT "${rawMcpPort}". Expected an integer between 1 and 65535.`);

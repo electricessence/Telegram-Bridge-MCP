@@ -22,13 +22,16 @@ export function activateAutoApproveTimed(durationMs: number): void {
   if (!Number.isFinite(durationMs) || durationMs <= 0) return;
   cancelAutoApprove();
   _state = { mode: "timed", expiresAt: Date.now() + durationMs };
-  _timer = setTimeout(() => {
-    // expiresAt is authoritative; only clear if actually expired
-    if (_state.expiresAt === undefined || Date.now() >= _state.expiresAt) {
-      _state = { mode: "none" };
-      _timer = undefined;
+  const tick = () => {
+    const remaining = (_state.expiresAt ?? 0) - Date.now();
+    if (remaining > 0) {
+      _timer = setTimeout(tick, Math.min(remaining, MAX_TIMER_MS));
+      return;
     }
-  }, Math.min(durationMs, MAX_TIMER_MS));
+    _state = { mode: "none" };
+    _timer = undefined;
+  };
+  _timer = setTimeout(tick, Math.min(durationMs, MAX_TIMER_MS));
 }
 
 /** Cancel any active auto-approve. */
