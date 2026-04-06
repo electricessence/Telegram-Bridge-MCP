@@ -191,10 +191,11 @@ export function getAutoDumpThresholdValue(): number | null {
 }
 
 // Wire up the session-log dump hook for elegant shutdown (avoids circular import)
-setShutdownDumpHook(async () => {
+setShutdownDumpHook(() => {
   if (getSessionLogMode() !== null) {
     doTimelineDump(true);
   }
+  return Promise.resolve();
 });
 
 /**
