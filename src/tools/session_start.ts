@@ -40,7 +40,7 @@ async function requestApproval(
     ? validHint
     : availableColors.find((c) => !usedColors.has(c));
   if (checkAndConsumeAutoApprove()) {
-    return { approved: true, color: colorHint, forceColor: false };
+    return { approved: true, color: colorHint, forceColor: true };
   }
   const colorButtons = availableColors.map((c) => ({
     text: c,
@@ -357,8 +357,8 @@ export function register(server: McpServer) {
         chosenColor = decision.color;
       }
 
-      // forceColor = true when the operator explicitly tapped a color button;
-      // forceColor = false for the first session (no dialog) or auto-approve (hint only).
+      // forceColor = true when the operator explicitly tapped a color button, or on auto-approve (hint is definitive);
+      // forceColor = false for the first session (no dialog, no hint).
       const session = createSession(effectiveName, chosenColor, decision?.forceColor ?? !isFirstSession);
       createSessionQueue(session.sid);
       setActiveSession(session.sid);

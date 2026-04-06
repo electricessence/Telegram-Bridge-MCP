@@ -507,6 +507,7 @@ describe("session_start tool", () => {
 
     expect(mocks.registerCallbackHook).not.toHaveBeenCalled();
     expect(result.sid).toBe(1);
+    expect(mocks.createSession).toHaveBeenCalledWith("Primary", undefined, false);
   });
 
   it("first session defaults name to 'Primary' when none provided", async () => {
@@ -1822,6 +1823,7 @@ describe("session_start tool", () => {
     // registerCallbackHook should NOT have been called (no approval dialog was shown)
     expect(mocks.registerCallbackHook).not.toHaveBeenCalled();
     expect(result.sid).toBe(2);
+    expect(mocks.createSession).toHaveBeenCalledWith("Scout", undefined, true);
   });
 
   it("requestReconnectApproval: when checkAndConsumeAutoApprove returns true, skips approval dialog and returns reconnected", async () => {
