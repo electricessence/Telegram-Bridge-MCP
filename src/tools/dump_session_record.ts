@@ -20,7 +20,7 @@ export function register(server: McpServer) {
         token: TOKEN_SCHEMA,
       },
     },
-    async ({ token }) => {
+    ({ token }) => {
       const _sid = requireAuth(token);
       if (typeof _sid !== "number") return toError(_sid);
 

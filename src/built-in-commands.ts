@@ -18,7 +18,7 @@ import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { rollLog, isLoggingEnabled, enableLogging, disableLogging, listLogs, getCurrentLogFilename, deleteLog } from "./local-log.js";
 import { elegantShutdown, setShutdownDumpHook } from "./shutdown.js";
 
-import { getSessionLogMode, setSessionLogMode, sessionLogLabel } from "./config.js";
+import { getSessionLogMode } from "./config.js";
 import { getDefaultVoice, setDefaultVoice, getConfiguredVoices } from "./config.js";
 import type { VoiceEntry } from "./config.js";
 import { fetchVoiceList, isTtsEnabled } from "./tts.js";
@@ -1209,7 +1209,7 @@ function buildLoggingPanel(): { text: string; keyboard: { text: string; callback
  *
  * @param incremental Retained for call-site compatibility; unused.
  */
-export async function doTimelineDump(_incremental = false): Promise<void> {
+export function doTimelineDump(_incremental = false): void {
   try {
     const filename = rollLog();
     if (filename) {
