@@ -17,11 +17,13 @@ import { startHealthCheck } from "./health-check.js";
 import { setAuthHook } from "./session-gate.js";
 import { touchSession } from "./session-manager.js";
 import { createOutboundProxy } from "./outbound-proxy.js";
-import { loadConfig, getSessionLogMode, sessionLogLabel, isDebugConfig } from "./config.js";
-import { timelineSize } from "./message-store.js";
+import { loadConfig, getSessionLogMode, sessionLogLabel, isDebugConfig, getPreToolDenyPatterns } from "./config.js";
+import { setPreToolHook, buildDenyPatternHook } from "./tool-hooks.js";
+import { timelineSize, setOnLocalLog } from "./message-store.js";
 import { initDebugLog } from "./debug-log.js";
 import { cleanupStalePins } from "./startup-pin-cleanup.js";
 import { resolveHttpPort } from "./cli-args.js";
+import { enableLogging, isLoggingEnabled, rollLog, logEvent as logLocalEvent } from "./local-log.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as { name: string; version: string };
@@ -35,6 +37,13 @@ loadConfig();
 
 // Initialize debug logging from config (or env var fallback)
 initDebugLog(isDebugConfig());
+
+// Register deny-pattern hook from config (if any patterns are configured)
+const _denyPatterns = getPreToolDenyPatterns();
+if (_denyPatterns.length > 0) {
+  setPreToolHook(buildDenyPatternHook(_denyPatterns));
+  process.stderr.write(`[info] pre-tool hook: ${_denyPatterns.length} deny pattern(s) loaded\n`);
+}
 if (isDebugConfig()) process.stderr.write("[info] debug logging enabled\n");
 
 // Warn if TTS/STT remote hosts are using plain HTTP (credentials and audio exposed in transit)
@@ -67,7 +76,11 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
       if (drained > 0) process.stderr.write(`[shutdown] drained ${drained} pending update(s)\n`);
       // Dump session log before exit (if not disabled)
       if (getSessionLogMode() !== null && timelineSize() > 0) {
-        try { await doTimelineDump(); } catch { /* best effort */ }
+        try { doTimelineDump(); } catch { /* best effort */ }
+      }
+      // Roll the active log on shutdown so the current session log is cleanly archived.
+      if (isLoggingEnabled()) {
+        try { rollLog(); } catch { /* best effort */ }
       }
       await sendServiceMessage("🔴 Offline").catch((e: unknown) => {
         process.stderr.write(`[shutdown] sendServiceMessage error: ${String(e)}\n`);
@@ -84,6 +97,14 @@ installOutboundProxy(createOutboundProxy);
 
 // Apply session log config (wires up auto-dump if configured)
 applySessionLogConfig();
+
+// Wire up always-on local logging (default: enabled, opt-out via disableLogging())
+enableLogging();
+setOnLocalLog((event) => {
+  // Strip raw Telegram update before logging — it's verbose and contains PII
+  const { _update: _discarded, ...loggableEvent } = event;
+  logLocalEvent(loggableEvent);
+});
 
 // Parse --http [port] from argv (takes precedence over MCP_PORT env var)
 let mcpPort: number | undefined;
@@ -202,4 +223,5 @@ void cleanupStalePins().catch(() => {});
 
 // Best-effort startup notification — bypasses proxy (operational, not agent content)
 const logStatus = sessionLogLabel();
-void sendServiceMessage(`🟢 Online\nSession record: ${logStatus}\n/session to change settings`).catch(() => {});
+const localLogStatus = isLoggingEnabled() ? "Logging enabled" : "Logging disabled";
+void sendServiceMessage(`🟢 Online\n${localLogStatus}\nSession record: ${logStatus}\n/logging to change settings`).catch(() => {});

@@ -173,6 +173,7 @@ describe("send_file tool", () => {
     );
     const result = await call({ file: "/img/photo.jpg", token: 1123456});
     expect(isError(result)).toBe(true);
+    expect(parseResult(result).warning).toBeUndefined();
   });
 
   // ---- reply_to_message_id ----
@@ -206,28 +207,90 @@ describe("send_file tool", () => {
     expect(isError(result)).toBe(true);
   });
 
-describe("identity gate", () => {
-  it("returns SID_REQUIRED when no identity provided", async () => {
-    const result = await call({"file":"x"});
-    expect(isError(result)).toBe(true);
-    expect(errorCode(result)).toBe("SID_REQUIRED");
+  // ---- CDN warning ----
+
+  describe("CDN persistence warning", () => {
+    const WARNING_TEXT =
+      "File persists on Telegram CDN indefinitely. Deleting the message does NOT delete the file. " +
+      "Do not send Tier 2/3 content via send_file.";
+
+    it("includes warning field in photo response", async () => {
+      mocks.sendPhoto.mockResolvedValue({ message_id: 30, caption: undefined });
+      const result = await call({ file: "/img/photo.jpg", token: 1123456 });
+      expect(isError(result)).toBe(false);
+      expect(parseResult(result).warning).toBe(WARNING_TEXT);
+    });
+
+    it("includes warning field in document response", async () => {
+      mocks.sendDocument.mockResolvedValue({
+        message_id: 31,
+        document: { file_id: "doc99", file_name: "file.txt" },
+      });
+      const result = await call({ file: "/docs/file.txt", token: 1123456 });
+      expect(isError(result)).toBe(false);
+      expect(parseResult(result).warning).toBe(WARNING_TEXT);
+    });
+
+    it("includes warning field in video response", async () => {
+      mocks.sendVideo.mockResolvedValue({
+        message_id: 32,
+        video: { file_id: "vid99", duration: 5 },
+      });
+      const result = await call({ file: "/vids/clip.mp4", token: 1123456 });
+      expect(isError(result)).toBe(false);
+      expect(parseResult(result).warning).toBe(WARNING_TEXT);
+    });
+
+    it("includes warning field in audio response", async () => {
+      mocks.sendAudio.mockResolvedValue({
+        message_id: 33,
+        audio: { file_id: "aud99", title: undefined },
+      });
+      const result = await call({ file: "/music/track.mp3", token: 1123456 });
+      expect(isError(result)).toBe(false);
+      expect(parseResult(result).warning).toBe(WARNING_TEXT);
+    });
+
+    it("includes warning field in voice response", async () => {
+      mocks.sendVoiceDirect.mockResolvedValue({
+        message_id: 34,
+        voice: { file_id: "vce99" },
+      });
+      const result = await call({ file: "/audio/note.ogg", token: 1123456 });
+      expect(isError(result)).toBe(false);
+      expect(parseResult(result).warning).toBe(WARNING_TEXT);
+    });
+
+    it("does NOT include warning field on error response", async () => {
+      mocks.resolveMediaSource.mockReturnValue({ code: "INVALID_SOURCE", message: "bad" });
+      const result = await call({ file: "http://insecure.com/bad.txt", token: 1123456 });
+      expect(isError(result)).toBe(true);
+      expect(parseResult(result).warning).toBeUndefined();
+    });
   });
 
-  it("returns AUTH_FAILED when identity has wrong pin", async () => {
-    mocks.validateSession.mockReturnValueOnce(false);
-    const result = await call({"file":"x","token": 1099999});
-    expect(isError(result)).toBe(true);
-    expect(errorCode(result)).toBe("AUTH_FAILED");
-  });
+  describe("identity gate", () => {
+    it("returns SID_REQUIRED when no identity provided", async () => {
+      const result = await call({"file":"x"});
+      expect(isError(result)).toBe(true);
+      expect(errorCode(result)).toBe("SID_REQUIRED");
+    });
 
-  it("proceeds when identity is valid", async () => {
-    mocks.validateSession.mockReturnValueOnce(true);
-    let code: string | undefined;
-    try { code = errorCode(await call({"file":"x","token": 1099999})); } catch { /* gate passed, other error ok */ }
-    expect(code).not.toBe("SID_REQUIRED");
-    expect(code).not.toBe("AUTH_FAILED");
-  });
+    it("returns AUTH_FAILED when identity has wrong pin", async () => {
+      mocks.validateSession.mockReturnValueOnce(false);
+      const result = await call({"file":"x","token": 1099999});
+      expect(isError(result)).toBe(true);
+      expect(errorCode(result)).toBe("AUTH_FAILED");
+    });
 
-});
+    it("proceeds when identity is valid", async () => {
+      mocks.validateSession.mockReturnValueOnce(true);
+      let code: string | undefined;
+      try { code = errorCode(await call({"file":"x","token": 1099999})); } catch { /* gate passed, other error ok */ }
+      expect(code).not.toBe("SID_REQUIRED");
+      expect(code).not.toBe("AUTH_FAILED");
+    });
+
+  });
 
 });

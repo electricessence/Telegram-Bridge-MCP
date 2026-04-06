@@ -5,6 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runInSessionContext } from "./session-context.js";
 import { getActiveSession } from "./session-manager.js";
 import { runInTokenHintContext } from "./tools/identity-schema.js";
+import { invokePreToolHook } from "./tool-hooks.js";
+import { toError } from "./telegram.js";
 
 import { register as registerDequeueUpdate } from "./tools/dequeue_update.js";
 import { register as registerGetMessage } from "./tools/get_message.js";
@@ -43,6 +45,11 @@ import { register as registerGetMe } from "./tools/get_me.js";
 import { register as registerGetChat } from "./tools/get_chat.js";
 import { register as registerGetAgentGuide } from "./tools/get_agent_guide.js";
 import { register as registerDumpSessionRecord } from "./tools/dump_session_record.js";
+import { register as registerRollLog } from "./tools/roll_log.js";
+import { register as registerGetLog } from "./tools/get_log.js";
+import { register as registerListLogs } from "./tools/list_logs.js";
+import { register as registerDeleteLog } from "./tools/delete_log.js";
+import { register as registerToggleLogging } from "./tools/toggle_logging.js";
 import { register as registerShutdownServer } from "./tools/shutdown.js";
 import { register as registerSessionStart } from "./tools/session_start.js";
 import { register as registerCloseSession } from "./tools/close_session.js";
@@ -64,6 +71,25 @@ import { createRequire } from "module";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
+
+const LOG_FIELD_CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g;
+
+/**
+ * Sanitize a log field by stripping \r, \n, and other ASCII control characters
+ * to prevent log injection attacks (fake log lines, ANSI escapes, etc.).
+ */
+function normalizeLogField(s: string): string {
+  // Strip \r, \n, and other ASCII control characters to prevent log injection.
+  return s.replace(LOG_FIELD_CONTROL_CHARS_RE, " ").trim();
+}
+
+/**
+ * Writes a [hook:blocked] log line to stderr.
+ * Exported so it can be tested independently of the full server setup.
+ */
+export function logBlockedToolCall(toolName: string, reason: string): void {
+  process.stderr.write(`[hook:blocked] ${normalizeLogField(toolName)} — ${normalizeLogField(reason)}\n`);
+}
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -100,14 +126,35 @@ export function createServer(): McpServer {
         const sid = (typeof token === "number" && token > 0)
           ? Math.floor(token / 1_000_000)
           : getActiveSession();
+
+        const run = async () => {
+          // Pre-tool hook fires before the original handler executes.
+          // A hook returning allowed:false short-circuits the call and
+          // returns a 403-style error.  If the hook itself throws, we
+          // fail safe by treating it as blocked.
+          let hookResult: { allowed: boolean; reason?: string };
+          try {
+            hookResult = await invokePreToolHook(name, args);
+          } catch (err) {
+            // Hook threw — treat as blocked to fail safe
+            const reason = err instanceof Error ? err.message : "Hook error";
+            logBlockedToolCall(name, reason);
+            return toError({ code: "BLOCKED", message: `Pre-tool hook error: ${reason}` });
+          }
+          if (!hookResult.allowed) {
+            const reason = hookResult.reason ?? "Blocked by pre-tool hook";
+            logBlockedToolCall(name, reason);
+            return toError({ code: "BLOCKED", message: reason });
+          }
+          return original(args, extra);
+        };
+
         if (sid > 0) {
           return runInTokenHintContext(() =>
-            runInSessionContext(sid, () =>
-              original(args, extra),
-            ),
+            runInSessionContext(sid, run),
           );
         }
-        return runInTokenHintContext(() => original(args, extra));
+        return runInTokenHintContext(run);
       }
     ) as typeof cb;
     return _origRegisterTool(name, config, wrappedCb);
@@ -184,6 +231,11 @@ export function createServer(): McpServer {
   registerRouteMessage(server);
   registerRenameSession(server);
   registerDumpSessionRecord(server);
+  registerRollLog(server);
+  registerGetLog(server);
+  registerListLogs(server);
+  registerDeleteLog(server);
+  registerToggleLogging(server);
   registerGetDebugLog(server);
 
   // ── System ─────────────────────────────────────────────────────────────
