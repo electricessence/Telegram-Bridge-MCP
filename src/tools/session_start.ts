@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+﻿import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
@@ -12,6 +12,8 @@ import { refreshGovernorCommand } from "../built-in-commands.js";
 import { checkAndConsumeAutoApprove } from "../auto-approve.js";
 import { startPoller, isPollerRunning } from "../poller.js";
 import { fireStartupReminders, buildReminderEvent } from "../reminder-state.js";
+import { registerPendingApproval, clearPendingApproval } from "../agent-approval.js";
+import type { ApprovalDecision } from "../agent-approval.js";
 
 const APPROVAL_TIMEOUT_MS = 60_000;
 const APPROVAL_NO = "approve_no";
@@ -58,13 +60,17 @@ async function requestApproval(
   } as Record<string, unknown>);
   const msgId: number = sent.message_id;
 
-  const decision = await new Promise<{ approved: boolean; color?: string; forceColor?: boolean }>((resolve) => {
+  const decision = await new Promise<ApprovalDecision>((resolve) => {
+    registerPendingApproval(name, resolve);
+
     const timer = setTimeout(() => {
+      clearPendingApproval(name);
       clearCallbackHook(msgId);
       resolve({ approved: false });
     }, APPROVAL_TIMEOUT_MS);
 
     registerCallbackHook(msgId, (evt: TimelineEvent) => {
+      clearPendingApproval(name);
       clearTimeout(timer);
       const data: string = evt.content.data ?? "";
       const qid = evt.content.qid;

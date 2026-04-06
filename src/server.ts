@@ -65,6 +65,7 @@ import { register as registerSaveProfile } from "./tools/save_profile.js";
 import { register as registerLoadProfile } from "./tools/load_profile.js";
 import { register as registerImportProfile } from "./tools/import_profile.js";
 import { register as registerSetDequeueDefault } from "./tools/set_dequeue_default.js";
+import { initAgentApprovalTool } from "./agent-approval.js";
 
 import { createRequire } from "module";
 
@@ -227,6 +228,7 @@ export function createServer(): McpServer {
   registerSessionStart(server);
   registerCloseSession(server);
   registerListSessions(server);
+  initAgentApprovalTool(server);
   registerSendDirectMessage(server);
   registerRouteMessage(server);
   registerRenameSession(server);

@@ -24,6 +24,7 @@ import type { VoiceEntry } from "./config.js";
 import { fetchVoiceList, isTtsEnabled } from "./tts.js";
 import { getSessionSpeed } from "./voice-state.js";
 import { activateAutoApproveOne, activateAutoApproveTimed, cancelAutoApprove, getAutoApproveState } from "./auto-approve.js";
+import { isDelegationEnabled, setDelegationEnabled } from "./agent-approval.js";
 
 
 const require = createRequire(import.meta.url);
@@ -1017,11 +1018,18 @@ async function handleApproveCommand(): Promise<void> {
       parse_mode: "Markdown",
       _skipHeader: true,
       reply_markup: {
-        inline_keyboard: [[
-          { text: "Next request", callback_data: "approve:one" },
-          { text: "10 minutes",   callback_data: "approve:timed" },
-          { text: "Dismiss",      callback_data: "approve:dismiss" },
-        ]],
+        inline_keyboard: [
+          [
+            { text: "Next request", callback_data: "approve:one" },
+            { text: "10 minutes",   callback_data: "approve:timed" },
+            { text: "Dismiss",      callback_data: "approve:dismiss" },
+          ],
+          [
+            isDelegationEnabled()
+              ? { text: "🤝 Delegate to Agent: ON",  callback_data: "approve:delegate:off" }
+              : { text: "🤝 Delegate to Agent: OFF", callback_data: "approve:delegate:on" },
+          ],
+        ],
       },
     } as Record<string, unknown>);
   } catch { return; }
@@ -1054,6 +1062,12 @@ async function handleApproveCallback(
       "*Session Auto-Approve*\n▸ 🟢 Auto-approving all session requests for 10 minutes",
       { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
     ).catch(() => {/* non-fatal */});
+  } else if (data === "approve:delegate:on") {
+    setDelegationEnabled(true);
+    await handleApproveCommand();
+  } else if (data === "approve:delegate:off") {
+    setDelegationEnabled(false);
+    await handleApproveCommand();
   } else {
     // dismiss — cancel any active auto-approve and close panel
     cancelAutoApprove();
