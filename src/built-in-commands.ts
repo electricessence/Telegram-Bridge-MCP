@@ -163,7 +163,8 @@ export function setAutoDumpThreshold(threshold: number | null): void {
       if (_autoDumpThreshold != null && _eventsSinceLastDump >= _autoDumpThreshold && !_dumpInFlight) {
         _dumpInFlight = true;
         _eventsSinceLastDump = 0;
-        void doTimelineDump(true).finally(() => { _dumpInFlight = false; });
+        doTimelineDump(true);
+        _dumpInFlight = false;
       }
     });
   } else {
@@ -192,7 +193,7 @@ export function getAutoDumpThresholdValue(): number | null {
 // Wire up the session-log dump hook for elegant shutdown (avoids circular import)
 setShutdownDumpHook(async () => {
   if (getSessionLogMode() !== null) {
-    await doTimelineDump(true);
+    doTimelineDump(true);
   }
 });
 
@@ -1104,10 +1105,10 @@ async function handleLoggingCallback(
     enableLogging();
   } else if (data === "logging:off") {
     // Auto-roll before disabling
-    await doTimelineDump();
+    doTimelineDump();
     disableLogging();
   } else if (data === "logging:dump") {
-    await doTimelineDump();
+    doTimelineDump();
   } else if (data === "logging:flush") {
     // Show destructive confirmation
     try {

@@ -76,7 +76,7 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
       if (drained > 0) process.stderr.write(`[shutdown] drained ${drained} pending update(s)\n`);
       // Dump session log before exit (if not disabled)
       if (getSessionLogMode() !== null && timelineSize() > 0) {
-        try { await doTimelineDump(); } catch { /* best effort */ }
+        try { doTimelineDump(); } catch { /* best effort */ }
       }
       // Roll the active log on shutdown so the current session log is cleanly archived.
       if (isLoggingEnabled()) {
