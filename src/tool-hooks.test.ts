@@ -162,6 +162,12 @@ describe("buildDenyPatternHook", () => {
       const hook = buildDenyPatternHook(["download_*"]);
       expect(hook("send_text", {})).toMatchObject({ allowed: true });
     });
+
+    it("treats ? as a literal character, not a regex quantifier", () => {
+      const hook = buildDenyPatternHook(["tool_?"]);
+      expect(hook("tool_?", {})).toMatchObject({ allowed: false });
+      expect(hook("tool_a", {})).toMatchObject({ allowed: true });
+    });
   });
 
   describe("multiple patterns", () => {

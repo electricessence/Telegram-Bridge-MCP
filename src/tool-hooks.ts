@@ -58,7 +58,7 @@ export async function invokePreToolHook(
 /**
  * Build a hook that blocks tool calls whose names match any of the supplied
  * patterns.  Patterns are treated as:
- *   - glob-style `*` wildcard matching the tool name, OR
+ *   - glob-style `*` wildcard matching the tool name (`?` and other special chars are treated as literals), OR
  *   - exact string equality
  *
  * Example patterns: `["shutdown", "download_*"]`
@@ -70,7 +70,7 @@ export function buildDenyPatternHook(patterns: string[]): PreToolHook {
     if (!p.includes("*")) {
       return (name: string) => name === p;
     }
-    const escaped = p.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    const escaped = p.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, ".*");
     const re = new RegExp(`^${escaped}$`);
     return (name: string) => re.test(name);
   });
