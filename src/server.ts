@@ -72,13 +72,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
+const LOG_FIELD_CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g;
+
 /**
  * Sanitize a log field by stripping \r, \n, and other ASCII control characters
  * to prevent log injection attacks (fake log lines, ANSI escapes, etc.).
  */
 function normalizeLogField(s: string): string {
   // Strip \r, \n, and other ASCII control characters to prevent log injection.
-  return s.replace(/[\x00-\x1F\x7F]/g, " ").trim();
+  return s.replace(LOG_FIELD_CONTROL_CHARS_RE, " ").trim();
 }
 
 /**

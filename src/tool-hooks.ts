@@ -24,6 +24,13 @@ export type PreToolHook = (
 ) => PreToolHookResult | Promise<PreToolHookResult>;
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const GLOB_META_CHARS_RE = /[-[\]{}()+?.,\\^$|#\s]/g;
+const GLOB_WILDCARD_RE = /\*/g;
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
@@ -70,7 +77,7 @@ export function buildDenyPatternHook(patterns: string[]): PreToolHook {
     if (!p.includes("*")) {
       return (name: string) => name === p;
     }
-    const escaped = p.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, ".*");
+    const escaped = p.replace(GLOB_META_CHARS_RE, "\\$&").replace(GLOB_WILDCARD_RE, ".*");
     const re = new RegExp(`^${escaped}$`);
     return (name: string) => re.test(name);
   });
