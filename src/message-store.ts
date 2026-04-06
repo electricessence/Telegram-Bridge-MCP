@@ -230,7 +230,9 @@ function pushEvent(event: TimelineEvent): void {
   versions.set(CURRENT, event);
   if (event.id > _highestMessageId) _highestMessageId = event.id;
   if (_onEventCallback) _onEventCallback(_timeline.length);
-  if (_onLocalLogCallback) _onLocalLogCallback(event);
+  if (_onLocalLogCallback) {
+    try { _onLocalLogCallback(event); } catch { /* isolate logging failures */ }
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -89,6 +89,9 @@ export function getCurrentLogFilename(): string | null {
 
 /**
  * Append an event to the current log file immediately (NDJSON format).
+ * Uses appendFileSync — synchronous by design for crash safety (operator
+ * directive: no in-memory buffer). Acceptable for low-frequency events;
+ * refactor to async queue if logging becomes a throughput concern.
  * No-op if logging is disabled.
  */
 export function logEvent(event: unknown): void {
@@ -157,7 +160,7 @@ export function listLogs(): string[] {
   if (!existsSync(LOGS_DIR)) return [];
   try {
     return readdirSync(LOGS_DIR)
-      .filter(f => f.endsWith(".json"))
+      .filter(f => f.endsWith(".json") && f !== _currentFilename)
       .sort();
   } catch {
     return [];

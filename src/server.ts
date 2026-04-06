@@ -128,7 +128,7 @@ export function createServer(): McpServer {
             // Hook threw — treat as blocked to fail safe
             const reason = err instanceof Error ? err.message : "Hook error";
             logBlockedToolCall(name, reason);
-            return toError({ code: "HOOK_ERROR", message: `Pre-tool hook error: ${reason}` });
+            return toError({ code: "BLOCKED", message: `Pre-tool hook error: ${reason}` });
           }
           if (!hookResult.allowed) {
             const reason = hookResult.reason ?? "Blocked by pre-tool hook";

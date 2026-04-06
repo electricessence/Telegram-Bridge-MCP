@@ -1075,8 +1075,9 @@ async function handleLoggingCommand(): Promise<void> {
   try {
     const msg = await api.sendMessage(chatId, text, {
       parse_mode: "Markdown",
+      _skipHeader: true,
       reply_markup: { inline_keyboard: keyboard },
-    });
+    } as Record<string, unknown>);
     _activePanels.set(msg.message_id, "logging");
     markInternalMessage(msg.message_id);
   } catch { /* ignore */ }
@@ -1159,7 +1160,11 @@ function buildLoggingPanel(): { text: string; keyboard: { text: string; callback
   ];
   if (current) lines.push(`Active: \`${current}\``);
   if (archived.length > 0) {
-    lines.push(`Archived: ${archived.map(f => `\`${f}\``).join(", ")}`);
+    const MAX_SHOWN = 5;
+    const shown = archived.slice(-MAX_SHOWN);
+    const rest = archived.length - shown.length;
+    const fileList = shown.map(f => `\`${f}\``).join(", ");
+    lines.push(`Archived: ${fileList}${rest > 0 ? ` (+${rest} more)` : ""}`);
   } else {
     lines.push(`No archived logs.`);
   }
@@ -1194,8 +1199,7 @@ function buildLoggingPanel(): { text: string; keyboard: { text: string; callback
 // ---------------------------------------------------------------------------
 
 /**
- * Roll the local log file. Called by both manual (/session → Dump) and
- * auto-dump (threshold reached), and at shutdown.
+ * Roll the local log file. Called by manual (/logging → Dump) and at shutdown.
  *
  * The local log is always-on and captures all events continuously via the
  * setOnLocalLog hook in index.ts. This function triggers a roll so the
@@ -1203,7 +1207,7 @@ function buildLoggingPanel(): { text: string; keyboard: { text: string; callback
  *
  * Emits a service notification to chat with the archived filename.
  *
- * @param incremental Retained for call-site compatibility; not used for local logs.
+ * @param incremental Retained for call-site compatibility; unused.
  */
 export async function doTimelineDump(_incremental = false): Promise<void> {
   try {

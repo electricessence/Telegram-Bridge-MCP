@@ -224,4 +224,4 @@ void cleanupStalePins().catch(() => {});
 // Best-effort startup notification — bypasses proxy (operational, not agent content)
 const logStatus = sessionLogLabel();
 const localLogStatus = isLoggingEnabled() ? "Logging enabled" : "Logging disabled";
-void sendServiceMessage(`🟢 Online\n${localLogStatus}\nSession record: ${logStatus}\n/session to change settings`).catch(() => {});
+void sendServiceMessage(`🟢 Online\n${localLogStatus}\nSession record: ${logStatus}\n/logging to change settings`).catch(() => {});
