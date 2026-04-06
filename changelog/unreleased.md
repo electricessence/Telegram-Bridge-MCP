@@ -3,8 +3,8 @@
 ## Added
 
 - `src/tool-hooks.ts`: `buildDenyPatternHook(patterns)` — builds a pre-tool hook that blocks tool calls matching any of the provided glob patterns
-- `src/tool-hooks.ts`: `invokePreToolHook(hook, toolName, input)` — invokes a pre-tool hook; blocked calls are logged and return a deny result
-- `src/tool-hooks.ts`: `logBlockedToolCall(toolName, reason)` — writes a `[hook:blocked]` line to stderr when a tool call is denied
+- `src/tool-hooks.ts`: `invokePreToolHook(toolName, args)` — invokes a pre-tool hook; blocked calls are logged and return a deny result
+- `src/server.ts`: `logBlockedToolCall(toolName, reason)` — writes a `[hook:blocked]` line to stderr when a tool call is denied
 - `src/local-log.ts`: `logEvent(event)` — appends a structured JSON event record to the active session log file on disk using `appendFileSync`
 - `src/local-log.ts`: `rollLog()` — archives the current session log and opens a new one
 - `src/local-log.ts`: `isLoggingEnabled()` — returns whether disk logging is active
