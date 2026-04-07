@@ -21,6 +21,22 @@ const mocks = vi.hoisted(() => ({
     pendingCount: vi.fn(() => 0),
   },
   peekSessionCategories: vi.fn((_sid: number) => undefined as Record<string, number> | undefined),
+  // voice-path mocks
+  resolveChat: vi.fn((): number => 42),
+  validateText: vi.fn((): null => null),
+  validateCallbackData: vi.fn((): null => null),
+  sendVoiceDirect: vi.fn(),
+  isTtsEnabled: vi.fn((): boolean => true),
+  stripForTts: vi.fn((t: string) => t),
+  synthesizeToOgg: vi.fn(),
+  applyTopicToText: vi.fn((t: string) => t),
+  showTyping: vi.fn(),
+  cancelTyping: vi.fn(),
+  getSessionVoice: vi.fn((): string | null => null),
+  getSessionSpeed: vi.fn((): number | null => null),
+  buildKeyboardRows: vi.fn(() => [[{ text: "A", callback_data: "a" }, { text: "B", callback_data: "b" }]]),
+  sendChoiceMessage: vi.fn(),
+  validateButtonSymbolParity: vi.fn(() => ({ ok: true, withEmoji: [], withoutEmoji: [] })),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -32,7 +48,10 @@ vi.mock("../telegram.js", async (importActual) => {
       answerCallbackQuery: mocks.answerCallbackQuery,
       editMessageText: mocks.editMessageText,
     }),
-    resolveChat: () => 42,
+    resolveChat: () => mocks.resolveChat(),
+    // Keep actual validateText and validateCallbackData so error-path tests work
+    // sendVoiceDirect is overridden for voice-path tests
+    sendVoiceDirect: (...args: unknown[]) => mocks.sendVoiceDirect(...args),
   };
 });
 
@@ -52,6 +71,9 @@ vi.mock("./button-helpers.js", async (importActual) => {
     pollButtonOrTextOrVoice: mocks.pollButtonOrTextOrVoice,
     ackAndEditSelection: mocks.ackAndEditSelection,
     editWithSkipped: mocks.editWithSkipped,
+    // NOTE: sendChoiceMessage is NOT mocked here — the actual implementation is used
+    // so it calls getApi().sendMessage (which IS mocked) and returns the real message_id.
+    // buildKeyboardRows is mocked only for voice-path tests via the nested beforeEach.
   };
 });
 
@@ -64,6 +86,34 @@ vi.mock("../session-manager.js", () => ({
 vi.mock("../session-queue.js", () => ({
   getSessionQueue: (sid: number) => sid === 1 ? mocks.sessionQueue : undefined,
   peekSessionCategories: (sid: number) => mocks.peekSessionCategories(sid),
+}));
+
+vi.mock("../tts.js", () => ({
+  isTtsEnabled: () => mocks.isTtsEnabled(),
+  stripForTts: (t: string) => mocks.stripForTts(t),
+  synthesizeToOgg: (...args: unknown[]) => mocks.synthesizeToOgg(...args),
+}));
+
+vi.mock("../topic-state.js", () => ({
+  applyTopicToText: (t: string, mode?: string) => mocks.applyTopicToText(t, mode),
+}));
+
+vi.mock("../button-validation.js", () => ({
+  validateButtonSymbolParity: (labels: string[]) => mocks.validateButtonSymbolParity(labels),
+}));
+
+vi.mock("../typing-state.js", () => ({
+  showTyping: (...args: unknown[]) => mocks.showTyping(...args),
+  cancelTyping: () => mocks.cancelTyping(),
+}));
+
+vi.mock("../voice-state.js", () => ({
+  getSessionVoice: () => mocks.getSessionVoice(),
+  getSessionSpeed: () => mocks.getSessionSpeed(),
+}));
+
+vi.mock("../config.js", () => ({
+  getDefaultVoice: () => undefined,
 }));
 
 import { register } from "./choose.js";
@@ -95,6 +145,12 @@ describe("choose tool", () => {
     mocks.validateSession.mockReturnValue(true);
     mocks.ackAndEditSelection.mockResolvedValue(undefined);
     mocks.editWithSkipped.mockResolvedValue(undefined);
+    mocks.resolveChat.mockReturnValue(42);
+    mocks.validateText.mockReturnValue(null);
+    mocks.validateCallbackData.mockReturnValue(null);
+    mocks.validateButtonSymbolParity.mockReturnValue({ ok: true, withEmoji: [], withoutEmoji: [] });
+    mocks.pendingCount.mockReturnValue(0);
+    mocks.sessionQueue.pendingCount.mockReturnValue(0);
     const server = createMockServer();
     register(server);
     call = server.getHandler("choose");
@@ -388,5 +444,92 @@ describe("identity gate", () => {
   });
 
 });
+
+  // ---------------------------------------------------------------------------
+  // Voice path tests (task 20-346)
+  // ---------------------------------------------------------------------------
+
+  describe("voice: true", () => {
+    const SENT_VOICE_MSG = { message_id: 8 };
+    const TWO_OPTIONS = [
+      { label: "Alpha", value: "a" },
+      { label: "Beta", value: "b" },
+    ];
+    const BASE_VOICE_ARGS = {
+      question: "Which option?",
+      options: TWO_OPTIONS,
+      timeout_seconds: 10,
+      voice: true,
+      token: 1_123_456,
+    };
+
+    beforeEach(() => {
+      mocks.isTtsEnabled.mockReturnValue(true);
+      mocks.stripForTts.mockImplementation((t: string) => t);
+      mocks.applyTopicToText.mockImplementation((t: string) => t);
+      mocks.synthesizeToOgg.mockResolvedValue(Buffer.from("ogg"));
+      mocks.sendVoiceDirect.mockResolvedValue(SENT_VOICE_MSG);
+      mocks.showTyping.mockResolvedValue(undefined);
+      mocks.buildKeyboardRows.mockReturnValue([[{ text: "Alpha", callback_data: "a" }, { text: "Beta", callback_data: "b" }]]);
+      mocks.pollButtonOrTextOrVoice.mockResolvedValue({ kind: "button", data: "a", message_id: 8 });
+      mocks.registerCallbackHook.mockReturnValue(undefined);
+    });
+
+    it("calls applyTopicToText with question text and Markdown mode in voice path", async () => {
+      await call(BASE_VOICE_ARGS);
+      expect(mocks.applyTopicToText).toHaveBeenCalledWith("Which option?", "Markdown");
+    });
+
+    it("passes applyTopicToText result as caption to sendVoiceDirect", async () => {
+      mocks.applyTopicToText.mockReturnValue("**[topic]**\nWhich option?");
+      await call(BASE_VOICE_ARGS);
+      const captionArg = (mocks.sendVoiceDirect.mock.calls[0] as [unknown, unknown, { caption: string }])[2].caption;
+      expect(captionArg).toBe("**[topic]**\nWhich option?");
+    });
+
+    it("does NOT pass topic-prefixed text to stripForTts (TTS input stays plain)", async () => {
+      mocks.applyTopicToText.mockReturnValue("**[topic]**\nWhich option?");
+      await call(BASE_VOICE_ARGS);
+      expect(mocks.stripForTts).toHaveBeenCalledWith("Which option?");
+      expect(mocks.stripForTts).not.toHaveBeenCalledWith("**[topic]**\nWhich option?");
+    });
+
+    it("truncates caption to MAX_CAPTION (964) when applyTopicToText result exceeds it", async () => {
+      const longQuestion = "x".repeat(1000);
+      mocks.applyTopicToText.mockReturnValue(longQuestion);
+      await call({ ...BASE_VOICE_ARGS, question: longQuestion });
+      const captionArg = (mocks.sendVoiceDirect.mock.calls[0] as [unknown, unknown, { caption: string }])[2].caption;
+      expect(captionArg.length).toBe(964);
+    });
+
+    it("does not truncate caption that fits within MAX_CAPTION (964)", async () => {
+      const shortQuestion = "Pick the best option";
+      mocks.applyTopicToText.mockReturnValue(shortQuestion);
+      await call({ ...BASE_VOICE_ARGS, question: shortQuestion });
+      const captionArg = (mocks.sendVoiceDirect.mock.calls[0] as [unknown, unknown, { caption: string }])[2].caption;
+      expect(captionArg).toBe(shortQuestion);
+      expect(captionArg.length).toBeLessThanOrEqual(964);
+    });
+
+    it("ensures caption + 60-char header budget stays within Telegram 1024-char limit", async () => {
+      const longQuestion = "x".repeat(1000);
+      mocks.applyTopicToText.mockReturnValue(longQuestion);
+      await call({ ...BASE_VOICE_ARGS, question: longQuestion });
+      const captionArg = (mocks.sendVoiceDirect.mock.calls[0] as [unknown, unknown, { caption: string }])[2].caption;
+      expect(captionArg.length + 60).toBeLessThanOrEqual(1024);
+    });
+
+    it("returns TTS_NOT_CONFIGURED error when TTS is disabled", async () => {
+      mocks.isTtsEnabled.mockReturnValue(false);
+      const result = await call(BASE_VOICE_ARGS);
+      expect(isError(result)).toBe(true);
+    });
+
+    it("returns EMPTY_MESSAGE error when stripForTts produces empty string", async () => {
+      mocks.stripForTts.mockReturnValue("");
+      const result = await call(BASE_VOICE_ARGS);
+      expect(isError(result)).toBe(true);
+    });
+  });
 
 });

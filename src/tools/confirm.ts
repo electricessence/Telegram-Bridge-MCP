@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getApi, toResult, toError, resolveChat, validateText, validateCallbackData } from "../telegram.js";
+import { getApi, toResult, toError, resolveChat, validateText, validateCallbackData, sendVoiceDirect } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
 import { applyTopicToText } from "../topic-state.js";
 import { registerCallbackHook, clearCallbackHook, registerMessageHook, clearMessageHook, pendingCount } from "../message-store.js";
@@ -13,6 +13,10 @@ import {
 import { TOKEN_SCHEMA } from "./identity-schema.js";
 import { validateButtonSymbolParity } from "../button-validation.js";
 import { runInSessionContext } from "../session-context.js";
+import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
+import { getSessionVoice, getSessionSpeed } from "../voice-state.js";
+import { getDefaultVoice } from "../config.js";
+import { showTyping, cancelTyping } from "../typing-state.js";
 
 const DESCRIPTION_CONFIRM =
   "Sends an OK/Cancel confirmation message and waits until the user presses a " +
@@ -44,11 +48,12 @@ interface ConfirmArgs {
   reply_to_message_id?: number;
   ignore_pending?: boolean;
   ignore_parity?: boolean;
+  voice?: boolean;
   token?: number;
 }
 
 async function confirmHandler(
-  { text, yes_text, no_text, yes_data, no_data, yes_style, no_style, timeout_seconds, reply_to_message_id, ignore_pending, ignore_parity, token }: ConfirmArgs,
+  { text, yes_text, no_text, yes_data, no_data, yes_style, no_style, timeout_seconds, reply_to_message_id, ignore_pending, ignore_parity, voice, token }: ConfirmArgs,
   signal: AbortSignal,
 ) {
   const _sid = requireAuth(token);
@@ -102,17 +107,58 @@ async function confirmHandler(
   }
 
   try {
-    const sent = await getApi().sendMessage(chatId, markdownToV2(applyTopicToText(text, "Markdown")), {
-      parse_mode: "MarkdownV2",
-      reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
-      reply_markup: {
-        inline_keyboard: [[
-          { text: yes_text, callback_data: yes_data, ...(yes_style ? { style: yes_style } : {}) },
-          ...(no_text ? [{ text: no_text, callback_data: no_data, ...(no_style ? { style: no_style } : {}) }] : []),
-        ]],
-      },
-      _rawText: text,
-    } as Record<string, unknown>);
+    const replyMarkup = {
+      inline_keyboard: [[
+        { text: yes_text, callback_data: yes_data, ...(yes_style ? { style: yes_style } : {}) },
+        ...(no_text ? [{ text: no_text, callback_data: no_data, ...(no_style ? { style: no_style } : {}) }] : []),
+      ]],
+    };
+
+    let sentMessageId: number;
+
+    if (voice) {
+      if (!isTtsEnabled()) {
+        return toError({
+          code: "TTS_NOT_CONFIGURED" as const,
+          message: "TTS is not configured. Set TTS_HOST or OPENAI_API_KEY to use voice mode.",
+        });
+      }
+      const plainText = stripForTts(text);
+      if (!plainText) {
+        return toError({ code: "EMPTY_MESSAGE" as const, message: "Message text is empty after stripping formatting for TTS." });
+      }
+      const resolvedVoice = getSessionVoice() ?? getDefaultVoice() ?? undefined;
+      const resolvedSpeed = getSessionSpeed() ?? undefined;
+      const typingSeconds = Math.min(120, Math.max(5, Math.ceil(plainText.length / 20)));
+      await showTyping(typingSeconds, "record_voice");
+      try {
+        const ogg = await synthesizeToOgg(plainText, resolvedVoice, resolvedSpeed);
+        // Apply topic prefix to caption (not to TTS input — don't read the prefix aloud).
+        // Reserve 60 chars for the session header that sendVoiceDirect prepends, to stay under the 1024 caption limit.
+        const MAX_CAPTION = 1024 - 60;
+        const captionWithTopic = applyTopicToText(text, "Markdown");
+        const caption = captionWithTopic.length > MAX_CAPTION ? captionWithTopic.slice(0, MAX_CAPTION) : captionWithTopic;
+        const msg = await sendVoiceDirect(chatId, ogg, {
+          caption,
+          reply_to_message_id,
+          reply_markup: replyMarkup,
+        });
+        sentMessageId = msg.message_id;
+      } finally {
+        cancelTyping();
+      }
+    } else {
+      const sent = await getApi().sendMessage(chatId, markdownToV2(applyTopicToText(text, "Markdown")), {
+        parse_mode: "MarkdownV2",
+        reply_parameters: reply_to_message_id ? { message_id: reply_to_message_id } : undefined,
+        reply_markup: replyMarkup,
+        _rawText: text,
+      } as Record<string, unknown>);
+      sentMessageId = sent.message_id;
+    }
+
+    // Create a proxy so the rest of the function can reference sent.message_id uniformly
+    const sent = { message_id: sentMessageId };
 
     // Register callback hook — handles button clicks even after poll timeout.
     // One-shot: acks, shows selection, removes buttons. Event still queues for dequeue_update.
@@ -242,6 +288,10 @@ function makeInputSchema(defaults: { yes_text: string; no_text: string; yes_styl
       .boolean()
       .optional()
       .describe("Set true to bypass button label emoji-consistency check"),
+    voice: z
+      .boolean()
+      .optional()
+      .describe("When true, TTS the question and send it as a voice note with the inline keyboard attached. Requires TTS to be configured."),
     token: TOKEN_SCHEMA,
   };
 }
