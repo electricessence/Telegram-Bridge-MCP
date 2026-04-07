@@ -40,8 +40,10 @@ function createMockMcpServer(): McpServer & { sendToolListChanged: ReturnType<ty
 
 describe("agent-approval module", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset module state first so any side-effect calls (e.g. _tool.disable())
+    // happen before we clear mock call counts.
     setDelegationEnabled(false);
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
