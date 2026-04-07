@@ -169,7 +169,7 @@ async function confirmHandler(
       if (!confirmed && !no_text) return;
       clearMessageHook(sent.message_id);
       const chosenLabel = confirmed ? yes_text : no_text;
-      void ackAndEditSelection(chatId, sent.message_id, text, chosenLabel, evt.content.qid)
+      void ackAndEditSelection(chatId, sent.message_id, text, chosenLabel, evt.content.qid, !!voice)
         .catch((e: unknown) => process.stderr.write(`[warn] confirm hook failed: ${String(e)}\n`));
     }, _sid);
 
@@ -179,7 +179,7 @@ async function confirmHandler(
     const onVoiceDetected = () => {
       editState.done = true;
       clearCallbackHook(sent.message_id);
-      editWithSkipped(chatId, sent.message_id, text).catch(() => {/* non-fatal */});
+      editWithSkipped(chatId, sent.message_id, text, !!voice).catch(() => {/* non-fatal */});
     };
 
     const result = await pollButtonOrTextOrVoice(
@@ -195,7 +195,7 @@ async function confirmHandler(
       registerMessageHook(sent.message_id, () => {
         clearCallbackHook(sent.message_id);
         void runInSessionContext(_sid, () =>
-          editWithSkipped(chatId, sent.message_id, text),
+          editWithSkipped(chatId, sent.message_id, text, !!voice),
         ).catch(() => {/* non-fatal */});
       });
       return toResult({ timed_out: true, message_id: sent.message_id });
@@ -204,7 +204,7 @@ async function confirmHandler(
     // User typed or spoke instead of pressing a button — mark as skipped
     if (result.kind === "text" || result.kind === "voice") {
       clearCallbackHook(sent.message_id);
-      if (!editState.done) await editWithSkipped(chatId, sent.message_id, text);
+      if (!editState.done) await editWithSkipped(chatId, sent.message_id, text, !!voice);
       return toResult({
         skipped: true,
         text_response: result.text,
@@ -216,7 +216,7 @@ async function confirmHandler(
     // Slash command interrupted the confirmation — mark as skipped
     if (result.kind === "command") {
       clearCallbackHook(sent.message_id);
-      await editWithSkipped(chatId, sent.message_id, text);
+      await editWithSkipped(chatId, sent.message_id, text, !!voice);
       return toResult({
         skipped: true,
         command: result.command,

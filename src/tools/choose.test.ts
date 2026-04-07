@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   answerCallbackQuery: vi.fn(),
   editMessageText: vi.fn(),
+  editMessageCaption: vi.fn(),
   pollButtonOrTextOrVoice: vi.fn(),
   ackAndEditSelection: vi.fn(),
   editWithSkipped: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock("../telegram.js", async (importActual) => {
       sendMessage: mocks.sendMessage,
       answerCallbackQuery: mocks.answerCallbackQuery,
       editMessageText: mocks.editMessageText,
+      editMessageCaption: mocks.editMessageCaption,
     }),
     resolveChat: () => mocks.resolveChat(),
     // Keep actual validateText and validateCallbackData so error-path tests work
@@ -182,7 +184,7 @@ describe("choose tool", () => {
     hookFn({ content: { data: "opt_b", qid: "cq1" } });
     await new Promise((r) => setTimeout(r, 0));
     expect(mocks.ackAndEditSelection).toHaveBeenCalledWith(
-      42, 7, "Pick", "Option B", "cq1",
+      42, 7, "Pick", "Option B", "cq1", false,
     );
   });
 
@@ -194,7 +196,7 @@ describe("choose tool", () => {
     hookFn({ content: { data: "opt_a", qid: "cq1" } });
     await new Promise((r) => setTimeout(r, 0));
     expect(mocks.ackAndEditSelection).toHaveBeenCalledWith(
-      42, 7, "Pick one", "Option A", "cq1",
+      42, 7, "Pick one", "Option A", "cq1", false,
     );
   });
 
@@ -273,7 +275,7 @@ describe("choose tool", () => {
     expect(data.skipped).toBe(true);
     expect(data.text_response).toBe("hello");
     expect(data.text_message_id).toBe(20);
-    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick");
+    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick", false);
     expect(mocks.clearCallbackHook).toHaveBeenCalledWith(7);
   });
 
@@ -285,7 +287,7 @@ describe("choose tool", () => {
     expect(data.skipped).toBe(true);
     expect(data.voice).toBe(true);
     expect(data.text_response).toBe("transcribed text");
-    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick");
+    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick", false);
     expect(mocks.clearCallbackHook).toHaveBeenCalledWith(7);
   });
 
@@ -310,7 +312,7 @@ describe("choose tool", () => {
     hookFn();
     await new Promise((r) => setTimeout(r, 0));
     expect(mocks.clearCallbackHook).toHaveBeenCalledWith(7);
-    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick");
+    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick", false);
   });
 
   it("callback hook clears message hook on late button press", async () => {
@@ -332,7 +334,7 @@ describe("choose tool", () => {
     expect(data.skipped).toBe(true);
     expect(data.command).toBe("/help");
     expect(data.args).toBe("fast");
-    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick");
+    expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 7, "Pick", false);
     expect(mocks.clearCallbackHook).toHaveBeenCalledWith(7);
   });
 
@@ -529,6 +531,55 @@ describe("identity gate", () => {
       mocks.stripForTts.mockReturnValue("");
       const result = await call(BASE_VOICE_ARGS);
       expect(isError(result)).toBe(true);
+    });
+
+    it("calls ackAndEditSelection with isVoice=true when button pressed on voice message", async () => {
+      mocks.pollButtonOrTextOrVoice.mockResolvedValue({ kind: "button", data: "a", message_id: 8 });
+      await call(BASE_VOICE_ARGS);
+      const hookFn = mocks.registerCallbackHook.mock.calls[0][1];
+      hookFn({ content: { data: "a", qid: "cq1" } });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(mocks.ackAndEditSelection).toHaveBeenCalledWith(
+        42, 8, "Which option?", "Alpha", "cq1", true,
+      );
+      expect(mocks.editMessageText).not.toHaveBeenCalled();
+    });
+
+    it("calls editWithSkipped with isVoice=true when user types instead of pressing button (voice message)", async () => {
+      mocks.pollButtonOrTextOrVoice.mockResolvedValue({ kind: "text", message_id: 20, text: "pick alpha" });
+      const result = await call(BASE_VOICE_ARGS);
+      expect(isError(result)).toBe(false);
+      const data = parseResult(result);
+      expect(data.skipped).toBe(true);
+      expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 8, "Which option?", true);
+    });
+
+    it("calls editWithSkipped with isVoice=true via onVoiceDetected before poll resolves", async () => {
+      const voiceResult = makeVoiceResult(21, "go with alpha");
+      mocks.pollButtonOrTextOrVoice.mockImplementation((...args: unknown[]) => {
+        const onVoiceDetected = args[3] as () => void;
+        onVoiceDetected();
+        return Promise.resolve(voiceResult);
+      });
+      await call(BASE_VOICE_ARGS);
+      expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 8, "Which option?", true);
+    });
+
+    it("calls editWithSkipped with isVoice=true when message hook fires after timeout on voice message", async () => {
+      mocks.pollButtonOrTextOrVoice.mockResolvedValue(null);
+      await call(BASE_VOICE_ARGS);
+      const hookFn = mocks.registerMessageHook.mock.calls[0][1];
+      hookFn();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 8, "Which option?", true);
+    });
+
+    it("calls editWithSkipped with isVoice=true on skip path when user sends voice response to voice message", async () => {
+      mocks.pollButtonOrTextOrVoice.mockResolvedValue(makeVoiceResult(22, "go with beta"));
+      const result = await call(BASE_VOICE_ARGS);
+      const data = parseResult(result);
+      expect(data.skipped).toBe(true);
+      expect(mocks.editWithSkipped).toHaveBeenCalledWith(42, 8, "Which option?", true);
     });
   });
 

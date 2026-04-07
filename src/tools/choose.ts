@@ -204,7 +204,7 @@ export function register(server: McpServer) {
           const chosen = options.find((o) => o.value === evt.content.data);
           const chosenLabel = chosen?.label ?? evt.content.data ?? "";
           clearMessageHook(messageId);
-          void ackAndEditSelection(chatId, messageId, question, chosenLabel, evt.content.qid)
+          void ackAndEditSelection(chatId, messageId, question, chosenLabel, evt.content.qid, !!voice)
             .catch((e: unknown) => process.stderr.write(`[warn] choose hook failed: ${String(e)}\n`));
         }, _sid);
 
@@ -214,7 +214,7 @@ export function register(server: McpServer) {
         const onVoiceDetected = () => {
           skippedEditDone = true;
           clearCallbackHook(messageId);
-          editWithSkipped(chatId, messageId, question).catch(() => {/* non-fatal */});
+          editWithSkipped(chatId, messageId, question, !!voice).catch(() => {/* non-fatal */});
         };
 
         const match = await pollButtonOrTextOrVoice(
@@ -230,7 +230,7 @@ export function register(server: McpServer) {
           registerMessageHook(messageId, () => {
             clearCallbackHook(messageId);
             void runInSessionContext(_sid, () =>
-              editWithSkipped(chatId, messageId, question),
+              editWithSkipped(chatId, messageId, question, !!voice),
             ).catch(() => {/* non-fatal */});
           });
           return toResult({
@@ -241,7 +241,7 @@ export function register(server: McpServer) {
 
         if (match.kind === "text") {
           clearCallbackHook(messageId);
-          await editWithSkipped(chatId, messageId, question);
+          await editWithSkipped(chatId, messageId, question, !!voice);
           return toResult({
             skipped: true,
             text_response: match.text,
@@ -253,7 +253,7 @@ export function register(server: McpServer) {
         if (match.kind === "voice") {
           clearCallbackHook(messageId);
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- skippedEditDone may be true if onVoiceDetected fired before poll returned
-          if (!skippedEditDone) await editWithSkipped(chatId, messageId, question);
+          if (!skippedEditDone) await editWithSkipped(chatId, messageId, question, !!voice);
           return toResult({
             skipped: true,
             text_response: match.text ?? "[no transcription]",
@@ -265,7 +265,7 @@ export function register(server: McpServer) {
 
         if (match.kind === "command") {
           clearCallbackHook(messageId);
-          await editWithSkipped(chatId, messageId, question);
+          await editWithSkipped(chatId, messageId, question, !!voice);
           return toResult({
             skipped: true,
             command: match.command,
