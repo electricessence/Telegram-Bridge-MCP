@@ -21,6 +21,40 @@ const mocks = vi.hoisted(() => ({
   handleSessionStart: vi.fn(),
   handleRenameSession: vi.fn(),
   handleEditMessage: vi.fn(),
+  // Phase 2 handler stubs
+  handleDeleteMessage: vi.fn(),
+  handlePinMessage: vi.fn(),
+  handleSetReaction: vi.fn(),
+  handleAnswerCallbackQuery: vi.fn(),
+  handleRouteMessage: vi.fn(),
+  handleSetTopic: vi.fn(),
+  handleSaveProfile: vi.fn(),
+  handleLoadProfile: vi.fn(),
+  handleImportProfile: vi.fn(),
+  handleSetReminder: vi.fn(),
+  handleCancelReminder: vi.fn(),
+  handleListReminders: vi.fn(),
+  handleSetDequeueDefault: vi.fn(),
+  handleSetDefaultAnimation: vi.fn(),
+  handleToggleLogging: vi.fn(),
+  handleGetChatHistory: vi.fn(),
+  handleGetChat: vi.fn(),
+  handleGetMessage: vi.fn(),
+  handleGetLog: vi.fn(),
+  handleListLogs: vi.fn(),
+  handleRollLog: vi.fn(),
+  handleDeleteLog: vi.fn(),
+  handleGetDebugLog: vi.fn(),
+  handleDumpSessionRecord: vi.fn(),
+  handleCancelAnimation: vi.fn(),
+  handleShowTyping: vi.fn(),
+  handleApproveAgent: vi.fn(),
+  handleShutdown: vi.fn(),
+  handleNotifyShutdownWarning: vi.fn(),
+  handleTranscribeVoice: vi.fn(),
+  handleDownloadFile: vi.fn(),
+  handleUpdateChecklist: vi.fn(),
+  handleUpdateProgress: vi.fn(),
 }));
 
 vi.mock("../action-registry.js", () => ({
@@ -68,6 +102,46 @@ vi.mock("./edit_message.js", () => ({
   handleEditMessage: mocks.handleEditMessage,
   register: vi.fn(),
 }));
+
+// Phase 2 vi.mocks — message/*
+vi.mock("./delete_message.js", () => ({ handleDeleteMessage: mocks.handleDeleteMessage, register: vi.fn() }));
+vi.mock("./pin_message.js", () => ({ handlePinMessage: mocks.handlePinMessage, register: vi.fn() }));
+vi.mock("./set_reaction.js", () => ({ handleSetReaction: mocks.handleSetReaction, register: vi.fn() }));
+vi.mock("./answer_callback_query.js", () => ({ handleAnswerCallbackQuery: mocks.handleAnswerCallbackQuery, register: vi.fn() }));
+vi.mock("./route_message.js", () => ({ handleRouteMessage: mocks.handleRouteMessage, register: vi.fn() }));
+// Phase 2 vi.mocks — config/*
+vi.mock("./set_topic.js", () => ({ handleSetTopic: mocks.handleSetTopic, register: vi.fn() }));
+vi.mock("./save_profile.js", () => ({ handleSaveProfile: mocks.handleSaveProfile, register: vi.fn() }));
+vi.mock("./load_profile.js", () => ({ handleLoadProfile: mocks.handleLoadProfile, register: vi.fn() }));
+vi.mock("./import_profile.js", () => ({ handleImportProfile: mocks.handleImportProfile, register: vi.fn() }));
+vi.mock("./set_reminder.js", () => ({ handleSetReminder: mocks.handleSetReminder, register: vi.fn() }));
+vi.mock("./cancel_reminder.js", () => ({ handleCancelReminder: mocks.handleCancelReminder, register: vi.fn() }));
+vi.mock("./list_reminders.js", () => ({ handleListReminders: mocks.handleListReminders, register: vi.fn() }));
+vi.mock("./set_dequeue_default.js", () => ({ handleSetDequeueDefault: mocks.handleSetDequeueDefault, register: vi.fn() }));
+vi.mock("./set_default_animation.js", () => ({ handleSetDefaultAnimation: mocks.handleSetDefaultAnimation, register: vi.fn() }));
+vi.mock("./toggle_logging.js", () => ({ handleToggleLogging: mocks.handleToggleLogging, register: vi.fn() }));
+// Phase 2 vi.mocks — history/*
+vi.mock("./get_chat_history.js", () => ({ handleGetChatHistory: mocks.handleGetChatHistory, register: vi.fn() }));
+vi.mock("./get_chat.js", () => ({ handleGetChat: mocks.handleGetChat, register: vi.fn() }));
+vi.mock("./get_message.js", () => ({ handleGetMessage: mocks.handleGetMessage, register: vi.fn() }));
+// Phase 2 vi.mocks — log/*
+vi.mock("./get_log.js", () => ({ handleGetLog: mocks.handleGetLog, register: vi.fn() }));
+vi.mock("./list_logs.js", () => ({ handleListLogs: mocks.handleListLogs, register: vi.fn() }));
+vi.mock("./roll_log.js", () => ({ handleRollLog: mocks.handleRollLog, register: vi.fn() }));
+vi.mock("./delete_log.js", () => ({ handleDeleteLog: mocks.handleDeleteLog, register: vi.fn() }));
+vi.mock("./get_debug_log.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, register: vi.fn() }));
+vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: mocks.handleDumpSessionRecord, register: vi.fn() }));
+// Phase 2 vi.mocks — animation/*
+vi.mock("./cancel_animation.js", () => ({ handleCancelAnimation: mocks.handleCancelAnimation, register: vi.fn() }));
+// Phase 2 vi.mocks — standalone
+vi.mock("./show_typing.js", () => ({ handleShowTyping: mocks.handleShowTyping, register: vi.fn() }));
+vi.mock("./approve_agent.js", () => ({ handleApproveAgent: mocks.handleApproveAgent, register: vi.fn() }));
+vi.mock("./shutdown.js", () => ({ handleShutdown: mocks.handleShutdown, register: vi.fn() }));
+vi.mock("./notify_shutdown_warning.js", () => ({ handleNotifyShutdownWarning: mocks.handleNotifyShutdownWarning, register: vi.fn() }));
+vi.mock("./transcribe_voice.js", () => ({ handleTranscribeVoice: mocks.handleTranscribeVoice, register: vi.fn() }));
+vi.mock("./download_file.js", () => ({ handleDownloadFile: mocks.handleDownloadFile, register: vi.fn() }));
+vi.mock("./send_new_checklist.js", () => ({ handleUpdateChecklist: mocks.handleUpdateChecklist, register: vi.fn() }));
+vi.mock("./update_progress.js", () => ({ handleUpdateProgress: mocks.handleUpdateProgress, register: vi.fn() }));
 
 import { register } from "./action.js";
 
@@ -228,6 +302,146 @@ describe("action tool", () => {
       expect(registeredPaths).toContain("session/rename");
       expect(registeredPaths).toContain("config/voice");
       expect(registeredPaths).toContain("message/edit");
+    });
+
+    it("calls registerAction for all Phase 2 message/* paths", () => {
+      const registeredPaths = mocks.registerAction.mock.calls.map((c) => c[0] as string);
+      expect(registeredPaths).toContain("message/delete");
+      expect(registeredPaths).toContain("message/pin");
+      expect(registeredPaths).toContain("message/react");
+      expect(registeredPaths).toContain("message/acknowledge");
+      expect(registeredPaths).toContain("message/route");
+    });
+
+    it("calls registerAction for all Phase 2 config/* paths", () => {
+      const registeredPaths = mocks.registerAction.mock.calls.map((c) => c[0] as string);
+      expect(registeredPaths).toContain("config/topic");
+      expect(registeredPaths).toContain("config/profile/save");
+      expect(registeredPaths).toContain("config/profile/load");
+      expect(registeredPaths).toContain("config/profile/import");
+      expect(registeredPaths).toContain("config/reminder/set");
+      expect(registeredPaths).toContain("config/reminder/cancel");
+      expect(registeredPaths).toContain("config/reminder/list");
+      expect(registeredPaths).toContain("config/dequeue-default");
+      expect(registeredPaths).toContain("config/animation/default");
+      expect(registeredPaths).toContain("config/logging/toggle");
+    });
+
+    it("calls registerAction for all Phase 2 history/* paths", () => {
+      const registeredPaths = mocks.registerAction.mock.calls.map((c) => c[0] as string);
+      expect(registeredPaths).toContain("history/chat");
+      expect(registeredPaths).toContain("history/message");
+    });
+
+    it("calls registerAction for all Phase 2 log/* paths", () => {
+      const registeredPaths = mocks.registerAction.mock.calls.map((c) => c[0] as string);
+      expect(registeredPaths).toContain("log/get");
+      expect(registeredPaths).toContain("log/list");
+      expect(registeredPaths).toContain("log/roll");
+      expect(registeredPaths).toContain("log/delete");
+      expect(registeredPaths).toContain("log/debug");
+      expect(registeredPaths).toContain("log/dump");
+    });
+
+    it("calls registerAction for all Phase 2 standalone paths", () => {
+      const registeredPaths = mocks.registerAction.mock.calls.map((c) => c[0] as string);
+      expect(registeredPaths).toContain("animation/cancel");
+      expect(registeredPaths).toContain("show-typing");
+      expect(registeredPaths).toContain("approve");
+      expect(registeredPaths).toContain("shutdown");
+      expect(registeredPaths).toContain("shutdown/warn");
+      expect(registeredPaths).toContain("transcribe");
+      expect(registeredPaths).toContain("download");
+      expect(registeredPaths).toContain("checklist/update");
+      expect(registeredPaths).toContain("progress/update");
+    });
+
+    it("registers governor-only paths with { governor: true } metadata", () => {
+      const governorCalls = mocks.registerAction.mock.calls.filter(
+        (c) => (c[2] as { governor?: boolean } | undefined)?.governor === true,
+      );
+      const governorPaths = governorCalls.map((c) => c[0] as string);
+      expect(governorPaths).toContain("message/route");
+      expect(governorPaths).toContain("log/get");
+      expect(governorPaths).toContain("log/list");
+      expect(governorPaths).toContain("log/roll");
+      expect(governorPaths).toContain("log/delete");
+      expect(governorPaths).toContain("log/debug");
+      expect(governorPaths).toContain("log/dump");
+      expect(governorPaths).toContain("approve");
+      expect(governorPaths).toContain("shutdown");
+      expect(governorPaths).toContain("shutdown/warn");
+    });
+  });
+
+  // ── history/chat dual routing ─────────────────────────────────────────────
+
+  describe("history/chat dual routing", () => {
+    it("routes to handleGetChatHistory when count is present", async () => {
+      const chatHistoryResult = { content: [{ type: "text", text: JSON.stringify({ events: [] }) }] };
+      mocks.handleGetChatHistory.mockReturnValue(chatHistoryResult);
+      // Simulate the inline router registered for history/chat
+      const routerCall = mocks.registerAction.mock.calls.find((c) => c[0] === "history/chat");
+      expect(routerCall).toBeDefined();
+      const router = routerCall![1] as (args: Record<string, unknown>) => unknown;
+      const result = await router({ count: 10, token: VALID_TOKEN });
+      expect(mocks.handleGetChatHistory).toHaveBeenCalledOnce();
+      expect(mocks.handleGetChat).not.toHaveBeenCalled();
+      expect(result).toEqual(chatHistoryResult);
+    });
+
+    it("routes to handleGetChatHistory when before_id is present", async () => {
+      const chatHistoryResult = { content: [{ type: "text", text: JSON.stringify({ events: [] }) }] };
+      mocks.handleGetChatHistory.mockReturnValue(chatHistoryResult);
+      const routerCall = mocks.registerAction.mock.calls.find((c) => c[0] === "history/chat");
+      const router = routerCall![1] as (args: Record<string, unknown>) => unknown;
+      await router({ before_id: 100, token: VALID_TOKEN });
+      expect(mocks.handleGetChatHistory).toHaveBeenCalledOnce();
+      expect(mocks.handleGetChat).not.toHaveBeenCalled();
+    });
+
+    it("routes to handleGetChat when neither count nor before_id is present", async () => {
+      const chatResult = { content: [{ type: "text", text: JSON.stringify({ ok: true }) }] };
+      mocks.handleGetChat.mockResolvedValue(chatResult);
+      const routerCall = mocks.registerAction.mock.calls.find((c) => c[0] === "history/chat");
+      const router = routerCall![1] as (args: Record<string, unknown>) => unknown;
+      await router({ token: VALID_TOKEN });
+      expect(mocks.handleGetChat).toHaveBeenCalledOnce();
+      expect(mocks.handleGetChatHistory).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Phase 2 dispatch spot checks ─────────────────────────────────────────
+
+  describe("Phase 2 dispatch spot checks", () => {
+    it("dispatches checklist/update to handleUpdateChecklist", async () => {
+      const fakeResult = { content: [{ type: "text", text: JSON.stringify({ ok: true }) }] };
+      const fakeHandler = vi.fn().mockReturnValue(fakeResult);
+      mocks.resolveAction.mockReturnValue({ handler: fakeHandler, meta: {} });
+      const result = await call({ type: "checklist/update", token: VALID_TOKEN, message_id: 42, title: "Checklist" });
+      expect(fakeHandler).toHaveBeenCalledOnce();
+      const calledArgs = fakeHandler.mock.calls[0][0] as Record<string, unknown>;
+      expect(calledArgs.message_id).toBe(42);
+      expect(calledArgs.title).toBe("Checklist");
+      expect(isError(result)).toBe(false);
+    });
+
+    it("dispatches progress/update to handleUpdateProgress", async () => {
+      const fakeHandler = vi.fn().mockReturnValue({ content: [{ type: "text", text: JSON.stringify({ ok: true }) }] });
+      mocks.resolveAction.mockReturnValue({ handler: fakeHandler, meta: {} });
+      await call({ type: "progress/update", token: VALID_TOKEN, message_id: 10, percent: 50 });
+      expect(fakeHandler).toHaveBeenCalledOnce();
+      const calledArgs = fakeHandler.mock.calls[0][0] as Record<string, unknown>;
+      expect(calledArgs.percent).toBe(50);
+    });
+
+    it("dispatches transcribe to handleTranscribeVoice", async () => {
+      const fakeHandler = vi.fn().mockResolvedValue({ content: [{ type: "text", text: JSON.stringify({ text: "hello" }) }] });
+      mocks.resolveAction.mockReturnValue({ handler: fakeHandler, meta: {} });
+      await call({ type: "transcribe", token: VALID_TOKEN, file_id: "AgAC123" });
+      expect(fakeHandler).toHaveBeenCalledOnce();
+      const calledArgs = fakeHandler.mock.calls[0][0] as Record<string, unknown>;
+      expect(calledArgs.file_id).toBe("AgAC123");
     });
   });
 });

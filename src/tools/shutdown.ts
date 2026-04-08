@@ -13,6 +13,23 @@ const DESCRIPTION =
   "If there are pending messages in the queue, the call fails unless " +
   "`force: true` is passed.";
 
+export function handleShutdown({ force }: { force?: boolean }) {
+  const pending = pendingCount();
+  if (pending > 0 && !force) {
+    return toError({
+      code: "PENDING_MESSAGES" as const,
+      message:
+        `${pending} pending update(s) in queue — process them first ` +
+        `or pass \`force: true\` to shut down anyway.`,
+    });
+  }
+
+  // Send the response first so the caller gets confirmation before we exit
+  const result = toResult({ shutting_down: true, pending_flushed: pending });
+  setImmediate(() => { void elegantShutdown(); });
+  return result;
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "shutdown",
@@ -28,21 +45,6 @@ export function register(server: McpServer) {
           ),
       },
     },
-    ({ force }) => {
-      const pending = pendingCount();
-      if (pending > 0 && !force) {
-        return toError({
-          code: "PENDING_MESSAGES" as const,
-          message:
-            `${pending} pending update(s) in queue — process them first ` +
-            `or pass \`force: true\` to shut down anyway.`,
-        });
-      }
-
-      // Send the response first so the caller gets confirmation before we exit
-      const result = toResult({ shutting_down: true, pending_flushed: pending });
-      setImmediate(() => { void elegantShutdown(); });
-      return result;
-    },
+    handleShutdown,
   );
 }

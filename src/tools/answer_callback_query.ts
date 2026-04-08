@@ -12,6 +12,29 @@ const DESCRIPTION =
   "Must be called within 30 s of receiving the update. " +
   "Optionally shows a toast or alert to the user.";
 
+export async function handleAnswerCallbackQuery({ callback_query_id, text, show_alert, url, cache_time, token }: {
+  callback_query_id: string;
+  text?: string;
+  show_alert?: boolean;
+  url?: string;
+  cache_time?: number;
+  token: number;
+}) {
+  const _sid = requireAuth(token);
+  if (typeof _sid !== "number") return toError(_sid);
+  try {
+    const ok = await getApi().answerCallbackQuery(callback_query_id, {
+      text,
+      show_alert,
+      url,
+      cache_time,
+    });
+    return toResult({ ok });
+  } catch (err) {
+    return toError(err);
+  }
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "answer_callback_query",
@@ -39,20 +62,6 @@ export function register(server: McpServer) {
               token: TOKEN_SCHEMA,
 },
     },
-    async ({ callback_query_id, text, show_alert, url, cache_time, token}) => {
-      const _sid = requireAuth(token);
-      if (typeof _sid !== "number") return toError(_sid);
-      try {
-        const ok = await getApi().answerCallbackQuery(callback_query_id, {
-          text,
-          show_alert,
-          url,
-          cache_time,
-        });
-        return toResult({ ok });
-      } catch (err) {
-        return toError(err);
-      }
-    }
+    handleAnswerCallbackQuery,
   );
 }

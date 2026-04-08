@@ -14,6 +14,26 @@ const DESCRIPTION =
   "(e.g. delivered via dequeue or referenced by the user). " +
   "Do not probe arbitrary IDs to discover conversation history.";
 
+export function handleGetMessage({ message_id, version = CURRENT, token }: { message_id: number; version?: number; token: number }) {
+  const _sid = requireAuth(token);
+  if (typeof _sid !== "number") return toError(_sid);
+  const event = getMessage(message_id, version);
+  if (!event) {
+    return toError({
+      code: "MESSAGE_NOT_FOUND" as const,
+      message: `Message ${message_id} (version ${version}) not found in store. It may have been evicted or was never recorded.`,
+    });
+  }
+
+  const versions = getVersions(message_id);
+  const { _update: _, ...rest } = event;
+
+  return toResult({
+    ...rest,
+    versions,
+  });
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "get_message",
@@ -29,24 +49,6 @@ export function register(server: McpServer) {
               token: TOKEN_SCHEMA,
 },
     },
-    ({ message_id, version, token}) => {
-      const _sid = requireAuth(token);
-      if (typeof _sid !== "number") return toError(_sid);
-      const event = getMessage(message_id, version);
-      if (!event) {
-        return toError({
-          code: "MESSAGE_NOT_FOUND" as const,
-          message: `Message ${message_id} (version ${version}) not found in store. It may have been evicted or was never recorded.`,
-        });
-      }
-
-      const versions = getVersions(message_id);
-      const { _update: _, ...rest } = event;
-
-      return toResult({
-        ...rest,
-        versions,
-      });
-    },
+    handleGetMessage,
   );
 }

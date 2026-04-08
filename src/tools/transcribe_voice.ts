@@ -11,6 +11,21 @@ const DESCRIPTION =
   "only call this to re-process (e.g. transcription failed previously or " +
   "you want to re-run with updated settings).";
 
+export async function handleTranscribeVoice({ file_id, message_id, token }: {
+  file_id: string;
+  message_id?: number;
+  token: number;
+}) {
+  const _sid = requireAuth(token);
+  if (typeof _sid !== "number") return toError(_sid);
+  try {
+    const text = await transcribeWithIndicator(file_id, message_id);
+    return toResult({ text });
+  } catch (err) {
+    return toError(err);
+  }
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "transcribe_voice",
@@ -28,15 +43,6 @@ export function register(server: McpServer) {
               token: TOKEN_SCHEMA,
 },
     },
-    async ({ file_id, message_id, token}) => {
-      const _sid = requireAuth(token);
-      if (typeof _sid !== "number") return toError(_sid);
-      try {
-        const text = await transcribeWithIndicator(file_id, message_id);
-        return toResult({ text });
-      } catch (err) {
-        return toError(err);
-      }
-    },
+    handleTranscribeVoice,
   );
 }

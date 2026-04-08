@@ -19,6 +19,46 @@ import { handleSessionStart } from "./session_start.js";
 import { handleRenameSession } from "./rename_session.js";
 import { handleEditMessage } from "./edit_message.js";
 
+// Phase 2 imports — message/*
+import { handleDeleteMessage } from "./delete_message.js";
+import { handlePinMessage } from "./pin_message.js";
+import { handleSetReaction } from "./set_reaction.js";
+import { handleAnswerCallbackQuery } from "./answer_callback_query.js";
+import { handleRouteMessage } from "./route_message.js";
+// Phase 2 imports — config/*
+import { handleSetTopic } from "./set_topic.js";
+import { handleSaveProfile } from "./save_profile.js";
+import { handleLoadProfile } from "./load_profile.js";
+import { handleImportProfile } from "./import_profile.js";
+import { handleSetReminder } from "./set_reminder.js";
+import { handleCancelReminder } from "./cancel_reminder.js";
+import { handleListReminders } from "./list_reminders.js";
+import { handleSetDequeueDefault } from "./set_dequeue_default.js";
+import { handleSetDefaultAnimation } from "./set_default_animation.js";
+import { handleToggleLogging } from "./toggle_logging.js";
+// Phase 2 imports — history/*
+import { handleGetChatHistory } from "./get_chat_history.js";
+import { handleGetChat } from "./get_chat.js";
+import { handleGetMessage } from "./get_message.js";
+// Phase 2 imports — log/*
+import { handleGetLog } from "./get_log.js";
+import { handleListLogs } from "./list_logs.js";
+import { handleRollLog } from "./roll_log.js";
+import { handleDeleteLog } from "./delete_log.js";
+import { handleGetDebugLog } from "./get_debug_log.js";
+import { handleDumpSessionRecord } from "./dump_session_record.js";
+// Phase 2 imports — animation/*
+import { handleCancelAnimation } from "./cancel_animation.js";
+// Phase 2 imports — standalone
+import { handleShowTyping } from "./show_typing.js";
+import { handleApproveAgent } from "./approve_agent.js";
+import { handleShutdown } from "./shutdown.js";
+import { handleNotifyShutdownWarning } from "./notify_shutdown_warning.js";
+import { handleTranscribeVoice } from "./transcribe_voice.js";
+import { handleDownloadFile } from "./download_file.js";
+import { handleUpdateChecklist } from "./send_new_checklist.js";
+import { handleUpdateProgress } from "./update_progress.js";
+
 /**
  * Register all Phase 1 action paths. Called once at server startup.
  * Idempotent — can safely be called multiple times (last write wins).
@@ -30,6 +70,55 @@ export function setupActionRegistry(): void {
   registerAction("session/rename", handleRenameSession as unknown as ActionHandler);
   registerAction("config/voice", handleSetVoice as unknown as ActionHandler);
   registerAction("message/edit", handleEditMessage as unknown as ActionHandler);
+
+  // message/*
+  registerAction("message/delete", handleDeleteMessage as unknown as ActionHandler);
+  registerAction("message/pin", handlePinMessage as unknown as ActionHandler);
+  registerAction("message/react", handleSetReaction as unknown as ActionHandler);
+  registerAction("message/acknowledge", handleAnswerCallbackQuery as unknown as ActionHandler);
+  registerAction("message/route", handleRouteMessage as unknown as ActionHandler, { governor: true });
+
+  // config/*
+  registerAction("config/topic", handleSetTopic as unknown as ActionHandler);
+  registerAction("config/profile/save", handleSaveProfile as unknown as ActionHandler);
+  registerAction("config/profile/load", handleLoadProfile as unknown as ActionHandler);
+  registerAction("config/profile/import", handleImportProfile as unknown as ActionHandler);
+  registerAction("config/reminder/set", handleSetReminder as unknown as ActionHandler);
+  registerAction("config/reminder/cancel", handleCancelReminder as unknown as ActionHandler);
+  registerAction("config/reminder/list", handleListReminders as unknown as ActionHandler);
+  registerAction("config/dequeue-default", handleSetDequeueDefault as unknown as ActionHandler);
+  registerAction("config/animation/default", handleSetDefaultAnimation as unknown as ActionHandler);
+  registerAction("config/logging/toggle", handleToggleLogging as unknown as ActionHandler);
+
+  // history/*
+  registerAction("history/chat", ((args: Record<string, unknown>) => {
+    if (args.count !== undefined || args.before_id !== undefined) {
+      return handleGetChatHistory(args as Parameters<typeof handleGetChatHistory>[0]);
+    }
+    return handleGetChat(args as Parameters<typeof handleGetChat>[0]);
+  }) as unknown as ActionHandler);
+  registerAction("history/message", handleGetMessage as unknown as ActionHandler);
+
+  // log/* (governor-only)
+  registerAction("log/get", handleGetLog as unknown as ActionHandler, { governor: true });
+  registerAction("log/list", handleListLogs as unknown as ActionHandler, { governor: true });
+  registerAction("log/roll", handleRollLog as unknown as ActionHandler, { governor: true });
+  registerAction("log/delete", handleDeleteLog as unknown as ActionHandler, { governor: true });
+  registerAction("log/debug", handleGetDebugLog as unknown as ActionHandler, { governor: true });
+  registerAction("log/dump", handleDumpSessionRecord as unknown as ActionHandler, { governor: true });
+
+  // animation/*
+  registerAction("animation/cancel", handleCancelAnimation as unknown as ActionHandler);
+
+  // standalone
+  registerAction("show-typing", handleShowTyping as unknown as ActionHandler);
+  registerAction("approve", handleApproveAgent as unknown as ActionHandler, { governor: true });
+  registerAction("shutdown", handleShutdown as unknown as ActionHandler, { governor: true });
+  registerAction("shutdown/warn", handleNotifyShutdownWarning as unknown as ActionHandler, { governor: true });
+  registerAction("transcribe", handleTranscribeVoice as unknown as ActionHandler);
+  registerAction("download", handleDownloadFile as unknown as ActionHandler);
+  registerAction("checklist/update", handleUpdateChecklist as unknown as ActionHandler);
+  registerAction("progress/update", handleUpdateProgress as unknown as ActionHandler);
 }
 
 const DESCRIPTION =
@@ -93,11 +182,11 @@ export function register(server: McpServer): void {
           .int()
           .min(1)
           .optional()
-          .describe("message/edit: ID of the message to edit."),
+          .describe("message/edit, message/delete, message/pin, message/react, history/message, checklist/update, progress/update: Target message ID."),
         text: z
           .string()
           .optional()
-          .describe("message/edit: New text content."),
+          .describe("message/edit: New text content. config/reminder/set: Reminder message text. animation/cancel: Replacement text."),
         keyboard: z
           .array(
             z.array(
@@ -117,7 +206,258 @@ export function register(server: McpServer): void {
         parse_mode: z
           .enum(["Markdown", "HTML", "MarkdownV2"])
           .optional()
-          .describe("message/edit: Parse mode for text (default: Markdown)."),
+          .describe("message/edit, animation/cancel: Parse mode for text (default: Markdown)."),
+        // message/pin params
+        disable_notification: z
+          .boolean()
+          .optional()
+          .describe("message/pin: Pin without notifying members."),
+        unpin: z
+          .boolean()
+          .optional()
+          .describe("message/pin: If true, unpin instead of pin."),
+        // message/react params
+        emoji: z
+          .string()
+          .optional()
+          .describe("message/react: Emoji or semantic alias (e.g. 'thinking', 'done'). Omit to remove reaction."),
+        is_big: z
+          .boolean()
+          .optional()
+          .describe("message/react: Use big animation (permanent reactions only)."),
+        temporary: z
+          .boolean()
+          .optional()
+          .describe("message/react: Auto-reverts reaction on next outbound action or timeout."),
+        restore_emoji: z
+          .string()
+          .optional()
+          .describe("message/react: Emoji/alias to revert to when temporary reaction expires."),
+        timeout_seconds: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("message/react: Deadline before auto-restore fires. show-typing: Duration (1–300s, default 20)."),
+        // message/acknowledge params
+        callback_query_id: z
+          .string()
+          .optional()
+          .describe("message/acknowledge: ID from the callback_query update."),
+        show_alert: z
+          .boolean()
+          .optional()
+          .describe("message/acknowledge: Show as dialog alert instead of toast."),
+        url: z
+          .string()
+          .optional()
+          .describe("message/acknowledge: URL to open in the user's browser (for games)."),
+        cache_time: z
+          .number()
+          .int()
+          .optional()
+          .describe("message/acknowledge: Seconds the result may be cached client-side."),
+        // message/route params
+        target_sid: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("message/route: Session ID to route the message to."),
+        // config/topic params
+        topic: z
+          .string()
+          .max(32)
+          .optional()
+          .describe("config/topic: Short label to prepend to all outbound messages. Pass empty string to clear."),
+        // config/profile/* params
+        key: z
+          .string()
+          .optional()
+          .describe("config/profile/save, config/profile/load: Profile key (bare name e.g. 'Overseer')."),
+        // config/profile/import params
+        voice_speed: z
+          .number()
+          .min(0.25)
+          .max(4.0)
+          .optional()
+          .describe("config/profile/import: TTS playback speed multiplier (0.25–4.0)."),
+        animation_default: z
+          .array(z.string())
+          .optional()
+          .describe("config/profile/import: Default animation frame sequence."),
+        animation_presets: z
+          .record(z.string(), z.array(z.string()))
+          .optional()
+          .describe("config/profile/import: Named animation presets."),
+        reminders: z
+          .array(
+            z.object({
+              text: z.string(),
+              delay_seconds: z.number(),
+              recurring: z.boolean(),
+            }),
+          )
+          .optional()
+          .describe("config/profile/import: Reminders to register for this session."),
+        // config/reminder/set params
+        trigger: z
+          .enum(["time", "startup"])
+          .optional()
+          .describe("config/reminder/set: When to fire (default: 'time')."),
+        delay_seconds: z
+          .number()
+          .int()
+          .min(0)
+          .max(86400)
+          .optional()
+          .describe("config/reminder/set: Seconds to wait before reminder becomes active (default 0)."),
+        recurring: z
+          .boolean()
+          .optional()
+          .describe("config/reminder/set: Re-arm after firing (default false)."),
+        id: z
+          .string()
+          .optional()
+          .describe("config/reminder/set: Optional ID for dedup. config/reminder/cancel: Reminder ID to cancel."),
+        // config/dequeue-default params
+        timeout: z
+          .number()
+          .int()
+          .min(0)
+          .max(3600)
+          .optional()
+          .describe("config/dequeue-default: Default dequeue timeout in seconds (0–3600)."),
+        // config/animation/default params
+        frames: z
+          .array(z.string())
+          .optional()
+          .describe("config/animation/default: Animation frames to set as default or register as preset."),
+        preset: z
+          .string()
+          .optional()
+          .describe("config/animation/default: Named preset key for registration or recall."),
+        reset: z
+          .boolean()
+          .optional()
+          .describe("config/animation/default: Reset to built-in default animation."),
+        // config/logging/toggle params
+        enabled: z
+          .boolean()
+          .optional()
+          .describe("config/logging/toggle: true to enable logging, false to disable."),
+        // history/chat params
+        count: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe("history/chat: Number of events to return (default 20, max 50)."),
+        before_id: z
+          .number()
+          .int()
+          .optional()
+          .describe("history/chat: Return events older than this event ID (page backwards)."),
+        // history/message params
+        version: z
+          .number()
+          .int()
+          .optional()
+          .describe("history/message: Version (-1 = current, 0 = original, 1+ = edit history)."),
+        // log/* params
+        filename: z
+          .string()
+          .optional()
+          .describe("log/get: Log filename to read. log/delete: Log filename to delete. Omit log/get to list files."),
+        // log/debug params
+        category: z
+          .enum(["session", "route", "queue", "cascade", "dm", "animation", "tool", "health"])
+          .optional()
+          .describe("log/debug: Filter to a single debug category."),
+        since: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe("log/debug: Only return entries with id > since (cursor-based pagination)."),
+        enable: z
+          .boolean()
+          .optional()
+          .describe("log/debug: Toggle debug logging on/off."),
+        // show-typing params
+        cancel: z
+          .boolean()
+          .optional()
+          .describe("show-typing: If true, immediately stop the typing indicator."),
+        // approve params
+        target_name: z
+          .string()
+          .optional()
+          .describe("approve: Name of the pending session to approve."),
+        // shutdown params
+        force: z
+          .boolean()
+          .optional()
+          .describe("shutdown: Bypass the pending-message safety guard."),
+        // shutdown/warn params
+        reason: z
+          .string()
+          .optional()
+          .describe("shutdown/warn: Optional reason for the restart."),
+        wait_seconds: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe("shutdown/warn: Optional estimated wait time in seconds before restart."),
+        // transcribe / download params
+        file_id: z
+          .string()
+          .optional()
+          .describe("transcribe: Telegram file_id of voice message. download: Telegram file_id to download."),
+        file_name: z
+          .string()
+          .optional()
+          .describe("download: Suggested file name."),
+        mime_type: z
+          .string()
+          .optional()
+          .describe("download: MIME type hint from the message."),
+        // checklist/update params
+        title: z
+          .string()
+          .optional()
+          .describe("checklist/update: Bold heading for the status block."),
+        steps: z
+          .array(
+            z.object({
+              label: z.string().describe("Step description."),
+              status: z.enum(["pending", "running", "done", "failed", "skipped"]).describe("Current status."),
+              detail: z.string().optional().describe("Optional short italicized detail."),
+            }),
+          )
+          .optional()
+          .describe("checklist/update: Ordered list of steps with their current statuses."),
+        // progress/update params
+        percent: z
+          .number()
+          .int()
+          .min(0)
+          .max(100)
+          .optional()
+          .describe("progress/update: Progress percentage (0–100)."),
+        subtext: z
+          .string()
+          .optional()
+          .describe("progress/update: Optional italicized detail line below the bar."),
+        width: z
+          .number()
+          .int()
+          .min(1)
+          .max(40)
+          .optional()
+          .describe("progress/update: Bar width in characters (default 10)."),
       },
     },
     async (args) => {
