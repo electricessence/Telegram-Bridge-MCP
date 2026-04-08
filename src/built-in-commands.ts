@@ -42,7 +42,7 @@ export function getVersionString(): string {
 }
 import type { TimelineEvent } from "./message-store.js";
 import { timelineSize, setOnEvent } from "./message-store.js";
-import { listSessions, activeSessionCount } from "./session-manager.js";
+import { listSessions } from "./session-manager.js";
 import { getGovernorSid, setGovernorSid } from "./routing-mode.js";
 import { deliverServiceMessage } from "./session-queue.js";
 import { getCallerSid, runInSessionContext } from "./session-context.js";
