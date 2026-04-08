@@ -93,15 +93,33 @@ describe("logEvent", () => {
     expect(filename).toBeNull();
   });
 
-  it("does not throw when appendFile rejects, and queue recovers", async () => {
+  it("does not throw when appendFile rejects", async () => {
     fsMocks.appendFile.mockRejectedValueOnce(new Error("disk full"));
-    logEvent({ type: "rejected" });  // appendFile will reject
-    logEvent({ type: "recovered" }); // should succeed after queue recovers
+    logEvent({ type: "rejected" });
+    logEvent({ type: "batch-lost" });  // same batch — lost with the rejection
     await expect(flushCurrentLog()).resolves.toBeUndefined();
-    // First write rejected (caught silently). Second write must succeed.
-    expect(fsMocks.appendFile).toHaveBeenCalledTimes(2);
-    const secondArg = (fsMocks.appendFile.mock.calls[1] as [string, string, string])[1];
-    expect(JSON.parse(secondArg.trim()).event).toEqual({ type: "recovered" });
+    // One batch write was attempted (even though it rejected)
+    expect(fsMocks.appendFile).toHaveBeenCalledTimes(1);
+    // Buffer is empty — a second flush produces no further writes
+    await flushCurrentLog();
+    expect(fsMocks.appendFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("flushes automatically when timer fires", async () => {
+    vi.useFakeTimers();
+    try {
+      logEvent({ type: "batched" });
+      // timer is pending — no write yet
+      expect(fsMocks.appendFile).not.toHaveBeenCalled();
+      // advance past FLUSH_DELAY_MS
+      await vi.runAllTimersAsync();
+      expect(fsMocks.appendFile).toHaveBeenCalledTimes(1);
+      const [, content] = fsMocks.appendFile.mock.calls[0] as [string, string, string];
+      expect(JSON.parse(content.trim()).event).toEqual({ type: "batched" });
+    } finally {
+      vi.useRealTimers();
+      await flushCurrentLog(); // ensure clean state
+    }
   });
 });
 
