@@ -486,7 +486,7 @@ describe("identity gate", () => {
       mocks.applyTopicToText.mockReturnValue("**[topic]**\nWhich option?");
       await call(BASE_VOICE_ARGS);
       const captionArg = (mocks.sendVoiceDirect.mock.calls[0] as [unknown, unknown, { caption: string }])[2].caption;
-      expect(captionArg).toBe("**[topic]**\nWhich option?");
+      expect(captionArg).toBe("*\\[topic\\]*\nWhich option?");
     });
 
     it("does NOT pass topic-prefixed text to stripForTts (TTS input stays plain)", async () => {

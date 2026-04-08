@@ -135,10 +135,15 @@ async function confirmHandler(
         // Apply topic prefix to caption (not to TTS input — don't read the prefix aloud).
         // Reserve 60 chars for the session header that sendVoiceDirect prepends, to stay under the 1024 caption limit.
         const MAX_CAPTION = 1024 - 60;
-        const captionWithTopic = applyTopicToText(text, "Markdown");
-        const caption = captionWithTopic.length > MAX_CAPTION ? captionWithTopic.slice(0, MAX_CAPTION) : captionWithTopic;
+        const rawCaption = applyTopicToText(text, "Markdown");
+        let caption = markdownToV2(rawCaption);
+        if (caption.length > MAX_CAPTION) {
+          caption = caption.slice(0, MAX_CAPTION);
+          if (caption.endsWith("\\")) caption = caption.slice(0, -1);
+        }
         const msg = await sendVoiceDirect(chatId, ogg, {
           caption,
+          parse_mode: "MarkdownV2",
           reply_to_message_id,
           reply_markup: replyMarkup,
         });

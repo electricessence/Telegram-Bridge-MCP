@@ -18,6 +18,7 @@ import { isTtsEnabled, stripForTts, synthesizeToOgg } from "../tts.js";
 import { getSessionSpeed } from "../voice-state.js";
 import { showTyping, cancelTyping } from "../typing-state.js";
 import { applyTopicToText } from "../topic-state.js";
+import { markdownToV2 } from "../markdown.js";
 
 const DESCRIPTION =
   "Send a question with 2–8 buttons and wait for the user to press one. " +
@@ -169,11 +170,16 @@ export function register(server: McpServer) {
             // Apply topic prefix to caption (not to TTS input — don't read the prefix aloud).
             // Reserve 60 chars for the session header that sendVoiceDirect prepends, to stay under the 1024 caption limit.
             const MAX_CAPTION = 1024 - 60;
-            const captionWithTopic = applyTopicToText(question, "Markdown");
-            const caption = captionWithTopic.length > MAX_CAPTION ? captionWithTopic.slice(0, MAX_CAPTION) : captionWithTopic;
+            const rawCaption = applyTopicToText(question, "Markdown");
+            let caption = markdownToV2(rawCaption);
+            if (caption.length > MAX_CAPTION) {
+              caption = caption.slice(0, MAX_CAPTION);
+              if (caption.endsWith("\\")) caption = caption.slice(0, -1);
+            }
             const rows = buildKeyboardRows(options as KeyboardOption[], columns);
             const msg = await sendVoiceDirect(chatId, ogg, {
               caption,
+              parse_mode: "MarkdownV2",
               reply_to_message_id,
               reply_markup: { inline_keyboard: rows },
             });

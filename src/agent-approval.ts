@@ -6,7 +6,8 @@
  *
  * Lifecycle:
  *  1. `initAgentApprovalTool(server)` — called once from `createServer()`.
- *     Registers the tool (disabled by default) and stores the handles.
+ *     Registers the tool and stores the handle. The tool is always callable;
+ *     callers get BLOCKED error unless delegation is enabled.
  *  2. `setDelegationEnabled(true/false)` — toggled by the /approve panel.
  *  3. `session_start.ts` calls `registerPendingApproval` when waiting for
  *     an operator decision, and `clearPendingApproval` when the promise
@@ -85,8 +86,8 @@ export function getPendingApproval(name: string): PendingApproval | undefined {
 /**
  * Initialize the `approve_agent` tool on the server.
  * Must be called exactly once from `createServer()`.
- * The tool is registered in a disabled state and enabled only when delegation
- * is turned on via `setDelegationEnabled(true)`.
+ * The tool is always registered and callable — callers receive a BLOCKED error
+ * unless delegation is turned on via `setDelegationEnabled(true)`.
  */
 export function initAgentApprovalTool(server: McpServer): void {
   _server = server;
