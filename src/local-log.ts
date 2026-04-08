@@ -165,7 +165,7 @@ export function listLogs(): string[] {
   if (!existsSync(LOGS_DIR)) return [];
   try {
     return readdirSync(LOGS_DIR)
-      .filter(f => f.endsWith(".json") && f !== _currentFilename)
+      .filter(f => TIMESTAMP_FILENAME_RE.test(f) && f !== _currentFilename)
       .sort();
   } catch {
     return [];

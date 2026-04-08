@@ -9,7 +9,7 @@ const DESCRIPTION =
   "and starts a new one immediately. " +
   "Emits a service notification to chat with the archived filename. " +
   "Log content never transits Telegram — use get_log to read a log file. " +
-  "No session ID required — any authenticated caller can trigger a roll.";
+  "No separate session selection is required — any caller with a valid authenticated token can trigger a roll.";
 
 export function register(server: McpServer) {
   server.registerTool(
