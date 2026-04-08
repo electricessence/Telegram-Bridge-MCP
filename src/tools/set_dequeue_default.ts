@@ -13,6 +13,16 @@ const DESCRIPTION =
   "Use this at agent startup to configure your preferred polling interval. " +
   "Examples: persistent agent → 600, VS Code extension → 290, one-shot runner → no call needed.";
 
+export function handleSetDequeueDefault({ token, timeout }: { token: number; timeout: number }) {
+  const _sid = requireAuth(token);
+  if (typeof _sid !== "number") return toError(_sid);
+  const sid = _sid;
+
+  const previous = getDequeueDefault(sid);
+  setDequeueDefault(sid, timeout);
+  return toResult({ ok: true, timeout, previous });
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "set_dequeue_default",
@@ -31,14 +41,6 @@ export function register(server: McpServer) {
           ),
       },
     },
-    ({ token, timeout }) => {
-      const _sid = requireAuth(token);
-      if (typeof _sid !== "number") return toError(_sid);
-      const sid = _sid;
-
-      const previous = getDequeueDefault(sid);
-      setDequeueDefault(sid, timeout);
-      return toResult({ ok: true, timeout, previous });
-    },
+    handleSetDequeueDefault,
   );
 }

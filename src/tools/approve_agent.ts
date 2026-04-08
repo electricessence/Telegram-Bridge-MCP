@@ -13,6 +13,64 @@ const DESCRIPTION =
   "Call with the target_name matching the session name used in the pending session_start call. " +
   "Optionally specify a color to assign; falls back to the least-recently-used available color.";
 
+export function handleApproveAgent({ token, target_name, color }: { token: number; target_name: string; color?: string }) {
+  const sid = requireAuth(token);
+  if (typeof sid !== "number") return toError(sid);
+
+  if (!isDelegationEnabled()) {
+    return toError({
+      code: "BLOCKED",
+      message:
+        "DELEGATION_DISABLED: Agent delegation is not currently enabled. " +
+        "The operator must enable it via the /approve panel.",
+    });
+  }
+
+  const governorSid = getGovernorSid();
+  if (governorSid !== 0 && sid !== governorSid) {
+    return toError({
+      code: "UNAUTHORIZED",
+      message:
+        `GOVERNOR_ONLY: Only the governor session (SID ${governorSid}) can approve agents.`,
+    });
+  }
+
+  const pending = getPendingApproval(target_name);
+  if (!pending) {
+    return toError({
+      code: "UNKNOWN",
+      message:
+        `NOT_PENDING: No pending session_start request found for name "${target_name}". ` +
+        "The request may have already been resolved, timed out, or the name is incorrect.",
+    });
+  }
+
+  // Validate color if provided; fall back to first available if omitted.
+  if (color && !(COLOR_PALETTE as readonly string[]).includes(color)) {
+    return toError({
+      code: "UNKNOWN",
+      message:
+        `INVALID_COLOR: "${color}" is not a valid color. ` +
+        `Valid options: ${COLOR_PALETTE.join(", ")}`,
+    });
+  }
+  const resolvedColor: string = color && (COLOR_PALETTE as readonly string[]).includes(color)
+    ? color
+    : (pending.colorHint && (COLOR_PALETTE as readonly string[]).includes(pending.colorHint)
+        ? pending.colorHint
+        : (getAvailableColors()[0] ?? COLOR_PALETTE[0]));
+
+  clearPendingApproval(target_name);
+  pending.cleanup?.();
+  pending.resolve({ approved: true, color: resolvedColor, forceColor: true });
+
+  process.stderr.write(
+    `[agent-approval] approved name=${target_name} by_sid=${sid} color=${resolvedColor} at=${new Date().toISOString()}\n`,
+  );
+
+  return toResult({ approved: true, target_name, color: resolvedColor });
+}
+
 export function register(server: McpServer): RegisteredTool {
   return server.registerTool(
     "approve_agent",
@@ -32,62 +90,6 @@ export function register(server: McpServer): RegisteredTool {
           ),
       },
     },
-    ({ token, target_name, color }) => {
-      const sid = requireAuth(token);
-      if (typeof sid !== "number") return toError(sid);
-
-      if (!isDelegationEnabled()) {
-        return toError({
-          code: "BLOCKED",
-          message:
-            "DELEGATION_DISABLED: Agent delegation is not currently enabled. " +
-            "The operator must enable it via the /approve panel.",
-        });
-      }
-
-      const governorSid = getGovernorSid();
-      if (governorSid !== 0 && sid !== governorSid) {
-        return toError({
-          code: "UNAUTHORIZED",
-          message:
-            `GOVERNOR_ONLY: Only the governor session (SID ${governorSid}) can approve agents.`,
-        });
-      }
-
-      const pending = getPendingApproval(target_name);
-      if (!pending) {
-        return toError({
-          code: "UNKNOWN",
-          message:
-            `NOT_PENDING: No pending session_start request found for name "${target_name}". ` +
-            "The request may have already been resolved, timed out, or the name is incorrect.",
-        });
-      }
-
-      // Validate color if provided; fall back to first available if omitted.
-      if (color && !(COLOR_PALETTE as readonly string[]).includes(color)) {
-        return toError({
-          code: "UNKNOWN",
-          message:
-            `INVALID_COLOR: "${color}" is not a valid color. ` +
-            `Valid options: ${COLOR_PALETTE.join(", ")}`,
-        });
-      }
-      const resolvedColor: string = color && (COLOR_PALETTE as readonly string[]).includes(color)
-        ? color
-        : (pending.colorHint && (COLOR_PALETTE as readonly string[]).includes(pending.colorHint)
-            ? pending.colorHint
-            : (getAvailableColors()[0] ?? COLOR_PALETTE[0]));
-
-      clearPendingApproval(target_name);
-      pending.cleanup?.();
-      pending.resolve({ approved: true, color: resolvedColor, forceColor: true });
-
-      process.stderr.write(
-        `[agent-approval] approved name=${target_name} by_sid=${sid} color=${resolvedColor} at=${new Date().toISOString()}\n`,
-      );
-
-      return toResult({ approved: true, target_name, color: resolvedColor });
-    },
+    handleApproveAgent,
   );
 }

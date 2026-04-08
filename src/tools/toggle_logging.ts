@@ -11,6 +11,19 @@ const DESCRIPTION =
   "Events are queued for async write — to archive the current log before disabling, call roll_log first. " +
   "Returns the current logging state after the change.";
 
+export function handleToggleLogging({ enabled, token }: { enabled: boolean; token: number }) {
+  const _sid = requireAuth(token);
+  if (typeof _sid !== "number") return toError(_sid);
+
+  if (enabled) {
+    enableLogging();
+  } else {
+    disableLogging();
+  }
+
+  return toResult({ logging_enabled: isLoggingEnabled() });
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "toggle_logging",
@@ -23,17 +36,6 @@ export function register(server: McpServer) {
         token: TOKEN_SCHEMA,
       },
     },
-    ({ enabled, token }) => {
-      const _sid = requireAuth(token);
-      if (typeof _sid !== "number") return toError(_sid);
-
-      if (enabled) {
-        enableLogging();
-      } else {
-        disableLogging();
-      }
-
-      return toResult({ logging_enabled: isLoggingEnabled() });
-    }
+    handleToggleLogging,
   );
 }
