@@ -17,7 +17,7 @@ import { startHealthCheck } from "./health-check.js";
 import { setAuthHook } from "./session-gate.js";
 import { touchSession } from "./session-manager.js";
 import { createOutboundProxy } from "./outbound-proxy.js";
-import { loadConfig, getSessionLogMode, sessionLogLabel, isDebugConfig, getPreToolDenyPatterns, getSessionApproval } from "./config.js";
+import { loadConfig, getSessionLogMode, isDebugConfig, getPreToolDenyPatterns, getSessionApproval } from "./config.js";
 import { setDelegationEnabled } from "./agent-approval.js";
 import { setPreToolHook, buildDenyPatternHook } from "./tool-hooks.js";
 import { timelineSize, setOnLocalLog } from "./message-store.js";
@@ -229,6 +229,5 @@ process.stderr.write("[info] health check started\n");
 void cleanupStalePins().catch(() => {});
 
 // Best-effort startup notification — bypasses proxy (operational, not agent content)
-const logStatus = sessionLogLabel();
 const localLogStatus = isLoggingEnabled() ? "Logging enabled" : "Logging disabled";
-void sendServiceMessage(`🟢 Online\n${localLogStatus}\nSession record: ${logStatus}\n/logging to change settings`).catch(() => {});
+void sendServiceMessage(`🟢 Online\n${localLogStatus}\n/logging to change settings`).catch(() => {});
