@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Built-in server-level slash commands.
  *
  * These commands are intercepted in the update pipeline *before* any update
