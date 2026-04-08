@@ -41,7 +41,6 @@ import { register as registerCancelReminder } from "./tools/cancel_reminder.js";
 import { register as registerListReminders } from "./tools/list_reminders.js";
 import { register as registerGetMe } from "./tools/get_me.js";
 import { register as registerGetChat } from "./tools/get_chat.js";
-import { register as registerGetAgentGuide } from "./tools/get_agent_guide.js";
 import { register as registerHelp } from "./tools/help.js";
 import { register as registerDumpSessionRecord } from "./tools/dump_session_record.js";
 import { register as registerRollLog } from "./tools/roll_log.js";
@@ -162,7 +161,6 @@ export function createServer(): McpServer {
 
   // ── High-level agent tools (use these 99% of the time) ─────────────────
   registerHelp(server);
-  registerGetAgentGuide(server);
   registerSetTopic(server);
   registerSetVoice(server);
   registerSaveProfile(server);

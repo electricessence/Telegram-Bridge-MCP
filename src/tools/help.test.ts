@@ -64,26 +64,3 @@ describe("help tool", () => {
     expect(parsed.message).toContain("help()");
   });
 });
-
-describe("get_agent_guide tool (deprecation compat)", () => {
-  const stderrWrite = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.spyOn(process.stderr, "write").mockImplementation(stderrWrite);
-  });
-
-  it("returns guide content with isError: false (backward compat)", async () => {
-    const server = createMockServer();
-    const { register: registerGuide } = await import("./get_agent_guide.js");
-    registerGuide(server);
-    const call = server.getHandler("get_agent_guide");
-
-    const result = await call({});
-    expect(isError(result)).toBe(false);
-    const parsed = parseResult<{ guide: string }>(result);
-    expect(parsed.guide).toBeDefined();
-    expect(typeof parsed.guide).toBe("string");
-    expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining("deprecated"));
-  });
-});
