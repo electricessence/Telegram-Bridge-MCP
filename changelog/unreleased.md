@@ -22,6 +22,7 @@
 ## Changed
 
 - `send`, `confirm`, `confirmYN`, `choose` — API simplified to `text` (display) + `audio` (spoken TTS content) channels; per-message `voice` and `speed` override params removed from all tools; voice resolution uses session/global settings only; `choose` renames `question` parameter to `text`
+- `dequeue_update` renamed to `dequeue`; `dequeue_update` is no longer a registered tool name
 - `dequeue_update` now returns `session_closed` events when the active session is terminated during a wait
 - Cold-start governor workflow fixed — first-session approval no longer requires a pre-existing session context
 - Tool descriptions tightened across all registered tools to minimize per-call context usage

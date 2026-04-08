@@ -8,7 +8,7 @@ import { runInTokenHintContext } from "./tools/identity-schema.js";
 import { invokePreToolHook } from "./tool-hooks.js";
 import { toError } from "./telegram.js";
 
-import { register as registerDequeueUpdate } from "./tools/dequeue_update.js";
+import { register as registerDequeueUpdate } from "./tools/dequeue.js";
 import { register as registerGetMessage } from "./tools/get_message.js";
 import { register as registerGetChatHistory } from "./tools/get_chat_history.js";
 import { register as registerSend } from "./tools/send.js";

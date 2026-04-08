@@ -56,7 +56,7 @@ import { runInSessionContext } from "../session-context.js";
 import { register as registerConfirm } from "./confirm.js";
 import { register as registerChoose } from "./choose.js";
 import { register as registerSendChoice } from "./send_choice.js";
-import { register as registerDequeueUpdate } from "./dequeue_update.js";
+import { register as registerDequeueUpdate } from "./dequeue.js";
 
 // ---------------------------------------------------------------------------
 // Telegram update factories
@@ -121,7 +121,7 @@ describe("callback edge-cases — rapid clicks and expired queries", () => {
       confirm: server.getHandler("confirm"),
       choose: server.getHandler("choose"),
       send_choice: server.getHandler("send_choice"),
-      dequeue_update: server.getHandler("dequeue_update"),
+      dequeue_update: server.getHandler("dequeue"),
     };
   });
 

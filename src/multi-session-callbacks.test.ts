@@ -76,7 +76,7 @@ import { runInSessionContext, getCallerSid } from "./session-context.js";
 import { register as registerConfirm } from "./tools/confirm.js";
 import { register as registerChoose } from "./tools/choose.js";
 import { register as registerCloseSession } from "./tools/close_session.js";
-import { register as registerDequeueUpdate } from "./tools/dequeue_update.js";
+import { register as registerDequeueUpdate } from "./tools/dequeue.js";
 
 // ---------------------------------------------------------------------------
 // Telegram update factories
@@ -147,7 +147,7 @@ describe("multi-session callback isolation", () => {
       confirm: server.getHandler("confirm"),
       choose: server.getHandler("choose"),
       close_session: server.getHandler("close_session"),
-      dequeue_update: server.getHandler("dequeue_update"),
+      dequeue_update: server.getHandler("dequeue"),
     };
   });
 

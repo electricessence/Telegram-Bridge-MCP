@@ -6,8 +6,8 @@ import { setDequeueDefault, getDequeueDefault } from "../session-manager.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
 
 const DESCRIPTION =
-  "Set the per-session default timeout for dequeue_update calls. " +
-  "Once set, all dequeue_update calls from this token use this as the default when timeout is not explicitly passed. " +
+  "Set the per-session default timeout for dequeue calls. " +
+  "Once set, all dequeue calls from this token use this as the default when timeout is not explicitly passed. " +
   "Scope: in-memory, session-lifetime only. Cleared when the session closes. " +
   "Priority: explicit timeout param > session default > server default (300s). " +
   "Use this at agent startup to configure your preferred polling interval. " +
@@ -26,7 +26,7 @@ export function register(server: McpServer) {
           .min(0)
           .max(3600)
           .describe(
-            "Default timeout in seconds for dequeue_update. 0 = instant poll mode. " +
+            "Default timeout in seconds for dequeue. 0 = instant poll mode. " +
             "Maximum 3600 s (1 hour). Values above 3600 are rejected.",
           ),
       },

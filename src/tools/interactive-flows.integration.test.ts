@@ -54,7 +54,7 @@ import { register as registerConfirm } from "./confirm.js";
 import { register as registerChoose } from "./choose.js";
 import { register as registerAsk } from "./ask.js";
 import { register as registerSendChoice } from "./send_choice.js";
-import { register as registerDequeueUpdate } from "./dequeue_update.js";
+import { register as registerDequeueUpdate } from "./dequeue.js";
 
 // ---------------------------------------------------------------------------
 // Telegram update factories
@@ -153,7 +153,7 @@ describe("interactive flows — end-to-end integration", () => {
       choose: server.getHandler("choose"),
       ask: server.getHandler("ask"),
       send_choice: server.getHandler("send_choice"),
-      dequeue_update: server.getHandler("dequeue_update"),
+      dequeue_update: server.getHandler("dequeue"),
     };
   });
 

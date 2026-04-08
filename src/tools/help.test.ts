@@ -34,7 +34,7 @@ describe("help tool", () => {
     const { content } = parseResult<{ content: string }>(result);
     expect(content).toContain("notify");
     expect(content).toContain("session_start");
-    expect(content).toContain("dequeue_update");
+    expect(content).toContain("dequeue");
     expect(content).toContain("help");
     expect(content).toContain("Tool Index");
   });
