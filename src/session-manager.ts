@@ -124,8 +124,9 @@ export function getAvailableColors(hint?: string): string[] {
     ...allColors.filter(c => usedColors.has(c)),
   ];
 
-  if (hint && (COLOR_PALETTE as readonly string[]).includes(hint)) {
-    // Hint always goes first as top recommendation, regardless of prior usage
+  if (hint && (COLOR_PALETTE as readonly string[]).includes(hint) && !usedColors.has(hint)) {
+    // Promote unused hint to position 0 as top recommendation.
+    // In-use hints stay at their natural sorted position (end of list).
     return [hint, ...sorted.filter(c => c !== hint)];
   }
   return sorted;

@@ -69,17 +69,17 @@ describe("agent-approval module", () => {
   });
 
   describe("setDelegationEnabled side-effects", () => {
-    it("calls _tool.enable() when enabled and tool is initialized", () => {
+    it("does NOT call _tool.enable() when enabled (tool always visible)", () => {
       const server = createMockMcpServer();
       initAgentApprovalTool(server);
       vi.clearAllMocks();
 
       setDelegationEnabled(true);
 
-      expect(mocks.mockTool.enable).toHaveBeenCalledOnce();
+      expect(mocks.mockTool.enable).not.toHaveBeenCalled();
     });
 
-    it("calls _tool.disable() when disabled and tool is initialized", () => {
+    it("does NOT call _tool.disable() when disabled (tool always visible)", () => {
       const server = createMockMcpServer();
       initAgentApprovalTool(server);
       setDelegationEnabled(true);
@@ -87,7 +87,7 @@ describe("agent-approval module", () => {
 
       setDelegationEnabled(false);
 
-      expect(mocks.mockTool.disable).toHaveBeenCalledOnce();
+      expect(mocks.mockTool.disable).not.toHaveBeenCalled();
     });
 
     it("calls server.sendToolListChanged() when enabled", () => {
@@ -119,10 +119,10 @@ describe("agent-approval module", () => {
       expect(mocks.registerApproveAgent).toHaveBeenCalledWith(server);
     });
 
-    it("disables the tool immediately after registration", () => {
+    it("does NOT disable the tool after registration (tool is always visible)", () => {
       const server = createMockMcpServer();
       initAgentApprovalTool(server);
-      expect(mocks.mockTool.disable).toHaveBeenCalledOnce();
+      expect(mocks.mockTool.disable).not.toHaveBeenCalled();
     });
   });
 

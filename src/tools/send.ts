@@ -181,7 +181,7 @@ export function register(server: McpServer) {
 
       // ── Text-only mode ───────────────────────────────────────────────────
       // text is guaranteed non-empty here (checked above)
-      const textWithTopic = applyTopicToText(text!, parse_mode);
+      const textWithTopic = applyTopicToText(text ?? "", parse_mode);
       const finalText = parse_mode === "Markdown" ? markdownToV2(textWithTopic) : textWithTopic;
       const finalMode = parse_mode === "Markdown" ? "MarkdownV2" : parse_mode;
 
@@ -212,7 +212,7 @@ export function register(server: McpServer) {
           message_ids.push(msg.message_id);
         }
 
-        const hasTable = containsMarkdownTable(text!);
+        const hasTable = containsMarkdownTable(text ?? "");
         if (message_ids.length === 1) {
           return toResult(hasTable
             ? { message_id: message_ids[0], info: TABLE_WARNING }

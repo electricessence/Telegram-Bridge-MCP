@@ -38,7 +38,7 @@ async function requestApproval(
   const availableColors = getAvailableColors(colorHint);
   const usedColors = new Set(listSessions().map((s) => s.color));
   const validHint = colorHint && (COLOR_PALETTE as readonly string[]).includes(colorHint) ? colorHint : undefined;
-  const primaryColor = validHint
+  const primaryColor = validHint && !usedColors.has(validHint)
     ? validHint
     : availableColors.find((c) => !usedColors.has(c));
   if (checkAndConsumeAutoApprove()) {
