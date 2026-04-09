@@ -28,8 +28,8 @@ When starting a new session with this MCP:
 
 1. Call `help(topic: "guide")` to load behavioral rules.
 2. Read the `telegram-bridge-mcp://communication-guide` resource — compact communication patterns, tool selection rules, and loop behavior.
-3. Call `get_me` — verifies the Telegram connection. If it fails, stop and notify the user.
-4. Call `session_start` — sends an intro message and handles pending messages from a previous session (offers Resume / Start Fresh if any exist).
+3. Call `action(type: "history/chat")` — verifies the Telegram connection. If it fails, stop and notify the user.
+4. Call `action(type: "session/start")` — sends an intro message and handles pending messages from a previous session (offers Resume / Start Fresh if any exist).
 5. Enter the `dequeue` loop — call with no arguments to block up to 300 s (the default).
 
 **`help` tool:** Call `help()` for a tool overview, `help(topic: "guide")` for this guide, or `help(topic: "<tool>")` for per-tool documentation.
@@ -62,14 +62,14 @@ Normal drain-then-block sequence:
 
 When `dequeue()` returns `{ timed_out: true }` after a full blocking wait (not a `timeout: 0` drain poll), 5 minutes have passed with no activity. Do not silently loop:
 
-1. Send a brief `notify` checking in (e.g. "Still listening — are you there?").
+1. Send a brief `send(type: "notification")` checking in (e.g. "Still listening — are you there?").
 2. Continue the `dequeue` loop as normal.
 
 Do **not** check in after `timeout: 0` drain polls — those are expected to return immediately.
 
 ### Looking up prior messages
 
-Use `get_message(message_id)` to retrieve a previously seen message by its ID. Returns text, caption, file metadata, and edit history. Only call for message IDs already known to this session.
+Use `action(type: "history/message", message_id: ...)` to retrieve a previously seen message by its ID. Returns text, caption, file metadata, and edit history. Only call for message IDs already known to this session.
 
 ---
 
@@ -77,15 +77,15 @@ Use `get_message(message_id)` to retrieve a previously seen message by its ID. R
 
 The operator should **always** know what you are doing. Silence is confusing.
 
-**While working:** Send frequent `notify` (silent) updates — brief, one per significant action (editing a file, running a command, thinking about a design decision).
+**While working:** Send frequent `send(type: "notification")` (silent) updates — brief, one per significant action (editing a file, running a command, thinking about a design decision).
 
 **When done:** Explicitly say so. Never leave an animation running or go silent while waiting for input. Cancel any animation and send a completion message before entering a wait.
 
 **Rule: never confuse working with waiting.** An active animation while idle misleads the operator.
 
-Before any significant action, send a **silent** `notify` (`disable_notification: true`): title = short action label, text = brief description of what and why.
+Before any significant action, send a **silent** `send(type: "notification", disable_notification: true)`: title = short action label, text = brief description of what and why.
 
-**On completion:** Send a `notify` with the outcome whenever a task took meaningful time — even outside an active loop. Use `severity: "success"` or `severity: "error"`. The user may have walked away; a completion notification is how they know to come back.
+**On completion:** Send a `send(type: "notification")` with the outcome whenever a task took meaningful time — even outside an active loop. Use `severity: "success"` or `severity: "error"`. The user may have walked away; a completion notification is how they know to come back.
 
 ---
 
@@ -102,24 +102,24 @@ When sending a follow-up about a specific earlier message, reply to that message
 
 ## Questions and pending answers
 
-If the agent sent a `choose` or `ask` question, the user's **next** message is the answer — even if they sent another message before the question was asked. The stale-message filter (message_id guard) handles this automatically.
+If the agent sent a `send(type: "question", choose: [...])` or `send(type: "question", ask: "...")` question, the user's **next** message is the answer — even if they sent another message before the question was asked. The stale-message filter (message_id guard) handles this automatically.
 
 Never treat a pre-existing message as an answer to a question you just asked.
 
 ---
 
-## Tool usage: `choose` for confirmations
+## Tool usage: `send(type: "question")` for confirmations
 
-**Never** ask a finite-answer question using `notify`/`send_text` + `dequeue` or `ask`.  
-Whenever the user's response can be one of a predictable set of options — yes/no, proceed/cancel, option A/B/C — use `choose` with labeled buttons.
+**Never** ask a finite-answer question using `send(type: "notification")`/`send(type: "text")` + `dequeue` or `send(type: "question", ask: "...")`.  
+Whenever the user's response can be one of a predictable set of options — yes/no, proceed/cancel, option A/B/C — use `send(type: "question", choose: [...])` with labeled buttons.
 
-Only use `ask` or `dequeue` for truly open-ended free-text input where choices cannot be enumerated.
+Only use `send(type: "question", ask: "...")` or `dequeue` for truly open-ended free-text input where choices cannot be enumerated.
 
 For the full keyboard interaction taxonomy — when to use `send_message` vs `send_choice` vs `choose` vs `confirm`, button types, and implementation notes — see [`docs/keyboard-interactions.md`](keyboard-interactions.md).
 
 ---
 
-## Tool usage: `set_commands` and slash-command handling
+## Tool usage: `action(type: "config/commands")` and slash-command handling
 
 The server registers four built-in commands (`/session`, `/voice`, `/version`, `/shutdown`) automatically on startup.
 
@@ -130,7 +130,7 @@ Agents **should not** register additional slash commands by default. The built-i
 - `/version` — server version and build info
 - `/shutdown` — clean server shutdown with auto-restart
 
-If a workflow genuinely needs a custom command (rare), use `set_commands` to add it. Built-in commands are always preserved — passing `[]` clears only agent-registered commands.
+If a workflow genuinely needs a custom command (rare), use `action(type: "config/commands")` to add it. Built-in commands are always preserved — passing `[]` clears only agent-registered commands.
 
 When the operator taps a command, `dequeue` delivers it as:
 
@@ -142,63 +142,63 @@ When the operator taps a command, `dequeue` delivers it as:
 - `args` contains anything typed after the command name (`undefined` if nothing)
 - `@botname` suffixes are stripped automatically
 
-**Shutdown behaviour:** the server automatically calls `set_commands([])` on `SIGTERM`, `SIGINT`, and `shutdown`. No manual clearing needed before stopping.
+**Shutdown behaviour:** the server automatically calls `action(type: "config/commands", commands: [])` on `SIGTERM`, `SIGINT`, and `shutdown`. No manual clearing needed before stopping.
 
 ---
 
-## Tool usage: `set_topic`
+## Tool usage: `action(type: "config/topic")`
 
-Call `set_topic` once at session start to brand every outbound message with a `[Title]` prefix for the lifetime of this server process.
+Call `action(type: "config/topic")` once at session start to brand every outbound message with a `[Title]` prefix for the lifetime of this server process.
 
 **When to use:** When multiple MCP host instances share the same Telegram chat and you need to identify which agent sent what.
 
 **Behavior:**
 
-- Applies to: `send_text`, `notify`, `ask`, `choose`, `confirm`, `send_new_checklist`
+- Applies to: `send(type: "text")`, `send(type: "notification")`, `send(type: "question")`, `send(type: "checklist")`
 - Does **not** apply to: `send_file`
 - The tag always appears — no per-message override
-- Pass an empty string to clear: `set_topic("")`
+- Pass an empty string to clear: `action(type: "config/topic", topic: "")`
 - Process-scoped: resets if the server restarts
 
 ---
 
-## Tool usage: `show_typing`
+## Tool usage: `action(type: "show-typing")`
 
-Call `show_typing` **after receiving a message**, right before sending a reply. Idempotent — repeated calls extend the deadline without spamming Telegram.
+Call `action(type: "show-typing")` **after receiving a message**, right before sending a reply. Idempotent — repeated calls extend the deadline without spamming Telegram.
 
 - **Default timeout:** 20 s. Pass a longer value for slow operations.
 - **Auto-cancelled** when any message-sending tool is called.
-- Use `show_typing(cancel: true)` to stop immediately if you decide not to send.
+- Use `action(type: "show-typing", cancel: true)` to stop immediately if you decide not to send.
 - Do **not** call while idle/polling.
 
 ---
 
 ## Tool usage: Animations and status visibility
 
-### `show_animation` / `cancel_animation`
+### `send(type: "animation")` / `action(type: "animation/cancel")`
 
 Create an ephemeral cycling placeholder visible while you work. Unlike typing indicator, animations show actual text (frames) and leave a permanent message when cancelled with text.
 
 ```ts
-const { message_id } = await show_animation({ frames: ["Analyzing…", "Analyzing.", "Analyzing.."] })
+const { message_id } = await send({ type: "animation", frames: ["Analyzing…", "Analyzing.", "Analyzing.."] })
 // ... do the work ...
-await cancel_animation({ text: "Analysis complete — 47 files scanned." })
+await action({ type: "animation/cancel", text: "Analysis complete — 47 files scanned." })
 ```
 
 **Rules:**
 
-- Only one animation at a time — `show_animation` replaces any active one.
-- `cancel_animation` without `text` deletes the placeholder message.
-- `cancel_animation` with `text` edits the placeholder into a permanent log message.
+- Only one animation at a time — `send(type: "animation")` replaces any active one.
+- `action(type: "animation/cancel")` without `text` deletes the placeholder message.
+- `action(type: "animation/cancel")` with `text` edits the placeholder into a permanent log message.
 - **Cancel before waiting for input.** Do not leave an animation running while idle — this misleads the operator.
 - **Use only during active work.** Stop the animation the moment you transition from working to waiting.
 
-### When to use `show_animation` vs `send_new_checklist`
+### When to use `send(type: "animation")` vs `send(type: "checklist")`
 
 | Situation | Use |
 | --- | --- |
-| 3+ discrete named steps with trackable progress | `send_new_checklist` — shows each step by name, can be checked off |
-| Indeterminate wait / quick "I'm on it" signal | `show_animation` — cycling text frames, no structured progress |
+| 3+ discrete named steps with trackable progress | `send(type: "checklist")` — shows each step by name, can be checked off |
+| Indeterminate wait / quick "I'm on it" signal | `send(type: "animation")` — cycling text frames, no structured progress |
 | Waiting for user input | Neither — cancel animation first, send completion message |
 
 Prefer checklists when tasks have named milestones the operator cares about tracking.
@@ -208,19 +208,19 @@ Prefer checklists when tasks have named milestones the operator cares about trac
 ## Tool usage: timeout strategy
 
 - `dequeue`: 300 s (default) — blocks until a message arrives or timeout
-- `ask`, `choose`, `confirm`: 60 s — reasonable wait when expecting a response
+- `send(type: "question")` (ask/choose/confirm): 60 s — reasonable wait when expecting a response
 
 All tools support up to 300 s max. Use shorter timeouts for more responsive feedback loops.
 
 ---
 
-## Tool usage: `choose` confirmation display
+## Tool usage: `send(type: "question")` confirmation display
 
-When the user selects an option in `choose`, the confirmation edit uses `▸` (triangle), not ✅. This is intentional — checkmarks imply "correct" which is wrong for neutral choices.
+When the user selects an option in `send(type: "question", choose: [...])`, the confirmation edit uses `▸` (triangle), not ✅. This is intentional — checkmarks imply "correct" which is wrong for neutral choices.
 
 ---
 
-## Tool usage: `set_reaction`
+## Tool usage: `action(type: "message/react")`
 
 React to user messages instead of sending separate acknowledgement text. Common conventions:
 
@@ -236,12 +236,12 @@ React to user messages instead of sending separate acknowledgement text. Common 
 
 | Rule | Detail |
 | --- | --- |
-| **Temporary only** | Always call `set_reaction(emoji: "👀", temporary: true)` — never permanent. Auto-clears when the bot sends any outbound message. |
+| **Temporary only** | Always call `action(type: "message/react", emoji: "👀", temporary: true)` — never permanent. Auto-clears when the bot sends any outbound message. |
 | **Optional, never required** | The server automatically manages voice message reactions (✍ while transcribing, 😴 if queued, 🫡 when dequeued). You do not need to call `set_reaction` for voice messages. |
-| **Use sparingly on text** | Use when genuinely focused on a long multi-part request. `show_typing` is the right signal when a reply is imminent. |
+| **Use sparingly on text** | Use when genuinely focused on a long multi-part request. `action(type: "show-typing")` is the right signal when a reply is imminent. |
 | **Auto-restores on outbound** | When any outbound message fires, `👀` is replaced with the bot's previous reaction (or cleared). No manual cleanup. |
 | **No-op if already set** | Silently skipped if the message already carries the same emoji. |
-| **Never leave stuck** | If set manually, must be cleared by your next outbound action. Call `set_reaction(emoji: "")` to clear explicitly if you decide not to respond. |
+| **Never leave stuck** | If set manually, must be cleared by your next outbound action. Call `action(type: "message/react", emoji: "")` to clear explicitly if you decide not to respond. |
 
 **TL;DR:** `👀` is optional — the server handles voice reactions automatically. Temporary always.
 
@@ -258,7 +258,7 @@ Keep labels short. Use `columns=1` for longer option text.
 
 ## Formatting: default parse_mode
 
-`send_text`, `notify`, `edit_message_text`, `append_text`, and `send_file` all default to `"Markdown"`.
+`send(type: "text")`, `send(type: "notification")`, `action(type: "message/edit")`, `send(type: "append")`, and `send(type: "file")` all default to `"Markdown"`.
 Standard Markdown (bold, italic, code, links, headings) is auto-converted to Telegram MarkdownV2. No manual escaping needed.
 
 See the `formatting-guide` resource (`telegram-bridge-mcp://formatting-guide`) for the full reference.
@@ -277,24 +277,24 @@ Do not use `\\n` (double backslash) — that produces a visible backslash in out
 
 Voice messages are automatically transcribed before they arrive in `dequeue`. While transcribing, a `✍` reaction is applied; when done it swaps to `😴` if queued, then `🫡` when returned to you. Transcription is transparent — results arrive as `text` with `voice: true`.
 
-### Sending voice: `send_text_as_voice` vs `send_file`
+### Sending voice: `send(type: "text", audio: "...")` vs `send(type: "file")`
 
 | Tool | When to use |
 | --- | --- |
-| `send_text_as_voice(text)` | Speak a text response via TTS. Works with bundled ONNX model; set `TTS_HOST` (Kokoro) or `OPENAI_API_KEY` for higher quality. Write as natural spoken language — Markdown is stripped before synthesis. |
-| `send_file(file, type: "voice")` | Send an existing audio file (OGG/Opus path, HTTPS URL, or Telegram `file_id`). Use when you already have audio to deliver. |
+| `send(type: "text", audio: "...")` | Speak a text response via TTS. Works with bundled ONNX model; set `TTS_HOST` (Kokoro) or `OPENAI_API_KEY` for higher quality. Write as natural spoken language — Markdown is stripped before synthesis. |
+| `send(type: "file", file_type: "voice")` | Send an existing audio file (OGG/Opus path, HTTPS URL, or Telegram `file_id`). Use when you already have audio to deliver. |
 
 Never call `send_file(type: "voice")` to speak text — it only delivers pre-existing audio.
 
 ### TTS voice resolution
 
-Use `set_voice` to change your session's voice without affecting other sessions.
+Use `action(type: "config/voice")` to change your session's voice without affecting other sessions.
 
-`send_text_as_voice` picks voice in this order:
+`send(type: "text", audio: "...")` picks voice in this order:
 
 1. **Explicit `voice` parameter** — passed in the tool call
-2. **Session override** — set via `set_voice` for the current session
-3. **Global default** — persisted via `/voice` in Telegram or a prior `set_voice`
+2. **Session override** — set via `action(type: "config/voice")` for the current session
+3. **Global default** — persisted via `/voice` in Telegram or a prior `action(type: "config/voice")`
 4. **Provider default** — the TTS provider's built-in default
 
 ### TTS delivery error: "user restricted receiving of voice note messages"
@@ -322,11 +322,11 @@ Use this to acknowledge what the user reacted to and adapt behavior accordingly.
 
 When `dequeue` returns an event with a non-text `content.type`, **always ask the user what to do — never read or process the file automatically.**
 
-Optionally react with 👀 to signal receipt, then use `choose` with inferred action buttons.
+Optionally react with 👀 to signal receipt, then use `send(type: "question", choose: [...])` with inferred action buttons.
 
 ### Core rule: always ask first, download only when needed
 
-Do **not** call `download_file` until the user has selected an action that requires it. The metadata returned by `dequeue` (file name, MIME type) is sufficient to present the choice.
+Do **not** call `action(type: "download")` until the user has selected an action that requires it. The metadata returned by `dequeue` (file name, MIME type) is sufficient to present the choice.
 
 Never silently download, read, or process a received file without explicit instruction.
 
@@ -334,11 +334,11 @@ Never silently download, read, or process a received file without explicit instr
 
 Users may send multiple files at once. Each file arrives as a separate `dequeue` result. Process one, respond, then call `dequeue` again — do not call it in a tight loop between files.
 
-### `choose` prompt format
+### `send(type: "question", choose: [...])` prompt format
 
 - State what arrived: file name, type, size (if available)
 - Offer 2–4 relevant action buttons inferred from the file type
-- Include a free-text escape: follow with `ask` if the user selects "Other"
+- Include a free-text escape: follow with `send(type: "question", ask: "...")` if the user selects "Other"
 
 ### Inferred button sets by file type
 
@@ -359,16 +359,16 @@ Labels must respect `choose` button length limits (≤20 chars for 2-col, ≤35 
 
 ### After the user chooses
 
-- **Read it / parse** → `download_file` → read `text` and report.
-- **Save / Download it** → `download_file` → confirm saved (don't announce full path).
-- **Extract contents** → `download_file` → unzip/extract using available tools.
-- **Apply to project** → `download_file` → read text, ask where/how to apply.
+- **Read it / parse** → `action(type: "download")` → read `text` and report.
+- **Save / Download it** → `action(type: "download")` → confirm saved (don't announce full path).
+- **Extract contents** → `action(type: "download")` → unzip/extract using available tools.
+- **Apply to project** → `action(type: "download")` → read text, ask where/how to apply.
 - **Describe it** → No download. Describe using metadata: name, size, MIME, inferred type.
 - **Nothing** → Acknowledge and move on.
 
 ### Downloading files
 
-Use `download_file` with the `file_id` from the received message. Returns:
+Use `action(type: "download")` with the `file_id` from the received message. Returns:
 
 - `local_path` — absolute path to the downloaded file
 - `file_name` — original filename
@@ -388,16 +388,16 @@ The message store records all inbound and outbound events automatically. The rol
 
 | Tool | Purpose |
 | --- | --- |
-| `dump_session_record(limit?)` | Sends the most recent timeline events as a JSON file to the Telegram chat. Returns `{ message_id, event_count, file_id }`. Default 100, max 1000. |
-| `roll_log` | Rolls the session log — use when you need to rotate/archive the current log file. |
+| `action(type: "log/dump")` | Sends the most recent timeline events as a JSON file to the Telegram chat. Returns `{ message_id, event_count, file_id }`. Default 100, max 1000. |
+| `action(type: "log/roll")` | Rolls the session log — use when you need to rotate/archive the current log file. |
 
 **Key rules:**
 
 - The timeline is **always on** and in-memory only. It does not persist across server restarts.
 - The timeline is a rolling window — oldest events are evicted when the 1000-event limit is reached.
-- `dump_session_record` contains sensitive user content. Only call when the user explicitly requests session history, context recovery, or an audit.
+- `action(type: "log/dump")` contains sensitive user content. Only call when the user explicitly requests session history, context recovery, or an audit.
 - The document caption includes the `file_id` in monospace for crash recovery.
-- Use `download_file` with the returned `file_id` to retrieve the JSON content.
+- Use `action(type: "download")` with the returned `file_id` to retrieve the JSON content.
 
 The `/session` built-in command provides a Telegram-side panel for manual dumps and auto-dump configuration. See [session-recording.md](session-recording.md) for full details.
 
@@ -409,9 +409,9 @@ The `/session` built-in command provides a Telegram-side panel for manual dumps 
 
 After the server has restarted (whether from `shutdown`, a crash, or an external restart), previous sessions are invalidated:
 
-1. **Call `session_start`** to create a new session — old SIDs and PINs no longer work
+1. **Call `action(type: "session/start")`** to create a new session — old SIDs and PINs no longer work
 2. Drain stale messages: call `dequeue(timeout: 0)` in a loop until `pending == 0`
-3. Send a "back online" `notify` describing what changed
+3. Send a "back online" `send(type: "notification")` describing what changed
 4. Return to `dequeue` loop
 
 ---
@@ -425,23 +425,23 @@ When the server shuts down, every active session receives a `service_message` ev
 1. **Stop the dequeue loop immediately.** Do not call `dequeue` again — the server is shutting down.
 2. **Do not retry.** The shutdown message is delivered once.
 3. **Wait for the restart** (~10–60s depending on host config).
-4. **Re-engage via `session_start`.** Previous session IDs and PINs are invalidated on restart.
+4. **Re-engage via `action(type: "session/start")`.** Previous session IDs and PINs are invalidated on restart.
 
 **Governor pre-warning flow** (before a planned restart):
 
-1. Governor calls `notify_shutdown_warning` — sends a courtesy DM to all non-governor sessions so workers can wrap up
-2. Workers receive the DM, finish their current atomic step, and call `close_session` — fires a `session_closed` event back to the governor
+1. Governor calls `action(type: "shutdown/warn")` — sends a courtesy DM to all non-governor sessions so workers can wrap up
+2. Workers receive the DM, finish their current atomic step, and call `action(type: "session/close")` — fires a `session_closed` event back to the governor
 3. Governor watches `dequeue` for `session_closed` events; once all non-governor sessions have closed (or after a grace period), proceed
-4. Governor calls `shutdown` — returns `{ shutting_down: true }` immediately; actual shutdown runs asynchronously
+4. Governor calls `action(type: "shutdown")` — returns `{ shutting_down: true }` immediately; actual shutdown runs asynchronously
 5. Governor calls `dequeue(timeout: 60)` one final time — receives a `shutdown` service event confirming exit; stops looping
-6. Governor waits for the MCP host to relaunch, then reconnects via `session_start(reconnect: true)`
+6. Governor waits for the MCP host to relaunch, then reconnects via `action(type: "session/start", reconnect: true)`
 
-⚠️ **`close_session` must NOT be called by the governor before `shutdown`.** It disconnects the session but leaves the server running.
+⚠️ **`action(type: "session/close")` must NOT be called by the governor before `action(type: "shutdown")`.** It disconnects the session but leaves the server running.
 
-| Tool | Purpose |
+| Action path | Purpose |
 | --- | --- |
-| `notify_shutdown_warning` | Advisory pre-shutdown DM to all other sessions. Does not shut down. |
-| `shutdown` | Clean exit: flushes queues, notifies agents, exits process. |
+| `action(type: "shutdown/warn")` | Advisory pre-shutdown DM to all other sessions. Does not shut down. |
+| `action(type: "shutdown")` | Clean exit: flushes queues, notifies agents, exits process. |
 
 ---
 
@@ -455,7 +455,7 @@ When 2+ agent sessions are active simultaneously, additional rules apply.
 
 ### Session identity
 
-`session_start` returns a `sid` (session ID), your session `name` (if set), and a `fellow_sessions` list of co-active agents.
+`action(type: "session/start")` returns a `sid` (session ID), your session `name` (if set), and a `fellow_sessions` list of co-active agents.
 
 Your outbound messages automatically include a `🤖 YourName` header line — you do not need to add it manually.
 
@@ -478,16 +478,16 @@ Governor mode activates automatically when the second session joins. The lowest-
 
 **For ambiguous messages:**
 
-1. Consider whether the message is clearly meant for a different session. If yes, use `route_message`.
+1. Consider whether the message is clearly meant for a different session. If yes, use `action(type: "message/route")`.
 2. If unclear, handle it yourself — governor is the fallback owner.
 3. Never silently discard an ambiguous message.
 
 ### Governor responsibilities
 
-If you are the governor (`sid` matches `routing_mode.governor_sid` in `session_start` response):
+If you are the governor (`sid` matches `routing_mode.governor_sid` in `action(type: "session/start")` response):
 
 - Own ambiguous operator messages by default.
-- Triage and route to specialist sessions via `route_message` or `send_direct_message`.
+- Triage and route to specialist sessions via `action(type: "message/route")` or `send(type: "direct")`.
 - Coordinate multi-session workflows.
 - Set a topic reflecting your coordinating role.
 
@@ -504,19 +504,19 @@ Bad topics: `Working`, `Agent`, `Session 2`
 
 | Situation | Tool |
 | --- | --- |
-| Forward an operator message to another session | `route_message` |
-| Send a private note to another session | `send_direct_message` |
+| Forward an operator message to another session | `action(type: "message/route")` |
+| Send a private note to another session | `send(type: "direct")` |
 
-**`route_message`** — Re-delivers an existing message to another session's queue. The target sees the original with `routing: "targeted"` and a `routed_by` field (server-injected, cannot be forged).
+**`action(type: "message/route")`** — Re-delivers an existing message to another session's queue. The target sees the original with `routing: "targeted"` and a `routed_by` field (server-injected, cannot be forged).
 
 - Check `fellow_sessions` before routing.
 - Route at most once — do not bounce messages back and forth.
 - Do not route messages you should handle yourself.
 
-**`send_direct_message`** — Sends a new text message directly to another session's queue. The operator never sees it.
+**`send(type: "direct")`** — Sends a new text message directly to another session's queue. The operator never sees it.
 
 Etiquette:
-- DMs are invisible to the operator. Use `notify` when the operator should see the content.
+- DMs are invisible to the operator. Use `send(type: "notification")` when the operator should see the content.
 - DM access is granted automatically in both directions — no manual `request_dm_access` needed.
 - Keep DMs brief — use them for signals and handoffs, not large data transfers.
 
@@ -547,7 +547,7 @@ Slash commands follow the same routing rules as all other operator messages.
 | Single-session mode | Command always goes to the single active session |
 
 **Etiquette:**
-- Prefer the governor-registers-all pattern — only the governor calls `set_commands`. Workers announce capabilities to the governor via DM.
+- Prefer the governor-registers-all pattern — only the governor calls `action(type: "config/commands")`. Workers announce capabilities to the governor via DM.
 - If sessions register independently, use distinct names: `/worker_status`, `/governor_status`.
 - Never silently swallow a command that affects the operator's expectations.
 
@@ -566,7 +566,7 @@ The `dequeue` loop is the agent's heartbeat. If an agent exits the loop without 
 **Agents must never exit the loop except on:**
 
 - A `shutdown` service event (server is restarting)
-- An explicit `close_session` call (graceful shutdown on operator instruction)
+- An explicit `action(type: "session/close")` call (graceful shutdown on operator instruction)
 
 Any other exit — context limit, host timeout, unhandled error — is an unclean stop.
 
@@ -585,7 +585,7 @@ See [`docs/agent-setup.md`](agent-setup.md) for step-by-step installation instru
 
 - The host IDE may terminate the agent conversation after inactivity, a context limit, or any unhandled stop condition.
 - The Telegram session is silently dropped — the operator receives no notification.
-- Pending messages queue up and are delivered to the next agent that calls `session_start`.
+- Pending messages queue up and are delivered to the next agent that calls `action(type: "session/start")`.
 - If another agent is not started promptly, the operator sees silence with no indication the session ended.
 
 The hook is not strictly required for basic use, but strongly recommended for long-lived or unattended sessions.
