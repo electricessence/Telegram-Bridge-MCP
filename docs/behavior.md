@@ -484,7 +484,7 @@ Governor mode activates automatically when the second session joins. The lowest-
 
 ### Governor responsibilities
 
-If you are the governor (`sid` matches `routing_mode.governor_sid` in `session_start` response):
+If you are the governor (`sid` matches `routing_mode.governor_sid` in `action(type: "session/start")` response):
 
 - Own ambiguous operator messages by default.
 - Triage and route to specialist sessions via `action(type: "message/route")` or `send(type: "direct")`.
@@ -585,7 +585,7 @@ See [`docs/agent-setup.md`](agent-setup.md) for step-by-step installation instru
 
 - The host IDE may terminate the agent conversation after inactivity, a context limit, or any unhandled stop condition.
 - The Telegram session is silently dropped — the operator receives no notification.
-- Pending messages queue up and are delivered to the next agent that calls `session_start`.
+- Pending messages queue up and are delivered to the next agent that calls `action(type: "session/start")`.
 - If another agent is not started promptly, the operator sees silence with no indication the session ended.
 
 The hook is not strictly required for basic use, but strongly recommended for long-lived or unattended sessions.

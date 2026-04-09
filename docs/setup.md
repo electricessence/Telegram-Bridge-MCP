@@ -313,7 +313,7 @@ Send `/voice` in your Telegram chat to browse and preview all available voices i
 
 ### Per-Session Voice Override
 
-Agents can set a per-session TTS voice with the `set_voice` MCP tool, overriding the global default without affecting other sessions. Pass an empty string to clear the override and revert to the global default.
+Agents can set a per-session TTS voice with `action(type: "config/voice")`, overriding the global default without affecting other sessions. Pass an empty string to clear the override and revert to the global default.
 
 ---
 
