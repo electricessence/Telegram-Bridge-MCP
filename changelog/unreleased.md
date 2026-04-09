@@ -40,6 +40,7 @@
 - `send_text` — replaced by `send`
 - `send_message` — replaced by `send`
 - `send_text_as_voice` — replaced by `send`
+- `get_agent_guide` — removed; replace with `help` tool and `agent-guide` MCP resource
 
 ## Security
 
@@ -48,5 +49,4 @@
 
 ## Deprecated
 
-- `get_agent_guide` — replaced by `help`; removed
 - All v5 standalone tools (e.g. `send_text`, `ask`, `choose`, `notify`, `edit_message`, `session_start`, etc.) — fully retired; functionality available via `send`, `dequeue`, `help`, and `action`

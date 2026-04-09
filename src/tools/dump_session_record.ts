@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { toError, sendServiceMessage } from "../telegram.js";
 import { requireAuth } from "../session-gate.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
-import { rollLog } from "../local-log.js";
+import { rollLog, flushCurrentLog } from "../local-log.js";
 
 const DESCRIPTION =
   "Triggers a local log roll: the current session event log is finalized and " +
@@ -11,11 +11,12 @@ const DESCRIPTION =
   "Use get_log to read the archived log content. " +
   "Prefer roll_log for new code — this tool is retained for backward compatibility.";
 
-export function handleDumpSessionRecord({ token }: { token: number }) {
+export async function handleDumpSessionRecord({ token }: { token: number }) {
   const _sid = requireAuth(token);
   if (typeof _sid !== "number") return toError(_sid);
 
   try {
+    await flushCurrentLog();
     const archivedFilename = rollLog();
 
     if (archivedFilename) {

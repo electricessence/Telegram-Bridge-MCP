@@ -107,11 +107,11 @@ describe("approve_agent tool", () => {
       expect(result.approved).toBe(true);
     });
 
-    it("returns UNAUTHORIZED when caller is not the governor", async () => {
+    it("returns UNAUTHORIZED_SENDER when caller is not the governor", async () => {
       mocks.getGovernorSid.mockReturnValue(99); // caller SID is 1, governor is 99
       const result = await call({ token: VALID_TOKEN, target_name: "Worker", color: "🟩" });
       expect(isError(result)).toBe(true);
-      expect(errorCode(result)).toBe("UNAUTHORIZED");
+      expect(errorCode(result)).toBe("UNAUTHORIZED_SENDER");
       const parsed = parseResult(result);
       expect(String(parsed.message)).toContain("GOVERNOR_ONLY");
     });

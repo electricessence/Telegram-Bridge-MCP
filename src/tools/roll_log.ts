@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { toResult, toError, sendServiceMessage } from "../telegram.js";
-import { rollLog } from "../local-log.js";
+import { rollLog, flushCurrentLog } from "../local-log.js";
 import { requireAuth } from "../session-gate.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
 
@@ -11,10 +11,11 @@ const DESCRIPTION =
   "Log content never transits Telegram — use get_log to read a log file. " +
   "No separate session selection is required — any caller with a valid authenticated token can trigger a roll.";
 
-export function handleRollLog({ token }: { token: number }) {
+export async function handleRollLog({ token }: { token: number }) {
   const _sid = requireAuth(token);
   if (typeof _sid !== "number") return toError(_sid);
   try {
+    await flushCurrentLog();
     const archivedFilename = rollLog();
 
     if (archivedFilename) {
