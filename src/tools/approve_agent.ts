@@ -29,7 +29,7 @@ export function handleApproveAgent({ token, target_name, color }: { token: numbe
   const governorSid = getGovernorSid();
   if (governorSid !== 0 && sid !== governorSid) {
     return toError({
-      code: "UNAUTHORIZED",
+      code: "UNAUTHORIZED_SENDER",
       message:
         `GOVERNOR_ONLY: Only the governor session (SID ${governorSid}) can approve agents.`,
     });

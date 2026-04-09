@@ -36,6 +36,7 @@
 - `send_text` — replaced by `send`
 - `send_message` — replaced by `send`
 - `send_text_as_voice` — replaced by `send`
+- `get_agent_guide` — removed; replace with `help` tool and `agent-guide` MCP resource
 
 ## Security
 
@@ -43,5 +44,3 @@
 - `buildDenyPatternHook` now escapes all regex metacharacters in glob patterns (including `?`, `-`, `#`, whitespace) before compiling, preventing pattern bypass via metacharacter injection
 
 ## Deprecated
-
-- `get_agent_guide` — replaced by `help`; still registered but returns stub response
