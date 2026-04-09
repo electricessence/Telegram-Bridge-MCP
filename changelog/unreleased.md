@@ -36,6 +36,8 @@
 
 ## Fixed
 
+- `send(type: "animation", timeout: N)` — `timeout` param was silently dropped because the schema used `animation_timeout`; animation ran for the default 600 s instead of the specified value. Renamed schema param to `timeout`.
+
 ## Removed
 
 - `send_text` — replaced by `send`
