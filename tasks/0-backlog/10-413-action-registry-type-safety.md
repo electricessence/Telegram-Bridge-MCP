@@ -1,7 +1,7 @@
 ---
 Created: 2026-04-09
 Status: Backlog
-Host: services.cortex.lan
+Host: services
 Priority: 10-413
 Source: Copilot PR review (PR #126, round 4)
 ---

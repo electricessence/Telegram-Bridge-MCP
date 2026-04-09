@@ -85,7 +85,7 @@ server.on('error', (err) => {
 ## Files to Modify
 
 - `src/index.ts` — add exclusive listen + error handler
-- `tools/ensure-telegram-mcp.ps1` — fix probe request format (cortex.lan repo)
+- `tools/ensure-telegram-mcp.ps1` — fix probe request format (bridge repo)
 
 ## Scope
 
@@ -97,7 +97,7 @@ Small — under 20 lines of server code changes. Probe fix is a few lines of Pow
 
 - `src/index.ts` (Telegram MCP repo, branch `10-336`, commit `5363675`): Replaced `app.listen(port, host, cb)` with options-object form using `exclusive: true` (sets `SO_EXCLUSIVEADDRUSE` on Windows). Added `server.on('error')` handler — logs `[fatal] Port already in use` and exits with code 1 on `EADDRINUSE`. Previously, a second instance would bind silently without error.
 
-- `tools/ensure-telegram-mcp.ps1` (cortex.lan repo, branch `10-336`, commit `e711ad1`): Replaced `Get-NetTCPConnection` port probe with a `TcpClient` connect attempt. `Get-NetTCPConnection` requires elevation on some systems and can return stale state; `TcpClient` is reliable and unprivileged.
+- `tools/ensure-telegram-mcp.ps1` (bridge repo, branch `10-336`, commit `e711ad1`): Replaced `Get-NetTCPConnection` port probe with a `TcpClient` connect attempt. `Get-NetTCPConnection` requires elevation on some systems and can return stale state; `TcpClient` is reliable and unprivileged.
 
 **Findings:** No code review findings. Pre-existing test failures (8) confirmed on dev branch before any changes — not regressions.
 
