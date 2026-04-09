@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   getSessionSpeed: vi.fn((): number | null => null),
   splitMessage: vi.fn((t: string) => [t]),
   markdownToV2: vi.fn((t: string) => t),
+  handleShowAnimation: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -70,6 +71,10 @@ vi.mock("../session-manager.js", () => ({
   activeSessionCount: () => mocks.activeSessionCount(),
   getActiveSession: () => mocks.getActiveSession(),
   validateSession: (sid: number, pin: number) => mocks.validateSession(sid, pin),
+}));
+
+vi.mock("./show_animation.js", () => ({
+  handleShowAnimation: (args: unknown) => mocks.handleShowAnimation(args),
 }));
 
 import { register } from "./send.js";
@@ -363,5 +368,16 @@ describe("send type routing", () => {
     const result = await call({ type: "question", token: TOKEN });
     expect(isError(result)).toBe(true);
     expect(errorCode(result)).toBe("MISSING_QUESTION_TYPE");
+  });
+
+  // ---------------------------------------------------------------------------
+  // 10-423 regression: animation timeout routing
+  // ---------------------------------------------------------------------------
+  it("type: animation — routes timeout param to handleShowAnimation (not silently dropped)", async () => {
+    mocks.handleShowAnimation.mockResolvedValue({ content: [{ type: "text", text: '{"message_id":99}' }] });
+    await call({ type: "animation", preset: "working", timeout: 5, token: TOKEN });
+    expect(mocks.handleShowAnimation).toHaveBeenCalledOnce();
+    const called = mocks.handleShowAnimation.mock.calls[0][0] as Record<string, unknown>;
+    expect(called.timeout).toBe(5);
   });
 });
