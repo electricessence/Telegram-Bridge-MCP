@@ -33,6 +33,7 @@
 - Tool descriptions tightened across all registered tools to minimize per-call context usage
 - Shutdown sequence now calls `rollLog()` to archive the active session log instead of the no-op `flushCurrentLog()`
 - `get_log` list mode response now includes `current_log` field identifying the active session log filename
+- `action(type: "chat/info")` — new action path returning chat metadata (id, type, title, username, first/last name, description) with a user confirmation prompt; previously accessible only via the v5 `get_chat` standalone tool
 
 ## Fixed
 
