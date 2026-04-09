@@ -34,3 +34,18 @@ mechanism to retroactively correct the color after `session_start`.
 - [ ] Current color is preserved if hint is already correct
 - [ ] `Worker.json`, `Curator.json`, `Overseer.json` all have `color_hint`
 - [ ] Tests cover: hint applied, hint blocked by conflict, hint already correct
+
+## Completion
+
+**Commit:** `41049a2` on branch `10-433`
+
+**Changes:**
+- `src/profile-store.ts`: `color_hint?: string` added to `ProfileData`
+- `src/session-manager.ts`: `setSessionColor(sid, color)` — skips if conflict or already correct
+- `src/tools/apply-profile.ts`: imports `setSessionColor`; handles `color_hint` in `applyProfile`
+- `profiles/Worker.json`: `"color_hint": "🟨"`
+- `profiles/Curator.json`: `"color_hint": "🟦"`
+- `profiles/Overseer.json`: `"color_hint": "🟦"`
+- `src/tools/apply-profile.test.ts`: 3 new regression tests
+
+**Build:** Clean · **Tests:** 2165/2165 passing
