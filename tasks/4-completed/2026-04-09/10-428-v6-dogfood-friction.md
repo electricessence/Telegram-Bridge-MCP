@@ -16,12 +16,20 @@ harder to use correctly.
 
 ## Items
 
-### 1. confirm buttons say "OK/Cancel" not "Yes/No" (finding 6)
+### 1. confirm presets via deep paths (finding 6) — OPERATOR DESIGNED
 
-Confirm prompts should default to Yes/No. Operator wants:
-- `confirm/yn` preset (Yes/No) — default
-- `confirm/ok` preset (OK/Cancel)
-- Custom labels via params
+**Design principle: deep paths as presets.** The type/path slug defines the
+behavior. No params needed for common cases.
+
+| Path | Buttons | Analogy |
+| --- | --- | --- |
+| `confirm/ok` | OK (single) | JS `alert()` — acknowledge only |
+| `confirm/ok-cancel` | OK, Cancel | JS `confirm()` — approve/reject |
+| `confirm/yn` | Yes, No | Boolean decision |
+| `confirm` (bare) | Custom | Must specify button labels |
+
+This pattern extends to other tools: any deep path can be a preset that
+eliminates parameter boilerplate. Keep the slug self-documenting.
 
 ### 2. choose param inconsistency (finding 14)
 
