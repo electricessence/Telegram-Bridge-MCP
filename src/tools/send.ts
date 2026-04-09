@@ -392,7 +392,7 @@ export function register(server: McpServer) {
             }, signal);
           }
           if (args.choose !== undefined || args.options !== undefined) {
-            const chooseButtons = args.choose ?? args.options;
+            const chooseButtons = (args.choose ?? args.options)!;
             if (!args.text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "question" with choose requires a "text" param (prompt shown above buttons).', hint: "Call help(topic: 'send') for question param requirements." });
             return handleChoose({
               text: args.text,
