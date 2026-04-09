@@ -6,6 +6,7 @@ import {
   setSessionDefault,
   resetSessionDefault,
   registerPreset,
+  getPreset,
   getDefaultFrames,
   listPresets,
   listBuiltinPresets,
@@ -42,7 +43,7 @@ export function handleSetDefaultAnimation({ frames, name, preset, reset, token }
   }
 
   // No-args: query mode
-  if (!frames) {
+  if (!frames && !presetName) {
     return toResult({
       default_frames: [...getDefaultFrames(_sid)],
       session_presets: listPresets(_sid),
@@ -50,9 +51,25 @@ export function handleSetDefaultAnimation({ frames, name, preset, reset, token }
     });
   }
 
+  // Set default from existing preset (preset name provided, no explicit frames)
+  if (presetName && !frames) {
+    const resolvedFrames = getPreset(_sid, presetName);
+    if (!resolvedFrames) {
+      const available = [...listPresets(_sid), ...listBuiltinPresets()].join(", ") || "none";
+      return toError(`Unknown preset: "${presetName}". Available presets: ${available}`);
+    }
+    setSessionDefault(_sid, resolvedFrames);
+    return toResult({
+      action: "default_set",
+      preset: presetName,
+      default_frames: [...resolvedFrames],
+      presets: listPresets(_sid),
+    });
+  }
+
   // Register named preset
   if (presetName) {
-    registerPreset(_sid, presetName, frames);
+    registerPreset(_sid, presetName, frames!);
     return toResult({
       action: "preset_registered",
       name: presetName,
@@ -62,7 +79,7 @@ export function handleSetDefaultAnimation({ frames, name, preset, reset, token }
   }
 
   // Set session default
-  setSessionDefault(_sid, frames);
+  setSessionDefault(_sid, frames!);
   return toResult({
     action: "default_set",
     default_frames: frames,
@@ -85,6 +102,10 @@ export function register(server: McpServer) {
           .string()
           .optional()
           .describe("Register frames as a named preset with this key. If omitted, frames are set as the session default."),
+        preset: z
+          .string()
+          .optional()
+          .describe("Set the session default from an existing preset by name (e.g. 'working'). Omit frames when using this."),
         reset: z
           .boolean()
           .default(false)
