@@ -547,7 +547,7 @@ Slash commands follow the same routing rules as all other operator messages.
 | Single-session mode | Command always goes to the single active session |
 
 **Etiquette:**
-- Prefer the governor-registers-all pattern — only the governor calls `set_commands`. Workers announce capabilities to the governor via DM.
+- Prefer the governor-registers-all pattern — only the governor calls `action(type: "config/commands")`. Workers announce capabilities to the governor via DM.
 - If sessions register independently, use distinct names: `/worker_status`, `/governor_status`.
 - Never silently swallow a command that affects the operator's expectations.
 

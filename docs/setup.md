@@ -363,7 +363,7 @@ Agents can set a per-session TTS voice with `action(type: "config/voice")`, over
 - Messages can only be edited within 48 hours of sending.
 - Only the bot's own messages can be edited.
 
-### `send_new_checklist` shows no change
+### `send(type: "checklist")` shows no change
 
 - Telegram silently ignores edits where the text is identical to the current content.
 - This is not an error — the message is already up to date.
