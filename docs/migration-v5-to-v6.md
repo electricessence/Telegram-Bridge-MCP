@@ -32,7 +32,7 @@ The four v6 tools:
 | `notify(text: "...", severity: "info")` | `send(type: "notification", text: "...", severity: "info")` |
 | `send_file(file: "...")` | `send(type: "file", file: "...")` |
 | `send_choice(text: "...", options: [...])` | `send(type: "choice", text: "...", options: [...])` |
-| `send_direct_message(target_sid: 1, text: "...")` | `send(type: "direct", target_sid: 1, text: "...")` |
+| `send_direct_message(target_sid: 1, text: "...")` | `send(type: "dm", target_sid: 1, text: "...")` |
 | `append_text(message_id: 1, text: "...")` | `send(type: "append", message_id: 1, text: "...")` |
 | `show_animation(frames: [...])` | `send(type: "animation", frames: [...])` |
 | `send_new_checklist(title: "...", steps: [...])` | `send(type: "checklist", title: "...", steps: [...])` |
@@ -267,8 +267,10 @@ send_direct_message(target_sid: 2, text: "Task ready for pickup")
 **v6:**
 
 ```
-send(type: "direct", target_sid: 2, text: "Task ready for pickup")
+send(type: "dm", target_sid: 2, text: "Task ready for pickup")
 ```
+
+> **Note:** `"direct"` still works as an alias for `"dm"` for backward compatibility.
 
 ---
 

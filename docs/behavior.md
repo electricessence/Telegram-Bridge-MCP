@@ -487,7 +487,7 @@ Governor mode activates automatically when the second session joins. The lowest-
 If you are the governor (`sid` matches `routing_mode.governor_sid` in `action(type: "session/start")` response):
 
 - Own ambiguous operator messages by default.
-- Triage and route to specialist sessions via `action(type: "message/route")` or `send(type: "direct")`.
+- Triage and route to specialist sessions via `action(type: "message/route")` or `send(type: "dm")`.
 - Coordinate multi-session workflows.
 - Set a topic reflecting your coordinating role.
 
@@ -505,7 +505,7 @@ Bad topics: `Working`, `Agent`, `Session 2`
 | Situation | Tool |
 | --- | --- |
 | Forward an operator message to another session | `action(type: "message/route")` |
-| Send a private note to another session | `send(type: "direct")` |
+| Send a private note to another session | `send(type: "dm")` |
 
 **`action(type: "message/route")`** — Re-delivers an existing message to another session's queue. The target sees the original with `routing: "targeted"` and a `routed_by` field (server-injected, cannot be forged).
 
@@ -513,7 +513,7 @@ Bad topics: `Working`, `Agent`, `Session 2`
 - Route at most once — do not bounce messages back and forth.
 - Do not route messages you should handle yourself.
 
-**`send(type: "direct")`** — Sends a new text message directly to another session's queue. The operator never sees it.
+**`send(type: "dm")`** (alias: `"direct"` also accepted) — Sends a new text message directly to another session's queue. The operator never sees it.
 
 Etiquette:
 - DMs are invisible to the operator. Use `send(type: "notification")` when the operator should see the content.

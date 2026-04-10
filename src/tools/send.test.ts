@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   markdownToV2: vi.fn((t: string) => t),
   handleShowAnimation: vi.fn(),
   handleSendNewProgress: vi.fn(),
+  handleSendDirectMessage: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -80,6 +81,10 @@ vi.mock("./show_animation.js", () => ({
 
 vi.mock("./send_new_progress.js", () => ({
   handleSendNewProgress: (args: unknown) => mocks.handleSendNewProgress(args),
+}));
+
+vi.mock("./send_direct_message.js", () => ({
+  handleSendDirectMessage: (args: unknown) => mocks.handleSendDirectMessage(args),
 }));
 
 import { register } from "./send.js";
@@ -341,10 +346,29 @@ describe("send type routing", () => {
     expect(errorCode(result)).toBe("MISSING_PARAM");
   });
 
-  it("type: direct without target_sid returns MISSING_PARAM", async () => {
+  it("type: dm without target_sid returns MISSING_PARAM", async () => {
+    const result = await call({ type: "dm", text: "hi", token: TOKEN });
+    expect(isError(result)).toBe(true);
+    expect(errorCode(result)).toBe("MISSING_PARAM");
+  });
+
+  it("type: direct without target_sid returns MISSING_PARAM (backward-compat alias)", async () => {
     const result = await call({ type: "direct", text: "hi", token: TOKEN });
     expect(isError(result)).toBe(true);
     expect(errorCode(result)).toBe("MISSING_PARAM");
+  });
+
+  it('type: "dm" without text returns MISSING_PARAM', async () => {
+    const result = await call({ type: "dm", target_sid: 99, token: TOKEN });
+    expect(isError(result)).toBe(true);
+    expect(errorCode(result)).toBe("MISSING_PARAM");
+  });
+
+  it('type: "dm" with target_sid and text succeeds (happy path)', async () => {
+    mocks.handleSendDirectMessage.mockResolvedValue({ content: [{ type: "text", text: '{"ok":true}' }] });
+    const result = await call({ type: "dm", target_sid: 99, text: "hello", token: TOKEN });
+    expect(isError(result)).toBe(false);
+    expect(mocks.handleSendDirectMessage).toHaveBeenCalledOnce();
   });
 
   it("type: append without message_id returns MISSING_PARAM", async () => {

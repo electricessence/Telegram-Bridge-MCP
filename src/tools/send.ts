@@ -55,8 +55,11 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-const SEND_TYPES = ["text", "file", "notification", "choice", "direct", "append", "animation", "checklist", "progress", "question"] as const;
+const SEND_TYPES = ["text", "file", "notification", "choice", "dm", "append", "animation", "checklist", "progress", "question"] as const;
 type SendType = (typeof SEND_TYPES)[number];
+
+/** Backward-compat aliases — accepted but not advertised in discovery or error messages. */
+const SEND_ALIASES: readonly string[] = ["direct"];
 
 const DESCRIPTION =
   "Send a message as text, audio (TTS), or both. " +
@@ -90,7 +93,7 @@ export function register(server: McpServer) {
         type: z
           .string()
           .optional()
-          .describe('Emission mode: "text" (default), "file", "notification", "choice", "direct", "append", "animation", "checklist", "progress", "question". Omit all args to list types.'),
+          .describe('Emission mode: "text" (default), "file", "notification", "choice", "dm", "append", "animation", "checklist", "progress", "question". Omit all args to list types.'),
         // ── text / voice ───────────────────────────────────────────────────
         text: z
           .string()
@@ -122,7 +125,7 @@ export function register(server: McpServer) {
           .describe("Severity level for notifications"),
         message: z.string().optional().describe("Alias for text in notification mode"),
         // ── direct ─────────────────────────────────────────────────────────
-        target_sid: z.number().int().optional().describe("Target session ID (for type: \"direct\")"),
+        target_sid: z.number().int().optional().describe("Target session ID (for type: \"dm\")"),
         // ── append ─────────────────────────────────────────────────────────
         message_id: z.number().int().optional().describe("Message ID to append to (for type: \"append\")"),
         separator: z.string().default("\n").describe("Separator for append mode"),
@@ -178,7 +181,7 @@ export function register(server: McpServer) {
       }
 
       // Validate type against the known enum before entering the switch
-      if (type !== undefined && !(SEND_TYPES as readonly string[]).includes(type)) {
+      if (type !== undefined && !(SEND_TYPES as readonly string[]).includes(type) && !SEND_ALIASES.includes(type)) {
         const suggestion = findClosestMatch(type, SEND_TYPES);
         return toError({
           code: "UNKNOWN_TYPE" as const,
@@ -189,7 +192,10 @@ export function register(server: McpServer) {
         });
       }
 
-      switch ((type as SendType | undefined) ?? ("text" as SendType)) {
+      // Normalize backward-compat aliases to canonical types
+      const resolvedType: SendType = type === "direct" ? "dm" : ((type as SendType | undefined) ?? "text");
+
+      switch (resolvedType) {
         case "text": {
           if (!text && !audio) {
             return toError({ code: "MISSING_CONTENT" as const, message: "At least one of 'text' or 'audio' is required.", hint: "Call help(topic: 'send') for usage. Both text and audio are optional individually but at least one is required." });
@@ -337,9 +343,9 @@ export function register(server: McpServer) {
             token: args.token,
           });
 
-        case "direct":
-          if (!args.target_sid) return toError({ code: "MISSING_PARAM" as const, message: 'type: "direct" requires a "target_sid" param.', hint: "Call help(topic: 'send') for the required params for this type." });
-          if (!args.text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "direct" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
+        case "dm":
+          if (!args.target_sid) return toError({ code: "MISSING_PARAM" as const, message: 'type: "dm" requires a "target_sid" param.', hint: "Call help(topic: 'send') for the required params for this type." });
+          if (!args.text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "dm" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
           return handleSendDirectMessage({ token: args.token, target_sid: args.target_sid, text: args.text });
 
         case "append":
@@ -429,7 +435,7 @@ export function register(server: McpServer) {
         default:
           // This path is unreachable at runtime — unknown types are caught above
           // before the switch. TypeScript exhaustiveness check only.
-          return toError({ code: "UNKNOWN_TYPE" as const, message: `Unknown type: "${type as string}".` });
+          return toError({ code: "UNKNOWN_TYPE" as const, message: `Unknown type: "${resolvedType as string}".` });
       }
     },
   );
