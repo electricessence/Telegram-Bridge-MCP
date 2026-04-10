@@ -18,6 +18,7 @@ This task's core work was completed as part of the v6 API consolidation effort (
 
 ---
 
+**Status:** Superseded
 **Priority:** 10 (critical)
 **Scope:** `src/tools/send.ts`, `src/tools/confirm.ts`, `src/tools/choose.ts`, docs
 **Branch:** `dev`
@@ -36,13 +37,13 @@ Rename the `voice` parameter to `audio` across the send API surface:
 ### Parameter changes
 
 **Before:**
-```
+```text
 send(text: "caption", voice: "spoken content")
 send(text: "caption", voice: { text: "spoken", voice: "am_onyx", speed: 1.1 })
 ```
 
 **After:**
-```
+```text
 send(text: "caption", audio: "spoken content")
 send(text: "caption", audio: { text: "spoken", voice: "am_onyx", speed: 1.1 })
 ```

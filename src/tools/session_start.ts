@@ -185,7 +185,7 @@ const DESCRIPTION =
   "Returns { token, sid, pin, sessions_active, action, pending } so " +
   "the agent knows its identity and how to proceed. " +
   "Save your token — it encodes both sid and pin as a single integer (sid * 1_000_000 + pin). " +
-  "Call after get_agent_guide and get_me during session setup.";
+  "Call help() first to load the API guide, then call session_start to join.";
 
 export async function handleSessionStart({ name, reconnect, color }: { name: string; reconnect: boolean; color?: string }) {
       const chatId = resolveChat();
@@ -284,10 +284,10 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
               const roleNote = isGovernorReconnect
                 ? `You are the governor (SID ${existing.sid}). ` +
                   `Ambiguous messages will be routed to you. ` +
-                  `Call get_agent_guide for trust and routing guidance.`
+                  `Call help(topic: 'guide') for trust and routing guidance.`
                 : `You are SID ${existing.sid}. ${governorLabel} is your first escalation ` +
                   `point. Ambiguous messages go to them. ` +
-                  `Call get_agent_guide for trust and routing guidance.`;
+                  `Call help(topic: 'guide') for trust and routing guidance.`;
               deliverServiceMessage(
                 existing.sid,
                 `Reconnect authorized. Session state preserved. ${roleNote}`,
@@ -455,8 +455,8 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
           // Notify the new session of its role
           const newIsGovernor = session.sid === governorSid;
           const roleNote = newIsGovernor
-            ? `You are the governor (SID ${session.sid}). Ambiguous messages will be routed to you. Call get_agent_guide for trust and routing guidance.`
-            : `You are SID ${session.sid}. ${governorLabel} is your first escalation point. Ambiguous messages go to them. Call get_agent_guide for trust and routing guidance.`;
+            ? `You are the governor (SID ${session.sid}). Ambiguous messages will be routed to you. Call help(topic: 'guide') for trust and routing guidance.`
+            : `You are SID ${session.sid}. ${governorLabel} is your first escalation point. Ambiguous messages go to them. Call help(topic: 'guide') for trust and routing guidance.`;
           deliverServiceMessage(
             session.sid,
             roleNote,
