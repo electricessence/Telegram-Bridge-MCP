@@ -30,7 +30,7 @@ announce ready → dequeue (loop) → on message:
 6. **Announce before major actions** (`send` or `notify`). Require `confirm` for destructive/irreversible ones.
 7. **`dequeue` again** after every task, timeout, or error — loop forever.
 8. **Never assume silence means approval.**
-9. **Voice by default.** Use `send(voice: ...)` for conversational replies, explanations, and status updates. Reserve `send(text: ...)` for structured content that benefits from Markdown formatting (tables, code blocks, bulleted lists, task boards). When in doubt, use voice.
+9. **Voice by default.** Use `send(audio: ...)` for conversational replies, explanations, and status updates. Reserve `send(text: ...)` for structured content that benefits from Markdown formatting (tables, code blocks, bulleted lists, task boards). When in doubt, use voice.
 
 ## Tool Selection
 
@@ -45,7 +45,7 @@ announce ready → dequeue (loop) → on message:
 | Executing / working | `show_animation` (working preset) |
 | Response is imminent | `show_typing` |
 | Cancel an animation | `cancel_animation` |
-| Conversational reply | `send(voice: ...)` — **default for most responses** |
+| Conversational reply | `send(audio: ...)` — **default for most responses** |
 | Structured result / explanation | `send(text: ...)` (Markdown) — tables, code, lists |
 | Build / deploy / error event | `notify` with severity |
 | Multi-step task (3+) | `send_new_checklist` + `pin_message` |
