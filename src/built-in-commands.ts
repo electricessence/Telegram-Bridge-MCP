@@ -239,7 +239,6 @@ export const BUILT_IN_COMMANDS = [
   { command: "shutdown", description: "Shut down the MCP server" },
   { command: "approve", description: "Pre-approve session requests" },
   { command: "session", description: "Manage active sessions" },
-  { command: "log", description: "Session recording controls" },
 ] as const;
 
 const _builtInCommandNames = new Set<string>([...BUILT_IN_COMMANDS.map(c => c.command), "primary"]);
@@ -334,7 +333,7 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
         return true;
       }
       if (raw === "log") {
-        await handleLogCommand();
+        await handleLoggingCommand();
         return true;
       }
     }
@@ -1242,12 +1241,14 @@ function buildLoggingPanel(): { text: string; keyboard: { text: string; callback
   }
 
   // Logging ON state
-  const flushLabel = `Flush (${archived.length})`;
+  const clearLabel = archived.length > 0 ? `🗑 Clear (${archived.length})` : "🗑 Clear";
   const keyboard = [
     [
-      { text: "Dump", callback_data: "logging:dump" },
+      { text: "💾 Save log", callback_data: "logging:dump" },
       { text: "Off", callback_data: "logging:off" },
-      { text: flushLabel, callback_data: "logging:flush" },
+    ],
+    [
+      { text: clearLabel, callback_data: "logging:flush" },
       { text: "✖ Dismiss", callback_data: "logging:dismiss" },
     ],
   ];
