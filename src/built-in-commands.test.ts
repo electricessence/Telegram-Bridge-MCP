@@ -1181,7 +1181,7 @@ describe("built-in-commands", () => {
       expect(mocks.editMessageText).toHaveBeenCalledWith(
         123,
         2010,
-        expect.stringContaining("Delegation Enabled"),
+        expect.stringContaining("Governor Enabled"),
         expect.objectContaining({ _skipHeader: true }),
       );
     });
@@ -1197,7 +1197,7 @@ describe("built-in-commands", () => {
       expect(mocks.editMessageText).toHaveBeenCalledWith(
         123,
         2011,
-        expect.stringContaining("Delegation Disabled"),
+        expect.stringContaining("Governor Disabled"),
         expect.objectContaining({ _skipHeader: true }),
       );
       setDelegationEnabled(false);

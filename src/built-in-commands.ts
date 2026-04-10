@@ -1036,14 +1036,14 @@ async function handleApproveCommand(): Promise<void> {
   } else if (state.mode === "timed" && state.expiresAt !== undefined) {
     const remaining = Math.ceil((state.expiresAt - Date.now()) / 1000);
     if (remaining <= 0) {
-      statusLine = "⚪ Auto-approve: off";
+      statusLine = "⚪ Governor-controlled";
     } else {
       const mins = Math.floor(remaining / 60);
       const secs = remaining % 60;
       statusLine = `🟢 Auto-approve active (${mins}m ${secs}s remaining)`;
     }
   } else {
-    statusLine = "⚪ Auto-approve: off";
+    statusLine = "⚪ Governor-controlled";
   }
 
   let msg: { message_id: number };
@@ -1056,12 +1056,12 @@ async function handleApproveCommand(): Promise<void> {
           [
             { text: "🟡 Next request", callback_data: "approve:one" },
             { text: "🟢 10 minutes",   callback_data: "approve:timed" },
-            { text: "✖ Dismiss",       callback_data: "approve:dismiss" },
           ],
           [
             isDelegationEnabled()
-              ? { text: "🤝 Disable Delegation", callback_data: "approve:delegate:off" }
-              : { text: "🤝 Enable Delegation",  callback_data: "approve:delegate:on" },
+              ? { text: "⬇ Disable Governor", callback_data: "approve:delegate:off" }
+              : { text: "⬆ Enable Governor",  callback_data: "approve:delegate:on" },
+            { text: "✖ Dismiss",       callback_data: "approve:dismiss" },
           ],
         ],
       },
@@ -1102,13 +1102,13 @@ async function handleApproveCallback(
   } else if (data === "approve:delegate:on") {
     setDelegationEnabled(true);
     await api.editMessageText(chatId, panelMsgId,
-      "*Session Auto-Approve → Delegation Enabled*",
+      "*Session Auto-Approve → Governor Enabled*",
       { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
     ).catch(() => {/* non-fatal */});
   } else if (data === "approve:delegate:off") {
     setDelegationEnabled(false);
     await api.editMessageText(chatId, panelMsgId,
-      "*Session Auto-Approve → Delegation Disabled*",
+      "*Session Auto-Approve → Governor Disabled*",
       { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
     ).catch(() => {/* non-fatal */});
   } else {
