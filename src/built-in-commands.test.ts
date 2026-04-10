@@ -228,7 +228,6 @@ describe("built-in-commands", () => {
       { command: "shutdown", description: "Shut down the MCP server" },
       { command: "approve", description: "Pre-approve session requests" },
       { command: "session", description: "Manage active sessions" },
-      { command: "log", description: "Session recording controls" },
     ]);
   });
 
@@ -1452,42 +1451,15 @@ describe("built-in-commands", () => {
   // -- /log command ---------------------------------------------------------
 
   describe("/log command", () => {
-    it("handleLogCommand — sends panel, _activePanels maps to 'log'", async () => {
-      mocks.sendMessage.mockResolvedValueOnce({ message_id: 4000 });
+    it("routes /log to the logging panel (same as /logging)", async () => {
+      mocks.listSessions.mockReturnValue([]);
       const result = await handleIfBuiltIn(cmdUpdate("/log"));
       expect(result).toBe(true);
-      expect(mocks.sendMessage).toHaveBeenCalledWith(
-        123,
-        expect.stringContaining("Session Recording"),
-        expect.objectContaining({
-          reply_markup: expect.objectContaining({
-            inline_keyboard: expect.any(Array),
-          }),
-        }),
-      );
-      expect(isBuiltInPanelQuery(callbackUpdate(4000, "log:dump"))).toBe(true);
-    });
-
-    it("log:dump callback — calls doTimelineDump (rollLog) and edits message", async () => {
-      mocks.rollLog.mockReturnValue("2025-04-06T120000.json");
-      mocks.sendMessage.mockResolvedValueOnce({ message_id: 4010 });
-      await handleIfBuiltIn(cmdUpdate("/log"));
-      mocks.editMessageText.mockResolvedValue(true);
-      await handleIfBuiltIn(callbackUpdate(4010, "log:dump"));
-      expect(mocks.rollLog).toHaveBeenCalled();
-      expect(mocks.editMessageText).toHaveBeenCalledWith(
-        123,
-        4010,
-        expect.stringContaining("dumped"),
-        expect.any(Object),
-      );
-    });
-
-    it("log:cancel callback — deletes panel message", async () => {
-      mocks.sendMessage.mockResolvedValueOnce({ message_id: 4020 });
-      await handleIfBuiltIn(cmdUpdate("/log"));
-      await handleIfBuiltIn(callbackUpdate(4020, "log:cancel"));
-      expect(mocks.deleteMessage).toHaveBeenCalledWith(123, 4020);
+      // Should call sendMessage with the logging panel content
+      expect(mocks.sendMessage).toHaveBeenCalled();
+      const args = mocks.sendMessage.mock.calls[0];
+      const text: string = args[1];
+      expect(text).toContain("Logging");
     });
   });
 
