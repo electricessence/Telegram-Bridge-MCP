@@ -15,7 +15,7 @@ import { fireStartupReminders, buildReminderEvent } from "../reminder-state.js";
 import { registerPendingApproval, clearPendingApproval, getPendingApproval } from "../agent-approval.js";
 import type { ApprovalDecision } from "../agent-approval.js";
 
-const APPROVAL_TIMEOUT_MS = 60_000;
+const APPROVAL_TIMEOUT_MS = 120_000;
 const APPROVAL_NO = "approve_no";
 const APPROVE_PREFIX = "approve_";
 const RECONNECT_YES = "reconnect_yes";
