@@ -73,7 +73,7 @@ async function requestApproval(
   const text = `🤖 *${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:`;
   const availableColors = getAvailableColors(colorHint);
   if (checkAndConsumeAutoApprove()) {
-    return { approved: true, color: availableColors[0] ?? COLOR_PALETTE[0], forceColor: true };
+    return { approved: true, color: colorHint ?? availableColors[0] ?? COLOR_PALETTE[0], forceColor: true };
   }
   const sent = await getApi().sendMessage(chatId, text, {
     parse_mode: "MarkdownV2",
