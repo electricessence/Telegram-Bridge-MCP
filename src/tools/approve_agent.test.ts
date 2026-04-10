@@ -219,35 +219,35 @@ describe("approve_agent tool", () => {
       expect(result.color).toBe("🟦");
     });
 
-    it("passes colorHint to getAvailableColors so an in-use hint is not selected directly", async () => {
+    it("uses colorHint directly when no explicit color is given", async () => {
       mocks.getPendingApproval.mockReturnValue({
         name: "Worker",
         resolve: mockResolve,
         registeredAt: Date.now(),
         colorHint: "🟩",
       });
-      mocks.getAvailableColors.mockReturnValue(["🟧", "🟩"]);
       const result = parseResult(await call({ token: VALID_TOKEN, target_name: "Worker" }));
-      expect(mocks.getAvailableColors).toHaveBeenCalledWith("🟩");
-      expect(result.color).toBe("🟧");
+      expect(result.color).toBe("🟩");
+      expect(mocks.getAvailableColors).not.toHaveBeenCalled();
+      expect(mockResolve).toHaveBeenCalledWith({ approved: true, color: "🟩", forceColor: true });
     });
 
-    it("does not use an in-use colorHint — defers to getAvailableColors result", async () => {
-      // colorHint is 🟩 but 🟩 is in use, so getAvailableColors promotes another color first
+    it("uses colorHint directly even if that color is already in use by another session", async () => {
       mocks.getPendingApproval.mockReturnValue({
         name: "Worker",
         resolve: mockResolve,
         registeredAt: Date.now(),
         colorHint: "🟩",
       });
-      // Simulate 🟩 in-use: getAvailableColors returns available colors with 🟩 at the end
+      // Simulate 🟩 in-use — should NOT affect the resolved color
       mocks.getAvailableColors.mockReturnValue(["🟦", "🟧", "🟩"]);
       const result = parseResult(await call({ token: VALID_TOKEN, target_name: "Worker" }));
-      expect(result.color).toBe("🟦");
+      expect(result.color).toBe("🟩");
+      expect(mocks.getAvailableColors).not.toHaveBeenCalled();
     });
 
     it("passes undefined colorHint to getAvailableColors when pending has no hint", async () => {
-      // pending.colorHint is undefined — getAvailableColors should still be called (with undefined)
+      // pending.colorHint is undefined — getAvailableColors should still be called (with no args)
       mocks.getPendingApproval.mockReturnValue({
         name: "Worker",
         resolve: mockResolve,
@@ -256,8 +256,31 @@ describe("approve_agent tool", () => {
       });
       mocks.getAvailableColors.mockReturnValue(["🟦", "🟧"]);
       const result = parseResult(await call({ token: VALID_TOKEN, target_name: "Worker" }));
-      expect(mocks.getAvailableColors).toHaveBeenCalledWith(undefined);
+      expect(mocks.getAvailableColors).toHaveBeenCalledWith();
       expect(result.color).toBe("🟦");
+    });
+
+    it("allows two agents with the same colorHint to both get that color", async () => {
+      // First approval: Worker 1 with colorHint yellow
+      mocks.getPendingApproval.mockReturnValue({
+        name: "Worker 1",
+        resolve: mockResolve,
+        registeredAt: Date.now(),
+        colorHint: "🟨",
+      });
+      const result1 = parseResult(await call({ token: VALID_TOKEN, target_name: "Worker 1" }));
+      expect(result1.color).toBe("🟨");
+
+      // Second approval: Worker 2 also with colorHint yellow
+      const mockResolve2 = vi.fn();
+      mocks.getPendingApproval.mockReturnValue({
+        name: "Worker 2",
+        resolve: mockResolve2,
+        registeredAt: Date.now(),
+        colorHint: "🟨",
+      });
+      const result2 = parseResult(await call({ token: VALID_TOKEN, target_name: "Worker 2" }));
+      expect(result2.color).toBe("🟨");
     });
   });
 });

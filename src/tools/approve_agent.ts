@@ -11,7 +11,7 @@ const DESCRIPTION =
   "Approve a pending session_start request by name. " +
   "Only available when agent delegation is enabled by the operator via the /approve panel. " +
   "Call with the target_name matching the session name used in the pending session_start call. " +
-  "Optionally specify a color to assign; falls back to the least-recently-used available color.";
+  "Optionally specify a color to assign; falls back to the agent's requested color, or the least-recently-used color if no color was requested.";
 
 export function handleApproveAgent({ token, target_name, color }: { token: number; target_name: string; color?: string }) {
   const sid = requireAuth(token);
@@ -54,10 +54,13 @@ export function handleApproveAgent({ token, target_name, color }: { token: numbe
         `Valid options: ${COLOR_PALETTE.join(", ")}`,
     });
   }
-  // Use getAvailableColors(hint) so an in-use colorHint is never selected directly.
-  const resolvedColor: string = color && (COLOR_PALETTE as readonly string[]).includes(color)
+  // Use colorHint directly — multiple sessions may share a color.
+  // Only fall back to LRU auto-assign when no hint was requested.
+  const resolvedColor: string = color
     ? color
-    : (getAvailableColors(pending.colorHint)[0] ?? COLOR_PALETTE[0]);
+    : pending.colorHint && (COLOR_PALETTE as readonly string[]).includes(pending.colorHint)
+        ? pending.colorHint
+        : (getAvailableColors()[0] ?? COLOR_PALETTE[0]);
 
   clearPendingApproval(target_name);
   pending.resolve({ approved: true, color: resolvedColor, forceColor: true });
@@ -85,7 +88,7 @@ export function register(server: McpServer): RegisteredTool {
           .optional()
           .describe(
             "Color to assign to the approved session (emoji from the color palette). " +
-            "Falls back to the first available color if omitted. Invalid colors return an error.",
+            "Falls back to the agent's requested color (colorHint), or the least-recently-used color if no color was requested. Invalid colors return an error.",
           ),
       },
     },
