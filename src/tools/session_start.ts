@@ -4,7 +4,7 @@ import { getApi, toResult, toError, resolveChat } from "../telegram.js";
 import { markdownToV2 } from "../markdown.js";
 import type { TimelineEvent } from "../message-store.js";
 import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-store.js";
-import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getSession, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage, getSessionAnnouncementMessage } from "../session-manager.js";
+import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getSession, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage, getSessionAnnouncementMessage, setSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMessageOwner, getSessionQueue, deliverReminderEvent } from "../session-queue.js";
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { runInSessionContext } from "../session-context.js";
@@ -160,7 +160,7 @@ async function requestApproval(
  * Show a simple Approve/Deny dialog for a session reconnect request.
  * Returns true if the operator approves, false on denial or timeout.
  */
-async function requestReconnectApproval(chatId: number, name: string): Promise<boolean> {
+async function requestReconnectApproval(chatId: number, name: string, sid: number): Promise<boolean> {
   if (checkAndConsumeAutoApprove()) return true;
   const text = `🤖 *Session reconnecting:* ${markdownToV2(name)}\nAuthorize re\\-entry?`;
   const sent = await getApi().sendMessage(chatId, text, {
@@ -175,6 +175,7 @@ async function requestReconnectApproval(chatId: number, name: string): Promise<b
     },
   } as Record<string, unknown>);
   const msgId: number = sent.message_id;
+  setSessionReauthDialogMsgId(sid, msgId);
 
   const approved = await new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => {
@@ -192,6 +193,7 @@ async function requestReconnectApproval(chatId: number, name: string): Promise<b
   });
 
   if (approved) {
+    clearSessionReauthDialogMsgId(sid);  // clear first, prevent double-delete race
     await getApi().deleteMessage(chatId, msgId).catch(() => {});
   } else {
     await getApi()
@@ -202,6 +204,7 @@ async function requestReconnectApproval(chatId: number, name: string): Promise<b
         { parse_mode: "MarkdownV2", reply_markup: { inline_keyboard: [] } },
       )
       .catch(() => {});
+    clearSessionReauthDialogMsgId(sid);
   }
 
   return approved;
@@ -254,7 +257,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
           if (reconnect) {
             // Reconnect flow: show simple Approve/Deny dialog (not color-picker)
             const approved = await runInSessionContext(0, () =>
-              requestReconnectApproval(chatId, existing.name),
+              requestReconnectApproval(chatId, existing.name, existing.sid),
             );
             if (!approved) {
               return toError({
