@@ -48,7 +48,7 @@ announce ready → dequeue (loop) → on message:
 | Conversational reply | `send(audio: ...)` — **default for most responses** |
 | Structured result / explanation | `send(type: "text")` (Markdown) — tables, code, lists |
 | Build / deploy / error event | `send(type: "notification")` with severity |
-| Multi-step task (3+) | `send(type: "checklist")` + `action(type: "message/pin")` |
+| Multi-step task (3+) | `send(type: "checklist")` |
 | Completed work / ready to proceed | `confirm` (single-button CTA) |
 
 ## Button Design

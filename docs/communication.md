@@ -52,7 +52,7 @@ The thinking → working → `action(type: "show-typing")` pipeline gives the op
 | Structured result / explanation | `send(type: "text")` (Markdown) |
 | Simple plain-english reply (if preferred) | `send(audio: "...")` |
 | Build / deploy / error event | `send(type: "notification")` with severity |
-| Multi-step task (3+ steps) | `send(type: "checklist")` + `action(type: "message/pin")` |
+| Multi-step task (3+ steps) | `send(type: "checklist")` |
 | Completed work / ready to proceed | `confirm` (single-button CTA, no `no_text`) |
 | Forward user message to another session | `action(type: "message/route")` |
 | Send private note to another session | `send(type: "dm")` |
@@ -206,9 +206,7 @@ Use `send(type: "checklist")` for any task with 3+ steps.
 
 ```txt
 msg = send(type: "checklist", title, steps: [{label, status: "running"}, ...])
-action(type: "message/pin", message_id: msg.message_id, disable_notification: true)
 action(type: "checklist/update", message_id: msg.message_id, steps: [{label, status: "done"}, {label, status: "running"}, ...])
-action(type: "message/pin", message_id: msg.message_id, unpin: true)
 ```
 
 Status values: `pending` · `running` · `done` · `failed` · `skipped`

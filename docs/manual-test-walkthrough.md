@@ -13,7 +13,7 @@ Reusable manual test plan for the Telegram Bridge MCP server. Run through these 
 1. `pnpm build` — clean
 2. `pnpm lint` — clean
 3. `pnpm test` — all passing
-4. Restart the MCP server (`action(type: "shutdown")` → call any tool to restart)
+4. Restart the MCP server (`shutdown()` → call any tool to restart)
 5. `action(type: "session/start")` — fresh session (SID 1)
 6. `action(type: "profile/topic", topic: "🧪 Test")` with a test label
 
@@ -85,7 +85,7 @@ Reusable manual test plan for the Telegram Bridge MCP server. Run through these 
 
 | Step | Action | Expected |
 | --- | --- | --- |
-| A7.1 | [Agent] `send(type: "text")` → `action(type: "message/get", message_id: msg_id)` | Returns content, timestamp, sid, versions |
+| A7.1 | [Agent] `send(type: "text", text: "Hello")` → `action(type: "message/get", message_id: msg_id)` | Returns content, timestamp, sid, versions |
 | A7.2 | [Agent] `get_chat` → [Op] presses Allow | Returns chat id, type, title, description |
 
 ### A8. Diagnostics
@@ -146,7 +146,7 @@ Reusable manual test plan for the Telegram Bridge MCP server. Run through these 
 | Step | Action | Expected |
 | --- | --- | --- |
 | B4.1 | DM auto-granted on session approval | S1↔S2 bidirectional after S2 approved |
-| B4.2 | [S2] `send(type: "dm", target_sid: 1, text)` | S1 receives `direct_message` event |
+| B4.2 | [S2] `send(type: "dm", target_sid: 1, text: "Hello from S2")` | S1 receives `direct_message` event |
 | B4.3 | [S2] `action(type: "session/close")` | DM permissions for S2 revoked |
 
 ### B5. Health Check

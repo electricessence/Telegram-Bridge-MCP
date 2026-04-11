@@ -84,62 +84,29 @@ The server is stateless; all parameters must be passed on every `action(type: "p
 
 ---
 
-## Planned: Reaction Tools
+## Temporary Reactions
 
-### `set_temporary_reaction` *(implemented, v3)*
+Use `action(type: "react", temporary: true, restore_emoji: "...", timeout_seconds: N)` for temporary reactions.
 
-Set a reaction that **auto-reverts** when the agent takes any outbound action.
+Set a reaction that **auto-reverts** either on the next outbound action or after a timeout, whichever comes first.
 
-**Core concept:**  
-Current `action(type: "react")` is permanent — the agent must manually restore the previous emoji.
-`set_temporary_reaction` automates the restore pattern: set 👀 to signal *"reading this"*,
-and it snaps back to whatever was there before (or a specified `restore_emoji`) the moment
-anything outbound happens (typing, send message, etc.).
-
-**Trigger for auto-removal:**
-
-- Any outbound event fires the cleanup: `action(type: "show-typing")`, `send(type: "text")`, `send`, `send(type: "notification")`, `send(type: "file")`, etc.
-- Optionally: a `timeout_seconds` deadline (e.g. `300` = 5 min) — reaction reverts on whichever comes first.
-
-**Proposed API (draft):**
+**Example:**
 
 ```text
-set_temporary_reaction(
-  message_id,
-  emoji,                    // e.g. "👀" — the temporary reaction to set
-  restore_emoji?,           // e.g. "🫡" — what to set once done; omit = remove
-  timeout_seconds?          // fallback deadline; default: none
-)
+# "I'm reading this" — reverts to 🫡 on first outbound action or after 300s
+action(type: "react", message_id: msg_id, emoji: "👀", temporary: true, restore_emoji: "🫡", timeout_seconds: 300)
+
+# Temporary ack with no follow-up — removed after 30s or on next outbound
+action(type: "react", message_id: msg_id, emoji: "👍", temporary: true, timeout_seconds: 30)
 ```
 
-**Examples:**
+**Parameters for temporary reactions:**
 
-```text
-# Classic "I'm reading this" pattern (currently done manually):
-set_temporary_reaction(message_id, "👀", restore_emoji: "🫡")
-# → sets 👀 immediately
-# → first outbound action replaces 👀 with 🫡 automatically
-
-# Temporary ack with no follow-up:
-set_temporary_reaction(message_id, "👍", timeout_seconds: 30)
-# → sets 👍 immediately
-# → removed after 30s or on next outbound action
-
-# Timed reading indicator:
-set_temporary_reaction(message_id, "👀", timeout_seconds: 300)
-# → reverts to no reaction after 5 min (or first outbound)
-```
-
-**Implementation sketch:**
-
-- Store `{ message_id, restore_emoji }` in session state (single active slot — only one temporary at a time)
-- Outbound proxy intercepts every outbound API call → fires restore + clears slot
-- Timeout handled by a `setTimeout` that fires the same restore logic
-
-**Why this matters:**  
-The agent currently does 👀 set → work → 🫡 set manually on every voice message. This
-is 2 explicit tool calls that could be replaced by 1 declarative call, and the agent
-never forgets the restore.
+| Parameter | Notes |
+| --- | --- |
+| `temporary: true` | Required to enable auto-revert behavior |
+| `restore_emoji` | Emoji to set after revert; omit to remove the reaction entirely |
+| `timeout_seconds` | Fallback deadline; reaction reverts on whichever comes first (outbound action or timeout) |
 
 ---
 
