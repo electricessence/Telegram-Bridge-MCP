@@ -33,9 +33,7 @@
 | **Animations** | Cycling status frames while your agent works |
 | **Reminders** | Scheduled synthetic events delivered via dequeue |
 | **Slash commands** | Dynamic bot menu; commands arrive as structured events |
-| **Security** | `ALLOWED_USER_ID` locks to a single operator; `chat_id` never exposed as a parameter |
 | **No webhooks** | Pure long-polling — no public URL, no reverse proxy |
-| **Signed images** | Cosign keyless signatures, SBOM, and provenance attestations |
 
 ---
 
@@ -290,17 +288,6 @@ Per-session voice override: `action(type: "profile/voice")` or `/voice` in Teleg
 
 ---
 
-## Security
-
-- **`ALLOWED_USER_ID`** — only this user's messages are processed; all others are silently dropped
-- **`chat_id` is never a parameter** — resolved internally from `ALLOWED_USER_ID`, not passed by the AI
-- **Token auth** — every tool call requires the session token; no token, no access
-- **Session approval** — additional sessions require explicit operator approval via inline keyboard
-
-See [`docs/security-model.md`](docs/security-model.md) for the full model.
-
----
-
 ## MCP Resources
 
 Five resources are available to any connected client — no tool call required:
@@ -355,8 +342,6 @@ Connect MCP hosts to `http://127.0.0.1:3099/mcp`.
 
 The cache volume persists Whisper and TTS model weights across container restarts.
 
-Images are signed with [Cosign](https://docs.sigstore.dev/cosign/overview/) (keyless, GitHub OIDC) and include SBOM and provenance attestations.
-
 ---
 
 ## Development
@@ -386,7 +371,6 @@ See [`docs/agent-setup.md`](docs/agent-setup.md) for installation instructions f
 | [`docs/setup.md`](docs/setup.md) | Full setup walkthrough with per-client config |
 | [`docs/multi-session-protocol.md`](docs/multi-session-protocol.md) | Multi-session routing and governor model |
 | [`docs/super-tools.md`](docs/super-tools.md) | Checklist and progress bar reference |
-| [`docs/security-model.md`](docs/security-model.md) | Security architecture and threat model |
 | [`docs/agent-setup.md`](docs/agent-setup.md) | Loop-guard hooks for VS Code and Claude Code |
 | [`docs/migration-v5-to-v6.md`](docs/migration-v5-to-v6.md) | v5 → v6 tool name mapping |
 | [`docs/git-index-safety.md`](docs/git-index-safety.md) | Git index safety notes for multi-agent environments |
