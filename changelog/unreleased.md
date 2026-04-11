@@ -1,5 +1,27 @@
 # [Unreleased]
 
+## v6.0.2 — 2026-04-11
+
+### Fixed
+
+- Replaced legacy tool name references (`session_start`, `list_sessions`, `save_profile`, `list_reminders`) in all user-facing error/recovery strings with v6 `action()` dispatcher paths
+
+- `src/tools/help.ts`: `startup` topic — token line now says "Required for all session-bound calls" (was "Required for all calls"); `message/history` example now includes `count: 20`
+- `src/tools/help.test.ts`: Added test coverage for `startup` topic
+- `src/tools/session_start.test.ts`: Section comment updated from "instructions field" to "hint field"
+- `src/reauth-dismiss.test.ts`: Added `afterEach` hook reset to prevent cross-test auth hook leak
+- `.github/workflows/ci.yml`: Downgraded `pnpm/action-setup` v6→v4; added `version: "10.0.0"` to pin pnpm exactly (v6 failed with `ERR_PNPM_BROKEN_LOCKFILE` on valid lockfiles)
+
+## v6.0.1 — 2026-04-10
+
+### Added
+
+- Reauth dialog auto-dismiss: when a session has a pending reconnect approval dialog and a subsequent tool call succeeds with a valid token, the dialog is automatically deleted (task 30-475)
+
+### Fixed
+
+- `src/reauth-dismiss.test.ts`: Corrected `vi.fn<>` generic syntax to use single function-type argument matching Vitest 2.x API (task 40-478)
+
 ## Breaking
 
 - **v6 API surface finalized** — All v5 standalone tool registrations removed. Only `send`, `dequeue`, `help`, and `action` are now registered as MCP tools. All previous capabilities remain accessible through these 4 tools.

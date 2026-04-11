@@ -70,7 +70,8 @@ async function requestApproval(
   colorHint?: string,
 ): Promise<{ approved: boolean; color?: string; forceColor?: boolean }> {
   const label = reconnect ? "Session reconnecting:" : "New session requesting access:";
-  const text = `🤖 *${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:`;
+  const reconnectHint = reconnect ? `\nThe agent may have a saved token — approve only if token recovery failed\\.` : "";
+  const text = `🤖 *${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:${reconnectHint}`;
   const availableColors = getAvailableColors(colorHint);
   if (checkAndConsumeAutoApprove()) {
     return { approved: true, color: colorHint ?? availableColors[0], forceColor: true };
@@ -162,7 +163,7 @@ async function requestApproval(
  */
 async function requestReconnectApproval(chatId: number, name: string, sid: number): Promise<boolean> {
   if (checkAndConsumeAutoApprove()) return true;
-  const text = `🤖 *Session reconnecting:* ${markdownToV2(name)}\nAuthorize re\\-entry?`;
+  const text = `🤖 *Session reconnecting:* ${markdownToV2(name)}\nThe agent may have a saved token in memory\\. Authorize re\\-entry only if token recovery failed\\.`;
   const sent = await getApi().sendMessage(chatId, text, {
     parse_mode: "MarkdownV2",
     reply_markup: {
@@ -220,7 +221,7 @@ const DESCRIPTION =
   "Returns { token, sid, pin, sessions_active, action, pending } so " +
   "the agent knows its identity and how to proceed. " +
   "The token encodes both sid and pin as a single integer (sid * 1_000_000 + pin). " +
-  "Call help() first to load the API guide, then call session_start to join.";
+  "Call help() first to load the API guide, then call action(type: 'session/start', ...) to join.";
 
 export async function handleSessionStart({ name, reconnect, color }: { name: string; reconnect: boolean; color?: string }) {
       const chatId = resolveChat();
@@ -236,7 +237,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
       if (!isFirstSession && !effectiveName) {
         return toError({
           code: "NAME_REQUIRED",
-          message: "A name is required when starting a second or later session. Pass name: \"<YourName>\" to session_start.",
+          message: "A name is required when starting a second or later session. Pass name: \"<YourName>\" to action(type: 'session/start', ...).",
         });
       }
 
@@ -262,7 +263,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
             if (!approved) {
               return toError({
                 code: "SESSION_DENIED",
-                message: `Session reconnect for "${existing.name}" was denied by the operator.`,
+                message: `Session reconnect for "${existing.name}" was denied by the operator. Check memory for a previously saved token — if found, use that token directly without calling action(type: 'session/start', ...) again.`,
               });
             }
             // Get full session object (listSessions omits PIN)
@@ -271,7 +272,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
               return toError({
                 code: "SESSION_NOT_FOUND",
                 message:
-                  `Session "${existing.name}" (SID ${existing.sid}) closed before reconnect completed. Call session_start again with a fresh name to create a new session.`,
+                  `Session "${existing.name}" (SID ${existing.sid}) closed before reconnect completed. Call action(type: 'session/start', ...) again with a fresh name to create a new session.`,
               });
             }
             // Reset health markers; preserve queued messages for the reconnecting session
@@ -357,7 +358,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
               `A session named "${existing.name}" already exists (SID ${existing.sid}). ` +
               `If you still have your token, resume with dequeue(token: <token>). ` +
               `To start a new session, choose a different name. ` +
-              `To reclaim this session, call session_start again with reconnect: true.`,
+              `To reclaim this session, call action(type: 'session/start', name: '...', reconnect: true) again.`,
           });
         }
       }
