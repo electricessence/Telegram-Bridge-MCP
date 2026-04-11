@@ -219,7 +219,7 @@ const DESCRIPTION =
   "approval the same token is returned. " +
   "Returns { token, sid, pin, sessions_active, action, pending } so " +
   "the agent knows its identity and how to proceed. " +
-  "Save your token — it encodes both sid and pin as a single integer (sid * 1_000_000 + pin). " +
+  "The token encodes both sid and pin as a single integer (sid * 1_000_000 + pin). " +
   "Call help() first to load the API guide, then call session_start to join.";
 
 export async function handleSessionStart({ name, reconnect, color }: { name: string; reconnect: boolean; color?: string }) {
@@ -236,7 +236,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
       if (!isFirstSession && !effectiveName) {
         return toError({
           code: "NAME_REQUIRED",
-          message: "A name is required when starting a second or later session.",
+          message: "A name is required when starting a second or later session. Pass name: \"<YourName>\" to session_start.",
         });
       }
 
@@ -244,7 +244,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
       if (effectiveName && !/^[a-zA-Z0-9 ]+$/.test(effectiveName)) {
         return toError({
           code: "INVALID_NAME",
-          message: "Session names must be alphanumeric (letters, digits, spaces only).",
+          message: `Session name "${effectiveName}" contains invalid characters. Use letters, digits, and spaces only.`,
         });
       }
 
@@ -271,7 +271,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
               return toError({
                 code: "SESSION_NOT_FOUND",
                 message:
-                  `Session "${existing.name}" (SID ${existing.sid}) disappeared unexpectedly.`,
+                  `Session "${existing.name}" (SID ${existing.sid}) closed before reconnect completed. Call session_start again with a fresh name to create a new session.`,
               });
             }
             // Reset health markers; preserve queued messages for the reconnecting session
