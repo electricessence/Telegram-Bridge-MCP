@@ -10,7 +10,7 @@
 - `src/tools/help.test.ts`: Added test coverage for `startup` topic
 - `src/tools/session_start.test.ts`: Section comment updated from "instructions field" to "hint field"
 - `src/reauth-dismiss.test.ts`: Added `afterEach` hook reset to prevent cross-test auth hook leak
-- `.github/workflows/ci.yml`: Removed `version: 10` from pnpm setup step; action now reads version from `packageManager` field in `package.json`
+- `.github/workflows/ci.yml`: Downgraded `pnpm/action-setup` v6→v4; added `version: "10.0.0"` to pin pnpm exactly (v6 failed with `ERR_PNPM_BROKEN_LOCKFILE` on valid lockfiles)
 
 ## v6.0.1 — 2026-04-10
 
