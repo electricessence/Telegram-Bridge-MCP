@@ -28,7 +28,7 @@ When starting a new session with this MCP:
 
 1. Call `help(topic: "guide")` to load behavioral rules.
 2. Read the `telegram-bridge-mcp://communication-guide` resource — compact communication patterns, tool selection rules, and loop behavior.
-3. Call `action(type: "history/chat")` — verifies the Telegram connection. If it fails, stop and notify the user.
+3. Call `action(type: "chat/info")` — verifies the Telegram connection. If it fails, stop and notify the user.
 4. Call `action(type: "session/start")` — sends an intro message and handles pending messages from a previous session (offers Resume / Start Fresh if any exist).
 5. Enter the `dequeue` loop — call with no arguments to block up to 300 s (the default).
 
@@ -69,7 +69,7 @@ Do **not** check in after `timeout: 0` drain polls — those are expected to ret
 
 ### Looking up prior messages
 
-Use `action(type: "history/message", message_id: ...)` to retrieve a previously seen message by its ID. Returns text, caption, file metadata, and edit history. Only call for message IDs already known to this session.
+Use `action(type: "message/get", message_id: ...)` to retrieve a previously seen message by its ID. Returns text, caption, file metadata, and edit history. Only call for message IDs already known to this session.
 
 ---
 
@@ -115,11 +115,11 @@ Whenever the user's response can be one of a predictable set of options — yes/
 
 Only use `send(type: "question", ask: "...")` or `dequeue` for truly open-ended free-text input where choices cannot be enumerated.
 
-For the full keyboard interaction taxonomy — when to use `send_message` vs `send_choice` vs `choose` vs `confirm`, button types, and implementation notes — see [`docs/keyboard-interactions.md`](keyboard-interactions.md).
+For the full keyboard interaction taxonomy — when to use `send` vs `send_choice` vs `choose` vs `confirm`, button types, and implementation notes — see [`docs/keyboard-interactions.md`](keyboard-interactions.md).
 
 ---
 
-## Tool usage: `action(type: "config/commands")` and slash-command handling
+## Tool usage: `action(type: "commands/set")` and slash-command handling
 
 The server registers four built-in commands (`/session`, `/voice`, `/version`, `/shutdown`) automatically on startup.
 
@@ -130,7 +130,7 @@ Agents **should not** register additional slash commands by default. The built-i
 - `/version` — server version and build info
 - `/shutdown` — clean server shutdown with auto-restart
 
-If a workflow genuinely needs a custom command (rare), use `action(type: "config/commands")` to add it. Built-in commands are always preserved — passing `[]` clears only agent-registered commands.
+If a workflow genuinely needs a custom command (rare), use `action(type: "commands/set")` to add it. Built-in commands are always preserved — passing `[]` clears only agent-registered commands.
 
 When the operator taps a command, `dequeue` delivers it as:
 
@@ -142,13 +142,13 @@ When the operator taps a command, `dequeue` delivers it as:
 - `args` contains anything typed after the command name (`undefined` if nothing)
 - `@botname` suffixes are stripped automatically
 
-**Shutdown behaviour:** the server automatically calls `action(type: "config/commands", commands: [])` on `SIGTERM`, `SIGINT`, and `shutdown`. No manual clearing needed before stopping.
+**Shutdown behaviour:** the server automatically calls `action(type: "commands/set", commands: [])` on `SIGTERM`, `SIGINT`, and `shutdown`. No manual clearing needed before stopping.
 
 ---
 
-## Tool usage: `action(type: "config/topic")`
+## Tool usage: `action(type: "profile/topic")`
 
-Call `action(type: "config/topic")` once at session start to brand every outbound message with a `[Title]` prefix for the lifetime of this server process.
+Call `action(type: "profile/topic")` once at session start to brand every outbound message with a `[Title]` prefix for the lifetime of this server process.
 
 **When to use:** When multiple MCP host instances share the same Telegram chat and you need to identify which agent sent what.
 
@@ -157,7 +157,7 @@ Call `action(type: "config/topic")` once at session start to brand every outboun
 - Applies to: `send(type: "text")`, `send(type: "notification")`, `send(type: "question")`, `send(type: "checklist")`
 - Does **not** apply to: `send_file`
 - The tag always appears — no per-message override
-- Pass an empty string to clear: `action(type: "config/topic", topic: "")`
+- Pass an empty string to clear: `action(type: "profile/topic", topic: "")`
 - Process-scoped: resets if the server restarts
 
 ---
@@ -220,7 +220,7 @@ When the user selects an option in `send(type: "question", choose: [...])`, the 
 
 ---
 
-## Tool usage: `action(type: "message/react")`
+## Tool usage: `action(type: "react")`
 
 React to user messages instead of sending separate acknowledgement text. Common conventions:
 
@@ -236,12 +236,12 @@ React to user messages instead of sending separate acknowledgement text. Common 
 
 | Rule | Detail |
 | --- | --- |
-| **Temporary only** | Always call `action(type: "message/react", emoji: "👀", temporary: true)` — never permanent. Auto-clears when the bot sends any outbound message. |
+| **Temporary only** | Always call `action(type: "react", emoji: "👀", temporary: true)` — never permanent. Auto-clears when the bot sends any outbound message. |
 | **Optional, never required** | The server automatically manages voice message reactions (✍ while transcribing, 😴 if queued, 🫡 when dequeued). You do not need to call `set_reaction` for voice messages. |
 | **Use sparingly on text** | Use when genuinely focused on a long multi-part request. `action(type: "show-typing")` is the right signal when a reply is imminent. |
 | **Auto-restores on outbound** | When any outbound message fires, `👀` is replaced with the bot's previous reaction (or cleared). No manual cleanup. |
 | **No-op if already set** | Silently skipped if the message already carries the same emoji. |
-| **Never leave stuck** | If set manually, must be cleared by your next outbound action. Call `action(type: "message/react", emoji: "")` to clear explicitly if you decide not to respond. |
+| **Never leave stuck** | If set manually, must be cleared by your next outbound action. Call `action(type: "react", emoji: "")` to clear explicitly if you decide not to respond. |
 
 **TL;DR:** `👀` is optional — the server handles voice reactions automatically. Temporary always.
 
@@ -288,13 +288,13 @@ Never call `send_file(type: "voice")` to speak text — it only delivers pre-exi
 
 ### TTS voice resolution
 
-Use `action(type: "config/voice")` to change your session's voice without affecting other sessions.
+Use `action(type: "profile/voice")` to change your session's voice without affecting other sessions.
 
 `send(type: "text", audio: "...")` picks voice in this order:
 
 1. **Explicit `voice` parameter** — passed in the tool call
-2. **Session override** — set via `action(type: "config/voice")` for the current session
-3. **Global default** — persisted via `/voice` in Telegram or a prior `action(type: "config/voice")`
+2. **Session override** — set via `action(type: "profile/voice")` for the current session
+3. **Global default** — persisted via `/voice` in Telegram or a prior `action(type: "profile/voice")`
 4. **Provider default** — the TTS provider's built-in default
 
 ### TTS delivery error: "user restricted receiving of voice note messages"
@@ -388,14 +388,14 @@ The message store records all inbound and outbound events automatically. The rol
 
 | Tool | Purpose |
 | --- | --- |
-| `action(type: "log/dump")` | Sends the most recent timeline events as a JSON file to the Telegram chat. Returns `{ message_id, event_count, file_id }`. Default 100, max 1000. |
+| `dump_session_record()` | Standalone MCP tool. Sends the most recent timeline events as a JSON file to the Telegram chat. Returns `{ message_id, event_count, file_id }`. Default 100, max 1000. |
 | `action(type: "log/roll")` | Rolls the session log — use when you need to rotate/archive the current log file. |
 
 **Key rules:**
 
 - The timeline is **always on** and in-memory only. It does not persist across server restarts.
 - The timeline is a rolling window — oldest events are evicted when the 1000-event limit is reached.
-- `action(type: "log/dump")` contains sensitive user content. Only call when the user explicitly requests session history, context recovery, or an audit.
+- `dump_session_record()` contains sensitive user content. Only call when the user explicitly requests session history, context recovery, or an audit.
 - The document caption includes the `file_id` in monospace for crash recovery.
 - Use `action(type: "download")` with the returned `file_id` to retrieve the JSON content.
 
@@ -548,7 +548,7 @@ Slash commands follow the same routing rules as all other operator messages.
 | Single-session mode | Command always goes to the single active session |
 
 **Etiquette:**
-- Prefer the governor-registers-all pattern — only the governor calls `action(type: "config/commands")`. Workers announce capabilities to the governor via DM.
+- Prefer the governor-registers-all pattern — only the governor calls `action(type: "commands/set")`. Workers announce capabilities to the governor via DM.
 - If sessions register independently, use distinct names: `/worker_status`, `/governor_status`.
 - Never silently swallow a command that affects the operator's expectations.
 

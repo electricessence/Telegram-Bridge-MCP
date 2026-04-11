@@ -52,7 +52,7 @@ const DESCRIPTION =
   "Returns: `{ updates, pending? }` with data; `{ timed_out: true }` on blocking-wait expiry (call again immediately); " +
   "`{ empty: true }` for instant polls (timeout: 0); " +
   "`{ error: \"session_closed\", message }` (isError: false) when the session queue is gone — stop looping. " +
-  "pending > 0 → call again. Omit timeout to use session default (set_dequeue_default, fallback 300 s); max explicit: 300 s. " +
+  "pending > 0 → call again. Omit timeout to use session default (action(type: 'profile/dequeue-default'), fallback 300 s); max explicit: 300 s. " +
   "Call `help(topic: 'dequeue')` for details.";
 
 export function register(server: McpServer) {
@@ -65,13 +65,13 @@ export function register(server: McpServer) {
           .number()
           .int({ message: "timeout must be an integer number of seconds." })
           .min(0, { message: "timeout must be \u2265 0. Call help(topic: 'dequeue') for usage." })
-          .max(300, { message: "timeout must be \u2264 300 s. Use action(type: 'config/dequeue-default') to configure longer defaults." })
+          .max(300, { message: "timeout must be \u2264 300 s. Use action(type: 'profile/dequeue-default') to configure longer defaults." })
           .optional()
-          .describe("Seconds to block when queue is empty. Omit to use your session default (set via set_dequeue_default); server fallback is 300 s. Pass 0 for an instant non-blocking poll (drain loops only). Values above the session default require force: true or set_dequeue_default. Max 300 s — use set_dequeue_default to configure persistent agents."),
+          .describe("Seconds to block when queue is empty. Omit to use your session default (set via action(type: 'profile/dequeue-default')); server fallback is 300 s. Pass 0 for an instant non-blocking poll (drain loops only). Values above the session default require force: true or action(type: 'profile/dequeue-default'). Max 300 s — use action(type: 'profile/dequeue-default') to configure persistent agents."),
         force: z
           .boolean()
           .default(false)
-          .describe("Pass true to allow a one-time override when timeout exceeds your current session default. Only applies to values ≤ 300 s (the hard cap on timeout). To wait longer than 300 s by default, use set_dequeue_default instead."),
+          .describe("Pass true to allow a one-time override when timeout exceeds your current session default. Only applies to values ≤ 300 s (the hard cap on timeout). To wait longer than 300 s by default, use action(type: 'profile/dequeue-default') instead."),
         token: TOKEN_SCHEMA,
       },
     },
@@ -90,7 +90,7 @@ export function register(server: McpServer) {
         return toResult({
           error: "TIMEOUT_EXCEEDS_DEFAULT",
           message: `timeout ${timeout} exceeds your current default of ${sessionDefault}s.`,
-          hint: `Pass force: true for a one-time override, or call set_dequeue_default(${timeout}) to raise your default.`,
+          hint: `Pass force: true for a one-time override, or call action(type: 'profile/dequeue-default', timeout: ${timeout}) to raise your default.`,
         });
       }
 

@@ -19,7 +19,7 @@ Super tools instead maintain a **persistent, mutable presence** in the chat:
 
 ## Super Tools
 
-### `send_new_checklist`
+### Checklist — `send(type: "checklist", ...)`
 
 A live task checklist with per-step status indicators.
 Implemented as of v3 (renamed from `update_status`).
@@ -30,32 +30,32 @@ Implemented as of v3 (renamed from `update_status`).
 
 ```text
 # Create — auto-pins the message (silent)
-{ message_id } = send_new_checklist(title, steps)
+{ message_id } = send(type: "checklist", title, steps)
 
-# Update (in-place edit — requires message_id from send_new_checklist)
+# Update (in-place edit — requires message_id from send)
 # Auto-unpins when all steps reach terminal status (done/failed/skipped)
-update_checklist(message_id, title, steps)
+action(type: "checklist/update", message_id, title, steps)
 ```
 
 ---
 
-### `send_new_progress` + `update_progress`
+### Progress Bar — `send(type: "progress", ...)` + `action(type: "progress/update", ...)`
 
 A visual progress bar rendered with emoji blocks.
-Implemented as two tools: `send_new_progress` (create, auto-pins) and `update_progress` (edit in-place, auto-unpins at 100%).
+Implemented as two calls: `send(type: "progress", ...)` (create, auto-pins) and `action(type: "progress/update", ...)` (edit in-place, auto-unpins at 100%).
 
 **Example:**
 
 ```text
 # Create — auto-pins the message (silent)
-{ message_id } = send_new_progress(title, percent, subtext?)
+{ message_id } = send(type: "progress", title, percent, subtext?)
 
 # Built-in render (50%, default width 10):
 # ▓▓▓▓▓░░░░░  50%
 # Building dist/...
 
 # Update in-place — auto-unpins when percent reaches 100
-update_progress(message_id, title, 100, "Done in 4.2s")
+action(type: "progress/update", message_id, title, percent: 100, subtext: "Done in 4.2s")
 ```
 
 **Parameters:**
@@ -66,10 +66,10 @@ update_progress(message_id, title, 100, "Done in 4.2s")
 | `percent` | 0–100 | Current progress |
 | `subtext` | string (optional) | Italicized detail line below the bar |
 | `width` | number (optional) | Bar width in chars; default 10, max 40 |
-| `message_id` | number | Required for `update_progress`; pass the value returned by `send_new_progress` |
+| `message_id` | number | Required for `action(type: "progress/update", ...)`; pass the value returned by `send(type: "progress", ...)` |
 
 Multiple concurrent progress bars are supported — each is tracked by its own `message_id`.
-The server is stateless; all parameters must be passed on every `update_progress` call.
+The server is stateless; all parameters must be passed on every `action(type: "progress/update", ...)` call.
 
 ---
 
@@ -79,7 +79,7 @@ The server is stateless; all parameters must be passed on every `update_progress
   `pin_message` call required
 - **Auto-unpin on complete** — unpins when done so the chat stays clean
 - **In-place editing** — one message evolves rather than a stream of status messages
-- **Two-tool API** — each super tool is a two-tool pair (`send_new_*` to create, `update_*` to edit in-place); `message_id` links them
+- **Two-call API** — each super tool is a two-call pair (`send(type: "...", ...)` to create, `action(type: ".../update", ...)` to edit in-place); `message_id` links them
 - **Agent-transparent** — agent passes `message_id` around; the tool handles pin state internally
 
 ---
@@ -146,5 +146,5 @@ never forgets the restore.
 ## See Also
 
 - [`docs/keyboard-interactions.md`](keyboard-interactions.md) — keyboard primitive taxonomy
-- [`docs/communication.md`](communication.md) — when to use `send_new_checklist`
-- [`src/tools/send_new_checklist.ts`](../src/tools/send_new_checklist.ts) — implementation (`send_new_checklist` + `update_checklist`)
+- [`docs/communication.md`](communication.md) — when to use `send(type: "checklist", ...)`
+- [`src/tools/send_new_checklist.ts`](../src/tools/send_new_checklist.ts) — implementation (`send(type: "checklist", ...)` + `action(type: "checklist/update", ...)`)

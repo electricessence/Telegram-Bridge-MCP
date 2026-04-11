@@ -87,8 +87,8 @@ Telegram Bridge MCP v6 exposes **4 tools** with type-based routing.
 | `direct` | DM another session (requires `target_sid`) |
 | `append` | Append text to an existing message |
 | `animation` | Start a cycling status animation |
-| `checklist` | Create a pinned live checklist |
-| `progress` | Create an emoji progress bar |
+| `checklist` | Create a pinned live checklist (see [`docs/super-tools.md`](docs/super-tools.md)) |
+| `progress` | Create an emoji progress bar (see [`docs/super-tools.md`](docs/super-tools.md)) |
 | `question` | Blocking question — route with `ask`, `confirm`, or `choose` param |
 
 ### `dequeue` — Receive Events
@@ -109,15 +109,23 @@ RESTful path routing via `type` parameter. Supports progressive discovery:
 
 **Session:** `session/start` · `session/close` · `session/list` · `session/rename`
 
-**Config:** `config/voice` · `config/topic` · `config/commands` · `config/profile/save` · `config/profile/load` · `config/profile/import` · `config/reminder/set` · `config/reminder/cancel` · `config/reminder/list` · `config/dequeue-default` · `config/animation/default` · `config/logging/toggle`
+**Profile:** `profile/voice` · `profile/topic` · `profile/save` · `profile/load` · `profile/import` · `profile/dequeue-default`
 
-**Message:** `message/edit` · `message/delete` · `message/pin` · `message/react` · `message/acknowledge` · `message/route` · `message/chat-action`
+**Reminder:** `reminder/set` · `reminder/cancel` · `reminder/list`
 
-**History:** `history/chat` · `history/message`
+**Animation:** `animation/default` · `animation/cancel`
 
-**Log** (governor-only): `log/get` · `log/list` · `log/roll` · `log/delete` · `log/debug` · `log/dump`
+**Message:** `message/edit` · `message/delete` · `message/pin` · `message/route` (governor) · `message/history` · `message/get`
 
-**Standalone:** `show-typing` · `animation/cancel` · `approve` · `shutdown` · `shutdown/warn` · `transcribe` · `download` · `checklist/update` · `progress/update`
+**Chat:** `chat/info`
+
+**Log** (governor-only): `log/get` · `log/list` · `log/roll` · `log/delete` · `log/debug`
+
+**Standalone:** `react` · `acknowledge` · `show-typing` · `commands/set` · `logging/toggle` · `transcribe` · `download` · `approve` (governor) · `shutdown` (governor) · `shutdown/warn` (governor)
+
+**Super tools:** `checklist/update` · `progress/update`
+
+**Confirm presets:** `confirm/ok` · `confirm/ok-cancel` · `confirm/yn`
 
 See [`docs/migration-v5-to-v6.md`](docs/migration-v5-to-v6.md) for a complete mapping from v5 tool names.
 
@@ -162,7 +170,7 @@ WHISPER_CACHE_DIR=/path/to/cache            # optional
 
 **Kokoro** (recommended local TTS) — `docker run -d --name kokoro -p 8880:8880 ghcr.io/hexgrad/kokoro-onnx-server:latest`, then set `TTS_HOST=http://localhost:8880 TTS_FORMAT=ogg TTS_VOICE=af_heart`. 25+ voices — send `/voice` in Telegram to browse and sample.
 
-Per-session voice override: use `action(type: "config/voice")` or `/voice` in Telegram.
+Per-session voice override: use `action(type: "profile/voice")` or `/voice` in Telegram.
 
 ---
 

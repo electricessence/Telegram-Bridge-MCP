@@ -60,18 +60,18 @@ The four v6 tools:
 
 | v5 Tool | v6 Equivalent |
 | --- | --- |
-| `set_voice(voice: "af_heart")` | `action(type: "config/voice", voice: "af_heart")` |
-| `set_topic(topic: "Worker 1")` | `action(type: "config/topic", topic: "Worker 1")` |
-| `save_profile(name: "Worker")` | `action(type: "config/profile/save", name: "Worker")` |
-| `load_profile(name: "Worker")` | `action(type: "config/profile/load", name: "Worker")` |
-| `import_profile(json: "...")` | `action(type: "config/profile/import", json: "...")` |
-| `set_reminder(delay: 300, text: "Check build")` | `action(type: "config/reminder/set", delay: 300, text: "Check build")` |
-| `cancel_reminder(id: "abc")` | `action(type: "config/reminder/cancel", id: "abc")` |
-| `list_reminders()` | `action(type: "config/reminder/list")` |
-| `set_dequeue_default(timeout: 60)` | `action(type: "config/dequeue-default", timeout: 60)` |
-| `set_default_animation(preset: "thinking")` | `action(type: "config/animation/default", preset: "thinking")` |
-| `toggle_logging()` | `action(type: "config/logging/toggle")` |
-| `set_commands(commands: [...])` | `action(type: "config/commands", commands: [...])` |
+| `set_voice(voice: "af_heart")` | `action(type: "profile/voice", voice: "af_heart")` |
+| `set_topic(topic: "Worker 1")` | `action(type: "profile/topic", topic: "Worker 1")` |
+| `save_profile(name: "Worker")` | `action(type: "profile/save", name: "Worker")` |
+| `load_profile(name: "Worker")` | `action(type: "profile/load", name: "Worker")` |
+| `import_profile(json: "...")` | `action(type: "profile/import", json: "...")` |
+| `set_reminder(delay: 300, text: "Check build")` | `action(type: "reminder/set", delay: 300, text: "Check build")` |
+| `cancel_reminder(id: "abc")` | `action(type: "reminder/cancel", id: "abc")` |
+| `list_reminders()` | `action(type: "reminder/list")` |
+| `set_dequeue_default(timeout: 60)` | `action(type: "profile/dequeue-default", timeout: 60)` |
+| `set_default_animation(preset: "thinking")` | `action(type: "animation/default", preset: "thinking")` |
+| `toggle_logging()` | `action(type: "logging/toggle")` |
+| `set_commands(commands: [...])` | `action(type: "commands/set", commands: [...])` |
 
 ### Message Operations
 
@@ -81,18 +81,18 @@ The four v6 tools:
 | `edit_message_text(message_id: 1, text: "...")` | `action(type: "message/edit", message_id: 1, text: "...")` |
 | `delete_message(message_id: 1)` | `action(type: "message/delete", message_id: 1)` |
 | `pin_message(message_id: 1)` | `action(type: "message/pin", message_id: 1)` |
-| `set_reaction(message_id: 1, emoji: "👍")` | `action(type: "message/react", message_id: 1, emoji: "👍")` |
-| `answer_callback_query(callback_query_id: "...")` | `action(type: "message/acknowledge", callback_query_id: "...")` |
+| `set_reaction(message_id: 1, emoji: "👍")` | `action(type: "react", message_id: 1, emoji: "👍")` |
+| `answer_callback_query(callback_query_id: "...")` | `action(type: "acknowledge", callback_query_id: "...")` |
 | `route_message(target_sid: 1, event: {...})` | `action(type: "message/route", target_sid: 1, event: {...})` |
-| `send_chat_action(action: "typing")` | `action(type: "message/chat-action", chat_action: "typing")` |
+| `send_chat_action(action: "typing")` | `action(type: "show-typing")` |
 
 ### History
 
 | v5 Tool | v6 Equivalent |
 | --- | --- |
-| `get_chat()` | `action(type: "history/chat")` |
-| `get_chat_history(count: 20)` | `action(type: "history/chat", count: 20)` |
-| `get_message(message_id: 1)` | `action(type: "history/message", message_id: 1)` |
+| `get_chat()` | `action(type: "chat/info")` |
+| `get_chat_history(count: 20)` | `action(type: "message/history", count: 20)` |
+| `get_message(message_id: 1)` | `action(type: "message/get", message_id: 1)` |
 
 ### Logs (governor-only)
 
@@ -103,7 +103,7 @@ The four v6 tools:
 | `roll_log()` | `action(type: "log/roll")` |
 | `delete_log(filename: "old.log")` | `action(type: "log/delete", filename: "old.log")` |
 | `get_debug_log()` | `action(type: "log/debug")` |
-| `dump_session_record()` | `action(type: "log/dump")` |
+| `dump_session_record()` | `dump_session_record()` (standalone MCP tool — not an action path) |
 
 ### Standalone / Misc
 
@@ -124,7 +124,7 @@ The four v6 tools:
 | v5 Tool | Status | Notes |
 | --- | --- | --- |
 | `get_agent_guide` | Removed | Use `help(topic: "guide")` or the `telegram-bridge-mcp://agent-guide` resource |
-| `get_me` | Removed | Use `action(type: "history/chat")` to verify the connection |
+| `get_me` | Removed | Use `action(type: "chat/info")` to verify the connection |
 
 ---
 
@@ -285,7 +285,7 @@ set_reminder(delay: 300, text: "Check build output")
 **v6:**
 
 ```
-action(type: "config/reminder/set", delay: 300, text: "Check build output")
+action(type: "reminder/set", delay: 300, text: "Check build output")
 ```
 
 ---
@@ -348,7 +348,7 @@ action(type: "checklist/update", message_id: 123, steps: [{label: "Build", statu
 
 ## Progressive Discovery
 
-The `action` tool supports incremental navigation — you don't need to memorize all 37 paths.
+The `action` tool supports incremental navigation — you don't need to memorize all 42 paths.
 
 **Step 1:** Call with no `type` to list all top-level categories:
 
@@ -382,7 +382,7 @@ This discovery pattern means you can navigate like a REST API rather than memori
 
 2. **`dequeue_update` renamed** — The v5 `dequeue_update` tool is gone. Use `dequeue` (same semantics; the short alias already existed in v5).
 
-3. **Voice parameter removed** — The per-message `voice` and `speed` override parameters were removed from `ask`, `choose`, `confirm`, and `send_text`. TTS now uses session-level voice settings only. Use `action(type: "config/voice")` to set the session voice.
+3. **Voice parameter removed** — The per-message `voice` and `speed` override parameters were removed from `ask`, `choose`, `confirm`, and `send_text`. TTS now uses session-level voice settings only. Use `action(type: "profile/voice")` to set the session voice.
 
 4. **`choose` parameter renamed** — In the old `choose` tool, the display prompt was named `text`. In v6 `send(type: "question", choose: [...])`, the prompt parameter is `text`.
 
@@ -390,7 +390,7 @@ This discovery pattern means you can navigate like a REST API rather than memori
 
 6. **`edit_message_text` merged** — `edit_message` and `edit_message_text` both map to `action(type: "message/edit")`.
 
-7. **`get_me` removed** — The standalone bot identity check has no direct replacement. Use `action(type: "history/chat")` to confirm the session is alive and authenticated.
+7. **`get_me` removed** — The standalone bot identity check has no direct replacement. Use `action(type: "chat/info")` to confirm the session is alive and authenticated.
 
 ---
 
@@ -399,6 +399,6 @@ This discovery pattern means you can navigate like a REST API rather than memori
 | Tool | Replacement |
 | --- | --- |
 | `get_agent_guide` | `help(topic: "guide")` or the `telegram-bridge-mcp://agent-guide` resource |
-| `get_me` | `action(type: "history/chat")` — confirms connection, returns chat info |
+| `get_me` | `action(type: "chat/info")` — confirms connection, returns chat info |
 | `edit_message_text` | `action(type: "message/edit")` — merged with `edit_message` |
 | `confirmYN` | `send(type: "question", confirm: "...")` — merged with `confirm` |

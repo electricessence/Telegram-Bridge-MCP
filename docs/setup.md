@@ -93,7 +93,7 @@ The bot needs your numeric Telegram user ID for `ALLOWED_USER_ID`. For private 1
 
 ## Step 4 — Verify the Token Works
 
-Use `action(type: "history/chat")` to verify the bot connection. It should return chat info confirming the session is active.
+Use `action(type: "chat/info")` to verify the bot connection. It should return chat info confirming the session is active.
 If you get a `401 Unauthorized` error, the token is wrong — regenerate it with `/revoke` in BotFather.
 
 ---
@@ -313,7 +313,7 @@ Send `/voice` in your Telegram chat to browse and preview all available voices i
 
 ### Per-Session Voice Override
 
-Agents can set a per-session TTS voice with `action(type: "config/voice")`, overriding the global default without affecting other sessions. Pass an empty string to clear the override and revert to the global default.
+Agents can set a per-session TTS voice with `action(type: "profile/voice")`, overriding the global default without affecting other sessions. Pass an empty string to clear the override and revert to the global default.
 
 ---
 
@@ -410,7 +410,7 @@ Agents can set a per-session TTS voice with `action(type: "config/voice")`, over
 ## Quick Test Sequence (for agent validation)
 
 ```text
-1. action(type: "history/chat")                              → confirm bot/session identity
+1. action(type: "chat/info")                                 → confirm bot/session identity
 2. send(type: "notification", text: "MCP Online")            → confirm message delivery
 3. send(type: "question", choose: [{label:"OK",value:"ok"}], text: "Test?") → confirm interactivity
 ```

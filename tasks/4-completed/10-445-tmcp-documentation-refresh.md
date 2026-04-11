@@ -1,6 +1,6 @@
 ---
 Created: 2026-04-10
-Status: Queued
+Status: Complete
 Host: local
 Priority: 05-445
 Source: Operator (voice directive 2026-04-10)
@@ -32,11 +32,11 @@ re-trigger the Copilot review.
 
 ## Acceptance Criteria
 
-- [ ] README.md is current — reflects v6.0.0 feature set, not legacy v5
-- [ ] All tool definitions (`src/tools/*.ts`) have accurate JSDoc descriptions
-- [ ] Hybrid messaging (audio + text in one message) is prominently featured
-- [ ] Streamlined MCP surface is emphasized (fewer tools, more capability per tool)
-- [ ] Super tools (checklists, progress bars, questions) are documented with examples
-- [ ] Multi-session coordination features documented (session list, DMs, governor)
-- [ ] Action registry paths are accurate (post-refactor: `profile/*`, `reminder/*`, etc.)
-- [ ] No stale references to removed features or old action paths
+- [x] README.md is current — reflects v6.0.0 feature set, not legacy v5
+- [x] All tool definitions (`src/tools/*.ts`) have accurate JSDoc descriptions
+- [x] Hybrid messaging (audio + text in one message) is prominently featured
+- [x] Streamlined MCP surface is emphasized (fewer tools, more capability per tool)
+- [x] Super tools (checklists, progress bars, questions) are documented with examples
+- [x] Multi-session coordination features documented (session list, DMs, governor)
+- [x] Action registry paths are accurate (post-refactor: `profile/*`, `reminder/*`, etc.)
+- [x] No stale references to removed features or old action paths
