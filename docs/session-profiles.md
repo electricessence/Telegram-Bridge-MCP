@@ -43,7 +43,7 @@ Returns the merged state summary so the agent knows what was applied.
 The `action(type: "session/start")` response includes a hint:
 
 ```text
-If you have a saved profile, call action(type: "profile/load", key) to restore your configuration.
+If you have a saved profile, call action(type: "profile/load", key: "<profile key>") to restore your configuration.
 ```
 
 No listing, no discovery. The agent must know its profile key.

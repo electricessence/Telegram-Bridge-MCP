@@ -27,22 +27,22 @@ Reusable manual test plan for the Telegram Bridge MCP server. Run through these 
 | --- | --- | --- |
 | A1.1 | [Agent] `action(type: "session/list")` | Returns SID 1 "Primary", `active_sid: 1` |
 | A1.2 | [Agent] `action(type: "chat/info")` | Returns bot username, MCP version, commit hash, build time |
-| A1.3 | [Agent] `action(type: "profile/topic", topic: "🧪 Test")` then `send("Hello")` | Message appears with `**[🧪 Test]**` prefix |
-| A1.4 | [Agent] `action(type: "profile/topic", topic: "")` then `send("Hello")` | Message appears without prefix |
+| A1.3 | [Agent] `action(type: "profile/topic", topic: "🧪 Test")` then `send(text: "Hello")` | Message appears with `**[🧪 Test]**` prefix |
+| A1.4 | [Agent] `action(type: "profile/topic", topic: "")` then `send(text: "Hello")` | Message appears without prefix |
 
 ### A2. Messaging
 
 | Step | Action | Expected |
 | --- | --- | --- |
-| A2.1 | [Agent] `send("Hello")` | Message appears in Telegram |
-| A2.2 | [Agent] `send(type: "choice", options: [...])` with 2 options | Message + buttons appear |
+| A2.1 | [Agent] `send(text: "Hello")` | Message appears in Telegram |
+| A2.2 | [Agent] `send(type: "choice", text: "Pick one", options: [...])` with 2 options | Message + buttons appear |
 | A2.3 | [Op] Press a button | [Agent] receives callback via `dequeue` with `data`, `qid`, `target` |
 | A2.4 | [Agent] `action(type: "acknowledge", callback_query_id: "<qid from button press>")` | Toast notification shown to operator |
-| A2.5 | [Agent] `send(type: "notification", title, text, severity: "info")` | Notification appears in chat |
-| A2.6 | [Agent] `send("Hello")` → capture `msg_id` → `action(type: "message/edit", message_id: msg_id, text: new_text)` | Message content updated in-place |
-| A2.7 | [Agent] `send("Hello")` → `send(type: "append", message_id: msg_id, text: extra)` | Message now has original + appended text |
-| A2.8 | [Agent] `send("Hello")` → `action(type: "message/delete", message_id: msg_id)` | Message removed from chat |
-| A2.9 | [Agent] `send("Hello")` → `action(type: "message/pin", message_id: msg_id)` | Message pinned in chat |
+| A2.5 | [Agent] `send(type: "notification", title: "Status", text: "...", severity: "info")` | Notification appears in chat |
+| A2.6 | [Agent] `send(text: "Hello")` → capture `msg_id` → `action(type: "message/edit", message_id: msg_id, text: new_text)` | Message content updated in-place |
+| A2.7 | [Agent] `send(text: "Hello")` → `send(type: "append", message_id: msg_id, text: extra)` | Message now has original + appended text |
+| A2.8 | [Agent] `send(text: "Hello")` → `action(type: "message/delete", message_id: msg_id)` | Message removed from chat |
+| A2.9 | [Agent] `send(text: "Hello")` → `action(type: "message/pin", message_id: msg_id)` | Message pinned in chat |
 
 ### A3. Interactive Tools
 
@@ -52,7 +52,7 @@ Reusable manual test plan for the Telegram Bridge MCP server. Run through these 
 | A3.2 | [Agent] `send(type: "question", confirm: "Test?")` → [Op] presses No | Returns `{ confirmed: false }` |
 | A3.3 | [Agent] `send(type: "question", text: "Pick one", choose: [3 options])` → [Op] picks one | Returns `{ label, value }` matching selection |
 | A3.4 | [Agent] `send(type: "question", ask: "Type something")` → [Op] types response | Returns `{ text }` with operator's input |
-| A3.5 | [Agent] `send(type: "choice", options: [2 options])` → [Op] presses one | Callback received via `dequeue` |
+| A3.5 | [Agent] `send(type: "choice", text: "Pick one", options: [2 options])` → [Op] presses one | Callback received via `dequeue` |
 
 ### A4. Animations and Typing
 

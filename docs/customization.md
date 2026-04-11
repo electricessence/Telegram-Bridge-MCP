@@ -201,9 +201,8 @@ This prevents cascading failures and keeps you in control.
 
 All inbound voice messages are **automatically transcribed** via local Whisper before being delivered through `dequeue`. Voice arrives as `{ type: "voice", text: "..." }` — no special handling needed.
 
-To send voice back in v6, use the unified `send` tool with audio output
-(for example, `send(audio: ...)`), or the corresponding `action()` path if
-your client exposes sends that way. The text is synthesized via TTS
+To send voice back in v6, use the unified `send` tool with audio output:
+`send(audio: "...")`. The text is synthesized via TTS
 (Kokoro, OpenAI, or the bundled ONNX fallback) and delivered as a voice
 note. Use `action(type: "profile/voice")` to set a per-session voice override, or send `/voice`
 in Telegram to pick the global default interactively.

@@ -40,7 +40,7 @@ User replies to a message sent by 🤖 Worker → routed to Worker's session que
 
 User sends a fresh message → routed to governor (SID 1). Governor dequeues with `routing: "ambiguous"`.
 
-**Governor protocol:** Handle it if it's for you. Use `action(type: "message/route", message_id, target_sid)` to forward if it belongs to another session.
+**Governor protocol:** Handle it if it's for you. Use `action(type: "message/route", message_id: <id>, target_sid: <sid>)` to forward if it belongs to another session.
 
 **Any-agent protocol:** If you receive an ambiguous message and it's clearly not for you, route it. If unsure, handle it — better to respond than to bounce messages around.
 
@@ -50,17 +50,16 @@ User sends a fresh message → routed to governor (SID 1). Governor dequeues wit
 | --- | --- |
 | Non-governor closes | Nothing changes. Routing continues. |
 | Governor closes | Next-lowest SID promoted to governor. Sessions notified. |
-| Last session closes (back to 1) | Name tags stop. Routing disabled. `token` becomes optional again. |
+| Last session closes (back to 1) | Name tags stop. Routing disabled. `token` still required. |
 | All sessions close | Clean slate — next `action(type: "session/start")` is auto-approved as session 1. |
 
 ## Tool Auth Matrix
 
 | Tool group | Auth required |
 | --- | --- |
-| `action(type: "session/start")`, `shutdown`, `help`, `action(type: "chat/info")` | None |
-| `action(type: "session/list")` | `token: number` (multi-session active) |
-| All other tools (multi-session active) | `token: number` |
-| All other tools (single session) | None (backward compat) |
+| `action(type: "session/start")`, `shutdown`, `help` | None |
+| `action(type: "session/list")`, `action(type: "chat/info")` | `token: number` |
+| All other tools | `token: number` |
 
 On the wire: `{ "token": 1809146, ... }` — one field, one number (encoding: `sid * 1_000_000 + pin`).
 

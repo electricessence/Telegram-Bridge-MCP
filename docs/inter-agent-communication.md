@@ -288,5 +288,5 @@ Governor receives DM:
   { event: "direct_message", from: "bot", sid: 2, content: { type: "direct_message", text: "CI green. PR #40 ready to merge." } }
 
 Governor notifies operator:
-  send(type: "notification", text: "✅ CI green — PR #40 is ready to merge.")
+  send(type: "notification", title: "CI", text: "✅ CI green — PR #40 is ready to merge.")
 ```
