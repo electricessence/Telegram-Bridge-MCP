@@ -1,8 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { toResult, toError } from "../telegram.js";
+import { toResult } from "../telegram.js";
 import { elegantShutdown } from "../shutdown.js";
 import { pendingCount } from "../message-store.js";
+import { listSessions } from "../session-manager.js";
+import { getSessionQueue } from "../session-queue.js";
 
 const DESCRIPTION =
   "Shuts down the MCP server process cleanly. Notifies all active sessions, " +
@@ -10,21 +12,33 @@ const DESCRIPTION =
   "will detect the exit and can relaunch it automatically. Reconnecting to " +
   "the server after shutdown starts it back up. Call this after running " +
   "`pnpm build` to pick up code changes. " +
-  "If there are pending messages in the queue, the call fails unless " +
-  "`force: true` is passed.";
+  "If there are pending messages across any active session queue, a warning " +
+  "response is returned (not an error) — drain them first or pass " +
+  "`force: true` to shut down anyway.";
 
 export function handleShutdown({ force }: { force?: boolean }) {
-  const pending = pendingCount();
+  // Sum pending across the global queue (unrouted messages) and all active
+  // session queues (routed but not yet consumed by agents).
+  const globalPending = pendingCount();
+  const sessionPending = listSessions()
+    .reduce((sum, s) => sum + (getSessionQueue(s.sid)?.pendingCount() ?? 0), 0);
+  const pending = globalPending + sessionPending;
+
   if (pending > 0 && !force) {
-    return toError({
-      code: "PENDING_MESSAGES" as const,
+    return toResult({
+      shutting_down: false,
+      warning: "PENDING_MESSAGES",
+      pending,
       message:
-        `${pending} pending update(s) in queue — process them first ` +
+        `${pending} pending message(s) in queue — process them first ` +
         `or pass \`force: true\` to shut down anyway.`,
     });
   }
 
-  // Send the response first so the caller gets confirmation before we exit
+  // Send the response first so the caller gets confirmation before we exit.
+  // pending_flushed reports the count at decision time; with force=true these
+  // messages are abandoned (not drained), so callers should not treat this as
+  // a delivery confirmation.
   const result = toResult({ shutting_down: true, pending_flushed: pending });
   setImmediate(() => { void elegantShutdown(); });
   return result;
