@@ -104,16 +104,16 @@ const TOOL_INDEX: Record<string, string> = {
 
 function buildOverview(): string {
   const lines: string[] = [
-    "# Telegram Bridge MCP — Tool Overview",
+    "Telegram Bridge MCP — Tool Overview",
     "",
-    "This server bridges AI agents to Telegram. Call `help(topic: 'guide')` for the full",
-    "communication guide, or `help(topic: '<tool_name>')` for docs on a specific tool.",
+    "Bridges AI agents to Telegram. help(topic: 'guide') for full comms guide.",
+    "help(topic: '<tool_name>') for docs on a specific tool.",
     "",
-    "## Tool Index",
+    "Tool Index:",
     "",
   ];
   for (const [name, desc] of Object.entries(TOOL_INDEX)) {
-    lines.push(`**${name}** — ${desc}`);
+    lines.push(`${name} — ${desc}`);
   }
   return lines.join("\n");
 }
@@ -160,11 +160,11 @@ export function register(server: McpServer) {
             join(__dirname, "..", "..", "docs", "behavior.md"),
             "utf-8"
           );
-          return toResult({ content: `# Agent Communication Guide\n\n${content}` });
+          return toResult({ content: `Agent Communication Guide\n\n${content}` });
         } catch {
           return toResult({
             content:
-              "# Agent Communication Guide\n\nUnavailable: docs/behavior.md not found in distribution.",
+              "Agent Communication Guide\n\nUnavailable: docs/behavior.md not found in distribution.",
           });
         }
       }
@@ -173,26 +173,26 @@ export function register(server: McpServer) {
       if (topic === "checklist") {
         return toResult({
           content: [
-            "# Checklist Step Statuses",
+            "Checklist Step Statuses",
             "",
-            "Valid `status` values for `send(type: \"checklist\")` and `action(type: \"checklist/update\")` steps:",
+            "Valid status values for send(type: 'checklist') and action(type: 'checklist/update') steps:",
             "",
             "| Status | Meaning |",
             "| --- | --- |",
-            "| `pending` | Not yet started (default — shows ⬜) |",
-            "| `running` | In progress (shows 🔄) |",
-            "| `done` | Completed successfully (shows ✅) |",
-            "| `failed` | Completed with error (shows ❌) |",
-            "| `skipped` | Intentionally skipped (shows ⏭️) |",
+            "| pending | Not yet started (default — shows ⬜) |",
+            "| running | In progress (shows 🔄) |",
+            "| done | Completed successfully (shows ✅) |",
+            "| failed | Completed with error (shows ❌) |",
+            "| skipped | Intentionally skipped (shows ⏭️) |",
             "",
-            "**Common mistake:** using `in-progress` — this is not a valid status. Use `running` instead.",
+            "Common mistake: using 'in-progress' — not valid. Use 'running'.",
             "",
-            "**Example:**",
+            "Example:",
             "```",
-            "action(type: \"checklist/update\", message_id: 123, steps: [",
-            "  { label: \"Fetch data\", status: \"done\" },",
-            "  { label: \"Process\", status: \"running\" },",
-            "  { label: \"Save\", status: \"pending\" }",
+            "action(type: 'checklist/update', message_id: 123, steps: [",
+            "  { label: 'Fetch data', status: 'done' },",
+            "  { label: 'Process', status: 'running' },",
+            "  { label: 'Save', status: 'pending' }",
             "])",
             "```",
           ].join("\n"),
@@ -203,32 +203,27 @@ export function register(server: McpServer) {
       if (topic === "animation") {
         return toResult({
           content: [
-            "# Animation Frames Guide",
+            "Animation Frames Guide",
             "",
-            "## Starting an animation",
-            "Use `send(type: \"animation\", frames: [...], interval: 1000, timeout: 600)` or",
-            "a named preset via `send(type: \"animation\", preset: \"working\")`.",
+            "Starting an animation:",
+            "send(type: 'animation', frames: [...], interval: 1000, timeout: 600)",
+            "Or a named preset: send(type: 'animation', preset: 'working')",
             "",
-            "## Single-emoji frames warning",
-            "Frames that contain **only a single emoji** render as large animated stickers on mobile.",
-            "This is a Telegram behavior — it cannot be fully suppressed from the server side.",
+            "Single-emoji frames warning:",
+            "Frames with only a single emoji render as large stickers on mobile (Telegram behavior).",
             "",
-            "**Fix:** Append `\\u200b` (zero-width space) to single-emoji frames:",
-            "```",
-            "frames: [\"⏳\\u200b\", \"🔄\\u200b\"]   // prevents sticker rendering",
-            "```",
-            "Or use multi-character frames to avoid the issue entirely:",
-            "```",
-            "frames: [\"`⏳ working`\", \"`🔄 thinking`\"]",
-            "```",
+            "Fix: append \\u200b (zero-width space) to single-emoji frames:",
+            "  frames: ['⏳\\u200b', '🔄\\u200b']",
+            "Or use multi-character frames:",
+            "  frames: ['`⏳ working`', '`🔄 thinking`']",
             "",
-            "## Built-in presets",
+            "Built-in presets:",
             "| Preset | Description |",
             "| --- | --- |",
-            "| `bounce` | Block-character bouncing bar (default) |",
-            "| `working` | `⚙ Working…` cycling dots |",
-            "| `thinking` | `🤔 Thinking…` cycling dots |",
-            "| `reviewing` | `🔍 Reviewing…` cycling dots |",
+            "| bounce | Block-character bouncing bar (default) |",
+            "| working | ⚙ Working… cycling dots |",
+            "| thinking | 🤔 Thinking… cycling dots |",
+            "| reviewing | 🔍 Reviewing… cycling dots |",
           ].join("\n"),
         });
       }
@@ -237,9 +232,9 @@ export function register(server: McpServer) {
       if (topic === "compression") {
         return toResult({
           content: [
-            "# Compression Cheat Sheet",
+            "Compression Cheat Sheet",
             "",
-            "## Tiers",
+            "Tiers:",
             "| Tier | Use when |",
             "| --- | --- |",
             "| None | Full English — audio msgs, spec files |",
@@ -247,7 +242,7 @@ export function register(server: McpServer) {
             "| Full | Drop articles, fragments OK — general docs |",
             "| Ultra | Telegraphic, abbreviate, arrows — agent DMs, agent files |",
             "",
-            "## Surface Map",
+            "Surface Map:",
             "| Surface | Tier |",
             "| --- | --- |",
             "| Agent-to-agent DMs | Ultra |",
@@ -259,19 +254,19 @@ export function register(server: McpServer) {
             "| Audio messages | None |",
             "| Spec files, code blocks | None |",
             "",
-            "## Ultra Rules",
+            "Ultra Rules:",
             "Drop: articles (a/an/the), filler (just/really/basically/actually), pleasantries, hedging.",
             "Keep: technical terms exact, code/paths/URLs verbatim.",
-            "Pattern: `[thing] [action] [reason]. [next step].`",
+            "Pattern: [thing] [action] [reason]. [next step].",
             "Abbreviate: DB auth config req res fn impl msg sess conn dir env repo.",
             "Fragments OK. Arrows: X → Y.",
             "",
-            "## Examples",
-            "✗ `Sure! I'd be happy to help with that.`",
-            "✓ `Issue: token expiry, auth middleware.`",
+            "Examples:",
+            "Bad: 'Sure! I'd be happy to help with that.'",
+            "Good: 'Issue: token expiry, auth middleware.'",
             "",
-            "✗ `The implementation could potentially involve adding a check...`",
-            "✓ `Impl: null-check before fn call.`",
+            "Bad: 'The implementation could potentially involve adding a check...'",
+            "Good: 'Impl: null-check before fn call.'",
           ].join("\n"),
         });
       }
@@ -280,16 +275,16 @@ export function register(server: McpServer) {
       if (topic === "startup") {
         return toResult({
           content: [
-            "# Startup — Post-Session-Start",
+            "Startup — Post-Session-Start",
             "",
-            "**Token:** `token = sid * 1_000_000 + pin` — required for all calls. Both parts also in `sid`/`pin` fields.",
-            "**Reconnect:** If token lost, call `session_start(name: '...', reconnect: true)` for operator re-auth.",
-            "**Missed messages:** After reconnect, retrieve messages via `action(type: 'message/history')`.",
+            "Token: token = sid * 1_000_000 + pin. Required for all calls. Save it now.",
+            "Reconnect: session_start(name: '...', reconnect: true) if token is lost.",
+            "Missed messages: action(type: 'message/history') after reconnect.",
             "",
-            "**Profile:** Restore voice/animation/reminders → `action(type: 'profile/load', key: '<name>')`.",
+            "Profile: action(type: 'profile/load', key: '<name>') to restore voice/animation/reminders.",
             "",
-            "**Discover:** `help()` → tool index · `help(topic: 'guide')` → full comms guide · `help(topic: '<tool>')` → per-tool.",
-            "**Compression:** `help(topic: 'compression')` → message brevity tiers.",
+            "Discover: help() → tool index · help(topic: 'guide') → full comms guide · help(topic: '<tool>') → per-tool docs.",
+            "Compression: help(topic: 'compression') → message brevity tiers.",
           ].join("\n"),
         });
       }
@@ -297,7 +292,7 @@ export function register(server: McpServer) {
       // topic: "<tool_name>" → per-tool description
       const desc = TOOL_INDEX[topic];
       if (desc) {
-        return toResult({ content: `# ${topic}\n\n${desc}` });
+        return toResult({ content: `${topic}\n\n${desc}` });
       }
 
       return toError({

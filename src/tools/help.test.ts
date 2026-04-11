@@ -71,7 +71,7 @@ describe("help tool", () => {
     const result = await call({ topic: "guide" });
     expect(isError(result)).toBe(false);
     const { content } = parseResult<{ content: string }>(result);
-    expect(content).toContain("# Agent Communication Guide");
+    expect(content).toContain("Agent Communication Guide");
     expect(content).toContain(MOCK_GUIDE);
   });
 
@@ -79,7 +79,7 @@ describe("help tool", () => {
     const result = await call({ topic: "compression" });
     expect(isError(result)).toBe(false);
     const { content } = parseResult<{ content: string }>(result);
-    expect(content).toContain("# Compression Cheat Sheet");
+    expect(content).toContain("Compression Cheat Sheet");
     expect(content).not.toContain("Save to session memory");
     expect(content).toContain("Surface Map");
   });

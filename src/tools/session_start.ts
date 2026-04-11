@@ -344,7 +344,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
               sessions_active: reconSessActive,
               action: "reconnected",
               pending,
-              hint: "Read: help(topic: 'startup')",
+              hint: "Save this token. Read: help(topic: 'startup')",
             });
           }
 
@@ -395,7 +395,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
           sessions_active: session.sessionsActive,
           action: reconnect ? "reconnected" : "fresh",
           pending: 0,
-          hint: "Read: help(topic: 'startup')",
+          hint: "Save this token. Read: help(topic: 'startup')",
         };
         if (discarded > 0) res.discarded = discarded;
         if (isFirstSession) {

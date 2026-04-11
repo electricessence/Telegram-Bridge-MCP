@@ -152,7 +152,7 @@ describe("session_start tool", () => {
       action: "fresh",
       pending: 0,
       discarded: 3,
-      hint: "Read: help(topic: 'startup')",
+      hint: "Save this token. Read: help(topic: 'startup')",
     });
   });
 
@@ -168,7 +168,7 @@ describe("session_start tool", () => {
       sessions_active: 1,
       action: "fresh",
       pending: 0,
-      hint: "Read: help(topic: 'startup')",
+      hint: "Save this token. Read: help(topic: 'startup')",
     });
   });
 
