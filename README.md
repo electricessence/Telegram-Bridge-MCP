@@ -93,9 +93,24 @@ See [`docs/setup.md`](docs/setup.md) for per-client config snippets (VS Code, Cl
 <details>
 <summary><strong>Streamable HTTP MCP config example</strong></summary>
 
+**Claude Code / Cursor / other MCP hosts**
+
 ```json
 {
   "mcpServers": {
+    "telegram": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:3099/mcp"
+    }
+  }
+}
+```
+
+**VS Code (.vscode/mcp.json)**
+
+```json
+{
+  "servers": {
     "telegram": {
       "type": "streamable-http",
       "url": "http://127.0.0.1:3099/mcp"
@@ -109,10 +124,30 @@ See [`docs/setup.md`](docs/setup.md) for per-client config snippets (VS Code, Cl
 <details>
 <summary><strong>stdio MCP config example</strong></summary>
 
+**Claude Code / Cursor / other MCP hosts**
+
 ```json
 {
   "mcpServers": {
     "telegram": {
+      "command": "node",
+      "args": ["/path/to/Telegram-Bridge-MCP/dist/index.js"],
+      "env": {
+        "BOT_TOKEN": "your-token",
+        "ALLOWED_USER_ID": "your-user-id"
+      }
+    }
+  }
+}
+```
+
+**VS Code (.vscode/mcp.json)**
+
+```json
+{
+  "servers": {
+    "telegram": {
+      "type": "stdio",
       "command": "node",
       "args": ["/path/to/Telegram-Bridge-MCP/dist/index.js"],
       "env": {
@@ -229,7 +264,7 @@ help({ topic: "send" })  // targeted reference for a specific tool or type
 Multiple agents can share one bot simultaneously without cross-talk.
 
 ```text
-session/start → token (integer) → pass on every call
+session/start → token (integer) → pass on every session-scoped call
 ```
 
 **Token format:** `token = sid * 1_000_000 + pin` — a single integer, returned by `action(type: "session/start")`.
