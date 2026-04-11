@@ -35,8 +35,39 @@ const DESCRIPTION =
   "For discrete named steps with pass/fail status, use send_new_checklist instead. " +
   "Pass the returned message_id to update_progress to edit in-place. " +
   "At 100% update_progress auto-unpins the message. " +
-  "Multiple concurrent progress bars are supported — each is tracked by its own message_id. " +
-  "Ensure session_start has been called.";
+  "Multiple concurrent progress bars are supported — each is tracked by its own message_id. Requires an active session token.";
+
+export async function handleSendNewProgress({
+  percent, title, subtext, width = DEFAULT_WIDTH, token,
+}: {
+  percent: number;
+  title?: string;
+  subtext?: string;
+  width?: number;
+  token: number;
+}) {
+  const _sid = requireAuth(token);
+  if (typeof _sid !== "number") return toError(_sid);
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return toError(chatId);
+  try {
+    const topicTitle = title ? applyTopicToTitle(title) : undefined;
+    const text = renderProgress(percent, width, topicTitle, subtext);
+    const textErr = validateText(text);
+    if (textErr) return toError(textErr);
+    const msg = await getApi().sendMessage(chatId, text, {
+      parse_mode: "HTML",
+      _rawText: title ?? "",
+    } as Record<string, unknown>);
+    await getApi().pinChatMessage(chatId, msg.message_id, { disable_notification: true }).catch(() => {});
+    return toResult({
+      message_id: msg.message_id,
+      hint: "Pass this message_id to update_progress to edit in-place.",
+    });
+  } catch (err) {
+    return toError(err);
+  }
+}
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -68,28 +99,6 @@ export function register(server: McpServer) {
               token: TOKEN_SCHEMA,
 },
     },
-    async ({ percent, title, subtext, width, token}) => {
-      const _sid = requireAuth(token);
-      if (typeof _sid !== "number") return toError(_sid);
-      const chatId = resolveChat();
-      if (typeof chatId !== "number") return toError(chatId);
-      try {
-        const topicTitle = title ? applyTopicToTitle(title) : undefined;
-        const text = renderProgress(percent, width, topicTitle, subtext);
-        const textErr = validateText(text);
-        if (textErr) return toError(textErr);
-        const msg = await getApi().sendMessage(chatId, text, {
-          parse_mode: "HTML",
-          _rawText: title ?? "",
-        } as Record<string, unknown>);
-        await getApi().pinChatMessage(chatId, msg.message_id, { disable_notification: true }).catch(() => {});
-        return toResult({
-          message_id: msg.message_id,
-          hint: "Pass this message_id to update_progress to edit in-place.",
-        });
-      } catch (err) {
-        return toError(err);
-      }
-    },
+    handleSendNewProgress,
   );
 }

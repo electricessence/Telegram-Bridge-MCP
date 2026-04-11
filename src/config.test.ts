@@ -21,6 +21,8 @@ import {
   setDefaultVoice,
   getConfiguredVoices,
   setConfiguredVoices,
+  getPreToolDenyPatterns,
+  setPreToolDenyPatterns,
   resetConfigForTest,
 } from "./config.js";
 
@@ -199,6 +201,51 @@ describe("config", () => {
 
     it("persists to disk", () => {
       setConfiguredVoices([{ name: "nova" }]);
+      expect(mocks.writeFileSync).toHaveBeenCalled();
+    });
+  });
+
+  // ── getPreToolDenyPatterns / setPreToolDenyPatterns ───────────────────────
+
+  describe("getPreToolDenyPatterns / setPreToolDenyPatterns", () => {
+    it("returns empty array when not configured", () => {
+      expect(getPreToolDenyPatterns()).toEqual([]);
+    });
+
+    it("stores patterns and returns them", () => {
+      setPreToolDenyPatterns(["tool_a"]);
+      expect(getPreToolDenyPatterns()).toEqual(["tool_a"]);
+    });
+
+    it("stores multiple patterns", () => {
+      setPreToolDenyPatterns(["shutdown", "download_*"]);
+      expect(getPreToolDenyPatterns()).toEqual(["shutdown", "download_*"]);
+    });
+
+    it("clears patterns when set to empty array", () => {
+      setPreToolDenyPatterns(["tool_a"]);
+      setPreToolDenyPatterns([]);
+      expect(getPreToolDenyPatterns()).toEqual([]);
+    });
+
+    it("loads denyPatterns from config file via loadConfig", () => {
+      mocks.existsSync.mockReturnValue(true);
+      mocks.readFileSync.mockReturnValue(
+        JSON.stringify({ preToolHook: { denyPatterns: ["shutdown", "transcribe_*"] } }),
+      );
+      loadConfig();
+      expect(getPreToolDenyPatterns()).toEqual(["shutdown", "transcribe_*"]);
+    });
+
+    it("persists to disk on set", () => {
+      setPreToolDenyPatterns(["tool_a"]);
+      expect(mocks.writeFileSync).toHaveBeenCalled();
+    });
+
+    it("persists to disk on clear", () => {
+      setPreToolDenyPatterns(["tool_a"]);
+      mocks.writeFileSync.mockClear();
+      setPreToolDenyPatterns([]);
       expect(mocks.writeFileSync).toHaveBeenCalled();
     });
   });

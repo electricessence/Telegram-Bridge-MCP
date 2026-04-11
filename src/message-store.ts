@@ -129,6 +129,14 @@ export function setOnEvent(callback: ((timelineSize: number) => void) | null): v
   _onEventCallback = callback;
 }
 
+/** Optional callback fired after every timeline push for local logging. Independent of auto-dump. */
+let _onLocalLogCallback: ((event: TimelineEvent) => void) | null = null;
+
+/** Register a callback that receives every new timeline event for local logging. */
+export function setOnLocalLog(callback: ((event: TimelineEvent) => void) | null): void {
+  _onLocalLogCallback = callback;
+}
+
 /** A queue item is ready unless it's a voice message still waiting for text. */
 function isQueueItemReady(item: QueueItem): boolean {
   const c = item.event.content;
@@ -156,7 +164,7 @@ export function isMessageConsumed(messageId: number): boolean {
 /**
  * One-shot hooks registered by send_choice for auto-lock. Fired on the first
  * callback_query for the target messageId, then removed. The event is still
- * enqueued normally so dequeue_update will see it.
+ * enqueued normally so dequeue will see it.
  */
 type CallbackHookFn = (event: TimelineEvent) => void;
 const _callbackHooks = new Map<number, CallbackHookFn>();
@@ -168,7 +176,7 @@ const _callbackHookOwners = new Map<number, number>();
  * One-shot hooks that fire on the first *message* with id > the registered
  * afterId. Used by confirm/choose to clean up stale buttons after a timeout
  * when the user sends a text/voice/command instead of pressing a button.
- * Non-consuming: the event stays queued for dequeue_update.
+ * Non-consuming: the event stays queued for dequeue.
  */
 type MessageHookFn = () => void;
 const _messageHooks = new Map<number, MessageHookFn>();
@@ -222,6 +230,9 @@ function pushEvent(event: TimelineEvent): void {
   versions.set(CURRENT, event);
   if (event.id > _highestMessageId) _highestMessageId = event.id;
   if (_onEventCallback) _onEventCallback(_timeline.length);
+  if (_onLocalLogCallback) {
+    try { _onLocalLogCallback(event); } catch { /* isolate logging failures */ }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +240,7 @@ function pushEvent(event: TimelineEvent): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Records an inbound update and enqueues it for dequeue_update.
+ * Records an inbound update and enqueues it for dequeue.
  *
  * - Regular messages → message lane
  * - Callback queries, reactions → response lane
@@ -370,7 +381,7 @@ export function recordInbound(update: Update, transcribedText?: string): boolean
     routeToSession(evt);
 
     // Fire one-shot message hooks for any afterId < this message's id.
-    // Non-consuming: the event stays queued for dequeue_update.
+    // Non-consuming: the event stays queued for dequeue.
     for (const [afterId, hook] of _messageHooks) {
       if (msg.message_id > afterId) {
         _messageHooks.delete(afterId);
@@ -604,13 +615,13 @@ export function pendingCount(): number {
 
 /**
  * Returns a promise that resolves when a new item is enqueued.
- * Used by dequeue_update to wait when the queue is empty.
+ * Used by dequeue to wait when the queue is empty.
  */
 export function waitForEnqueue(): Promise<void> {
   return _queue.waitForEnqueue();
 }
 
-/** True if at least one dequeue_update call is blocked waiting for data. */
+/** True if at least one dequeue call is blocked waiting for data. */
 export function hasPendingWaiters(): boolean {
   return _queue.hasPendingWaiters();
 }
@@ -723,6 +734,7 @@ export function resetStoreForTest(): void {
   _messageHooks.clear();
   _botReactionIndex.clear();
   _onEventCallback = null;
+  _onLocalLogCallback = null;
 }
 
 /** Register a one-shot auto-lock hook for a send_choice message. */

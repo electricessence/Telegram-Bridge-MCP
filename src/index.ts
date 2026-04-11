@@ -15,13 +15,16 @@ import { BUILT_IN_COMMANDS, applySessionLogConfig, doTimelineDump } from "./buil
 import { stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
 import { startHealthCheck } from "./health-check.js";
 import { setAuthHook } from "./session-gate.js";
-import { touchSession } from "./session-manager.js";
+import { touchSession, getSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "./session-manager.js";
 import { createOutboundProxy } from "./outbound-proxy.js";
-import { loadConfig, getSessionLogMode, sessionLogLabel, isDebugConfig } from "./config.js";
-import { timelineSize } from "./message-store.js";
+import { loadConfig, getSessionLogMode, isDebugConfig, getPreToolDenyPatterns, getSessionApproval } from "./config.js";
+import { setDelegationEnabled } from "./agent-approval.js";
+import { setPreToolHook, buildDenyPatternHook } from "./tool-hooks.js";
+import { timelineSize, setOnLocalLog } from "./message-store.js";
 import { initDebugLog } from "./debug-log.js";
 import { cleanupStalePins } from "./startup-pin-cleanup.js";
 import { resolveHttpPort } from "./cli-args.js";
+import { enableLogging, isLoggingEnabled, rollLog, logEvent as logLocalEvent, flushCurrentLog } from "./local-log.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as { name: string; version: string };
@@ -33,8 +36,21 @@ getSecurityConfig();
 // Load persistent MCP config
 loadConfig();
 
+// Auto-enable delegation if configured
+if (getSessionApproval() === "governor") {
+  setDelegationEnabled(true);
+  process.stderr.write("[info] session approval: governor — delegation auto-enabled\n");
+}
+
 // Initialize debug logging from config (or env var fallback)
 initDebugLog(isDebugConfig());
+
+// Register deny-pattern hook from config (if any patterns are configured)
+const _denyPatterns = getPreToolDenyPatterns();
+if (_denyPatterns.length > 0) {
+  setPreToolHook(buildDenyPatternHook(_denyPatterns));
+  process.stderr.write(`[info] pre-tool hook: ${_denyPatterns.length} deny pattern(s) loaded\n`);
+}
 if (isDebugConfig()) process.stderr.write("[info] debug logging enabled\n");
 
 // Warn if TTS/STT remote hosts are using plain HTTP (credentials and audio exposed in transit)
@@ -65,9 +81,15 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
       // Drain any updates received since the last poll iteration
       const drained = await drainPendingUpdates();
       if (drained > 0) process.stderr.write(`[shutdown] drained ${drained} pending update(s)\n`);
-      // Dump session log before exit (if not disabled)
+      // Roll the active log on shutdown so the current session log is cleanly archived.
+      // Flush before timeline dump to prevent double-roll (doTimelineDump also calls rollLog).
+      if (isLoggingEnabled()) {
+        try { await flushCurrentLog(); } catch { /* best effort */ }
+      }
       if (getSessionLogMode() !== null && timelineSize() > 0) {
-        try { await doTimelineDump(); } catch { /* best effort */ }
+        try { doTimelineDump(); } catch { /* best effort */ }
+      } else if (isLoggingEnabled()) {
+        try { rollLog(); } catch { /* best effort */ }
       }
       await sendServiceMessage("🔴 Offline").catch((e: unknown) => {
         process.stderr.write(`[shutdown] sendServiceMessage error: ${String(e)}\n`);
@@ -84,6 +106,14 @@ installOutboundProxy(createOutboundProxy);
 
 // Apply session log config (wires up auto-dump if configured)
 applySessionLogConfig();
+
+// Wire up always-on local logging (default: enabled, opt-out via disableLogging())
+enableLogging();
+setOnLocalLog((event) => {
+  // Strip raw Telegram update before logging — it's verbose and contains PII
+  const { _update: _discarded, ...loggableEvent } = event;
+  logLocalEvent(loggableEvent);
+});
 
 // Parse --http [port] from argv (takes precedence over MCP_PORT env var)
 let mcpPort: number | undefined;
@@ -194,12 +224,22 @@ void (async () => {
 })();
 
 startHealthCheck();
-setAuthHook(touchSession);
+setAuthHook((sid: number) => {
+  touchSession(sid);
+  const reauthMsgId = getSessionReauthDialogMsgId(sid);
+  if (reauthMsgId !== undefined) {
+    clearSessionReauthDialogMsgId(sid);
+    const chatId = resolveChat();
+    if (typeof chatId === "number") {
+      getApi().deleteMessage(chatId, reauthMsgId).catch(() => {});
+    }
+  }
+});
 process.stderr.write("[info] health check started\n");
 
 // Best-effort: unpin stale session announcement messages from a prior crashed run
 void cleanupStalePins().catch(() => {});
 
 // Best-effort startup notification — bypasses proxy (operational, not agent content)
-const logStatus = sessionLogLabel();
-void sendServiceMessage(`🟢 Online\nSession record: ${logStatus}\n/session to change settings`).catch(() => {});
+const localLogStatus = isLoggingEnabled() ? "`Logging enabled`" : "Logging disabled";
+void sendServiceMessage(`🟢 Online\n${localLogStatus}\n/logging to change settings`).catch(() => {});

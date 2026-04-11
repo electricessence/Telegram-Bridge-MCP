@@ -1,12 +1,12 @@
-﻿/**
+/**
  * Built-in server-level slash commands.
  *
  * These commands are intercepted in the update pipeline *before* any update
- * is delivered to the agent via dequeue_update. The agent never
+ * is delivered to the agent via dequeue. The agent never
  * sees them — the server handles them directly and responds to the user.
  *
  * Currently registered:
- *   /session  — shows a contextual session-recording control panel
+ *   /logging  — shows a logging control panel
  *
  * The server registers these in the Telegram command menu on startup so they
  * always appear in autocomplete regardless of what the agent has registered.
@@ -15,14 +15,16 @@
 import { createRequire } from "module";
 import type { Update } from "grammy/types";
 import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
+import { rollLog, isLoggingEnabled, enableLogging, disableLogging, listLogs, getCurrentLogFilename, deleteLog } from "./local-log.js";
 import { elegantShutdown, setShutdownDumpHook } from "./shutdown.js";
 
-import { getSessionLogMode, setSessionLogMode, sessionLogLabel } from "./config.js";
+import { getSessionLogMode } from "./config.js";
 import { getDefaultVoice, setDefaultVoice, getConfiguredVoices } from "./config.js";
 import type { VoiceEntry } from "./config.js";
 import { fetchVoiceList, isTtsEnabled } from "./tts.js";
 import { getSessionSpeed } from "./voice-state.js";
 import { activateAutoApproveOne, activateAutoApproveTimed, cancelAutoApprove, getAutoApproveState } from "./auto-approve.js";
+import { isDelegationEnabled, setDelegationEnabled } from "./agent-approval.js";
 
 
 const require = createRequire(import.meta.url);
@@ -39,18 +41,19 @@ export function getVersionString(): string {
   return `v${MCP_VERSION} (${_mcpCommit} ${_mcpBuildTime})`;
 }
 import type { TimelineEvent } from "./message-store.js";
-import { dumpTimeline, dumpTimelineSince, timelineSize, storeSize, setOnEvent } from "./message-store.js";
-import { listSessions, activeSessionCount } from "./session-manager.js";
+import { timelineSize, setOnEvent } from "./message-store.js";
+import { listSessions, getIdleSessions } from "./session-manager.js";
 import { getGovernorSid, setGovernorSid } from "./routing-mode.js";
 import { deliverServiceMessage } from "./session-queue.js";
 import { getCallerSid, runInSessionContext } from "./session-context.js";
+import { closeSessionById } from "./session-teardown.js";
 
 // ---------------------------------------------------------------------------
 // Tracking panel message IDs so callback_query intercept can route back
 // ---------------------------------------------------------------------------
 
 /** Maps from message_id → panel type so we can route callback_queries back to us. */
-const _activePanels = new Map<number, "session" | "voice" | "voice-sample" | "approval" | "governor" | "approve">();
+const _activePanels = new Map<number, "logging" | "voice" | "voice-sample" | "approval" | "governor" | "approve" | "session" | "log">();
 
 // ---------------------------------------------------------------------------
 // Operator approval gate — system-level confirmation for sensitive tool calls
@@ -162,7 +165,8 @@ export function setAutoDumpThreshold(threshold: number | null): void {
       if (_autoDumpThreshold != null && _eventsSinceLastDump >= _autoDumpThreshold && !_dumpInFlight) {
         _dumpInFlight = true;
         _eventsSinceLastDump = 0;
-        void doTimelineDump(true).finally(() => { _dumpInFlight = false; });
+        doTimelineDump(true);
+        _dumpInFlight = false;
       }
     });
   } else {
@@ -189,10 +193,11 @@ export function getAutoDumpThresholdValue(): number | null {
 }
 
 // Wire up the session-log dump hook for elegant shutdown (avoids circular import)
-setShutdownDumpHook(async () => {
+setShutdownDumpHook(() => {
   if (getSessionLogMode() !== null) {
-    await doTimelineDump(true);
+    doTimelineDump(true);
   }
+  return Promise.resolve();
 });
 
 /**
@@ -228,11 +233,12 @@ export function sendSessionPrefsPrompt(): void {
 
 /** Built-in command metadata (for merging into set_commands menus). */
 export const BUILT_IN_COMMANDS = [
-  { command: "session", description: "Session recording controls" },
+  { command: "logging", description: "Logging controls" },
   { command: "voice", description: "Change the TTS voice" },
   { command: "version", description: "Show server version and build info" },
   { command: "shutdown", description: "Shut down the MCP server" },
   { command: "approve", description: "Pre-approve session requests" },
+  { command: "session", description: "Manage active sessions" },
 ] as const;
 
 const _builtInCommandNames = new Set<string>([...BUILT_IN_COMMANDS.map(c => c.command), "primary"]);
@@ -240,7 +246,7 @@ const _builtInCommandNames = new Set<string>([...BUILT_IN_COMMANDS.map(c => c.co
 /**
  * Message IDs for bot-sent session infrastructure messages (panel, dump docs,
  * notices) that should be excluded from the session record dump.
- * The events still appear in the timeline and flow through dequeue_update —
+ * The events still appear in the timeline and flow through dequeue —
  * they just shouldn't show up when recording the session.
  */
 const _internalMessageIds = new Set<number>();
@@ -254,7 +260,7 @@ export function markInternalMessage(messageId: number): void {
  * Returns true if a timeline event is an internal server event (built-in
  * slash command, session-panel callback, or bot-sent session infrastructure
  * message) that should be excluded from the session record dump. The event
- * is still stored in the timeline and visible to dequeue_update — it just
+ * is still stored in the timeline and visible to dequeue — it just
  * shouldn't pollute the record.
  */
 export function isInternalTimelineEvent(evt: Omit<TimelineEvent, "_update">): boolean {
@@ -264,11 +270,14 @@ export function isInternalTimelineEvent(evt: Omit<TimelineEvent, "_update">): bo
   }
   if (evt.event === "callback" && typeof evt.content.data === "string") {
     return (
-      evt.content.data.startsWith("session:") ||
+      evt.content.data.startsWith("logging:") ||
       evt.content.data.startsWith("voice:") ||
       evt.content.data.startsWith("approval:") ||
       evt.content.data.startsWith("approve:") ||
-      evt.content.data.startsWith("governor:")
+      evt.content.data.startsWith("approve_") ||
+      evt.content.data.startsWith("governor:") ||
+      evt.content.data.startsWith("session:") ||
+      evt.content.data.startsWith("log:")
     );
   }
   return false;
@@ -296,8 +305,8 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
       }
 
       const raw = update.message.text.slice(1, cmd.length).split("@")[0];
-      if (raw === "session") {
-        await handleSessionCommand();
+      if (raw === "logging") {
+        await handleLoggingCommand();
         return true;
       }
       if (raw === "voice") {
@@ -318,6 +327,14 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
       }
       if (raw === "approve") {
         await handleApproveCommand();
+        return true;
+      }
+      if (raw === "session") {
+        await handleSessionCommand();
+        return true;
+      }
+      if (raw === "log") {
+        await handleLoggingCommand();
         return true;
       }
     }
@@ -358,8 +375,24 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
           msgId,
           update.callback_query.data ?? "",
         );
-      } else {
-        await handleSessionCallback(update.callback_query.id, msgId, update.callback_query.data ?? "");
+      } else if (panelType === "logging") {
+        await handleLoggingCallback(
+          update.callback_query.id,
+          msgId,
+          update.callback_query.data ?? "",
+        );
+      } else if (panelType === "session") {
+        await handleSessionCallback(
+          update.callback_query.id,
+          msgId,
+          update.callback_query.data ?? "",
+        );
+      } else if (panelType === "log") {
+        await handleLogCallback(
+          update.callback_query.id,
+          msgId,
+          update.callback_query.data ?? "",
+        );
       }
       return true;
     }
@@ -378,6 +411,18 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
       try { await getApi().answerCallbackQuery(update.callback_query.id, { text: "This panel has expired." }); } catch { /* ignore */ }
       return true;
     }
+    if (data.startsWith("logging:")) {
+      try { await getApi().answerCallbackQuery(update.callback_query.id, { text: "This panel has expired." }); } catch { /* ignore */ }
+      return true;
+    }
+    if (data.startsWith("session:")) {
+      try { await getApi().answerCallbackQuery(update.callback_query.id, { text: "This panel has expired." }); } catch { /* ignore */ }
+      return true;
+    }
+    if (data.startsWith("log:")) {
+      try { await getApi().answerCallbackQuery(update.callback_query.id, { text: "This panel has expired." }); } catch { /* ignore */ }
+      return true;
+    }
   }
 
   return false;
@@ -387,11 +432,13 @@ export async function handleIfBuiltIn(update: Update): Promise<boolean> {
 // /governor panel — runtime governor selection
 // ---------------------------------------------------------------------------
 
-/** Returns the /primary command entry if 2+ sessions are active, null otherwise. */
+/**
+ * Returns the /primary command entry if 2+ sessions are active, null otherwise.
+ * Since /session now bundles primary selection, /primary is kept functional for
+ * backward compatibility but is no longer added to the Telegram command menu.
+ */
 export function getGovernorCommandEntry(): { command: string; description: string } | null {
-  return activeSessionCount() >= 2
-    ? { command: "primary", description: "Switch the primary session" }
-    : null;
+  return null;
 }
 
 /**
@@ -990,28 +1037,36 @@ async function handleApproveCommand(): Promise<void> {
   } else if (state.mode === "timed" && state.expiresAt !== undefined) {
     const remaining = Math.ceil((state.expiresAt - Date.now()) / 1000);
     if (remaining <= 0) {
-      statusLine = "⚪ Auto-approve: off";
+      statusLine = "⚪ Governor-controlled";
     } else {
       const mins = Math.floor(remaining / 60);
       const secs = remaining % 60;
       statusLine = `🟢 Auto-approve active (${mins}m ${secs}s remaining)`;
     }
   } else {
-    statusLine = "⚪ Auto-approve: off";
+    statusLine = "⚪ Governor-controlled";
   }
 
   let msg: { message_id: number };
   try {
     msg = await api.sendMessage(chatId, `*Session Auto-Approve*\n${statusLine}`, {
       parse_mode: "Markdown",
+      _skipHeader: true,
       reply_markup: {
-        inline_keyboard: [[
-          { text: "Next request", callback_data: "approve:one" },
-          { text: "10 minutes",   callback_data: "approve:timed" },
-          { text: "Dismiss",      callback_data: "approve:dismiss" },
-        ]],
+        inline_keyboard: [
+          [
+            { text: "🟡 Next request", callback_data: "approve:one" },
+            { text: "🟢 10 minutes",   callback_data: "approve:timed" },
+          ],
+          [
+            isDelegationEnabled()
+              ? { text: "⬇ Disable Governor", callback_data: "approve:delegate:off" }
+              : { text: "⬆ Enable Governor",  callback_data: "approve:delegate:on" },
+            { text: "✖ Dismiss",       callback_data: "approve:dismiss" },
+          ],
+        ],
       },
-    });
+    } as Record<string, unknown>);
   } catch { return; }
 
   markInternalMessage(msg.message_id);
@@ -1033,27 +1088,176 @@ async function handleApproveCallback(
   if (data === "approve:one") {
     activateAutoApproveOne();
     await api.editMessageText(chatId, panelMsgId,
-      "*Session Auto-Approve*\n▸ 🟡 Next session request will be auto-approved",
-      { parse_mode: "Markdown", reply_markup: { inline_keyboard: [] } }
+      "*Session Auto-Approve → Next Request*",
+      { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
     ).catch(() => {/* non-fatal */});
   } else if (data === "approve:timed") {
     activateAutoApproveTimed(AUTO_APPROVE_DURATION_MS);
+    const expiresMs = Date.now() + AUTO_APPROVE_DURATION_MS;
+    const d = new Date(expiresMs);
+    const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     await api.editMessageText(chatId, panelMsgId,
-      "*Session Auto-Approve*\n▸ 🟢 Auto-approving all session requests for 10 minutes",
-      { parse_mode: "Markdown", reply_markup: { inline_keyboard: [] } }
+      `*Session Auto-Approve → 10 Minutes (expires ${hhmm})*`,
+      { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
+    ).catch(() => {/* non-fatal */});
+  } else if (data === "approve:delegate:on") {
+    setDelegationEnabled(true);
+    await api.editMessageText(chatId, panelMsgId,
+      "*Session Auto-Approve → Governor Enabled*",
+      { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
+    ).catch(() => {/* non-fatal */});
+  } else if (data === "approve:delegate:off") {
+    setDelegationEnabled(false);
+    await api.editMessageText(chatId, panelMsgId,
+      "*Session Auto-Approve → Governor Disabled*",
+      { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
     ).catch(() => {/* non-fatal */});
   } else {
     // dismiss — cancel any active auto-approve and close panel
     cancelAutoApprove();
     await api.editMessageText(chatId, panelMsgId,
-      "*Session Auto-Approve*\n▸ ⚪ Dismissed — manual approval restored",
-      { parse_mode: "Markdown", reply_markup: { inline_keyboard: [] } }
+      "*Session Auto-Approve → Dismissed*",
+      { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>
     ).catch(() => {/* non-fatal */});
   }
 }
 
 // ---------------------------------------------------------------------------
-// /session panel
+// /logging panel
+// ---------------------------------------------------------------------------
+
+async function handleLoggingCommand(): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  const api = getApi();
+
+  const { text, keyboard } = buildLoggingPanel();
+  try {
+    const msg = await api.sendMessage(chatId, text, {
+      parse_mode: "Markdown",
+      _skipHeader: true,
+      reply_markup: { inline_keyboard: keyboard },
+    } as Record<string, unknown>);
+    _activePanels.set(msg.message_id, "logging");
+    markInternalMessage(msg.message_id);
+  } catch { /* ignore */ }
+}
+
+async function handleLoggingCallback(
+  callbackQueryId: string,
+  panelMsgId: number,
+  data: string,
+): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  const api = getApi();
+
+  try { await api.answerCallbackQuery(callbackQueryId); } catch { /* ignore */ }
+
+  if (data === "logging:dismiss") {
+    _activePanels.delete(panelMsgId);
+    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+    return;
+  }
+
+  if (data === "logging:on") {
+    enableLogging();
+  } else if (data === "logging:off") {
+    // Auto-roll before disabling
+    doTimelineDump();
+    disableLogging();
+  } else if (data === "logging:dump") {
+    doTimelineDump();
+  } else if (data === "logging:flush") {
+    // Show destructive confirmation
+    try {
+      const archivedCount = listLogs().length;
+      if (archivedCount === 0) {
+        await runInSessionContext(0, () => api.editMessageText(chatId, panelMsgId,
+          "ℹ️ No archived logs to flush.", { parse_mode: "Markdown", _skipHeader: true,
+            reply_markup: { inline_keyboard: [[{ text: "✖ Dismiss", callback_data: "logging:dismiss" }]] } } as Record<string, unknown>));
+      } else {
+        await runInSessionContext(0, () => api.editMessageText(chatId, panelMsgId,
+          `⚠️ *Delete all ${archivedCount} archived log(s)?*\n\nThe active log is untouched.`, {
+            parse_mode: "Markdown", _skipHeader: true,
+            reply_markup: { inline_keyboard: [
+              [
+                { text: "✖ No — Cancel", callback_data: "logging:flush-cancel" },
+                { text: "🗑 Delete All", callback_data: "logging:flush-confirm" },
+              ],
+            ]},
+          } as Record<string, unknown>));
+      }
+    } catch { /* ignore */ }
+    return;
+  } else if (data === "logging:flush-cancel") {
+    // Just refresh the panel
+  } else if (data === "logging:flush-confirm") {
+    // Delete all archived logs
+    for (const filename of listLogs()) {
+      try { deleteLog(filename); } catch { /* ignore */ }
+    }
+  }
+
+  // Refresh panel
+  const { text, keyboard } = buildLoggingPanel();
+  try {
+    await runInSessionContext(0, () => api.editMessageText(chatId, panelMsgId, text, {
+      parse_mode: "Markdown", _skipHeader: true,
+      reply_markup: { inline_keyboard: keyboard },
+    } as Record<string, unknown>));
+  } catch { /* ignore */ }
+}
+
+function buildLoggingPanel(): { text: string; keyboard: { text: string; callback_data: string }[][] } {
+  const enabled = isLoggingEnabled();
+  const archived = listLogs();
+  const current = getCurrentLogFilename();
+
+  const lines = [
+    `📋 *Logging*`,
+    `Status: ${enabled ? "On" : "Off"}`,
+  ];
+  if (current) lines.push(`Active: \`${current}\``);
+  if (archived.length > 0) {
+    const MAX_SHOWN = 5;
+    const shown = archived.slice(-MAX_SHOWN);
+    const rest = archived.length - shown.length;
+    const fileList = shown.map(f => `\`${f}\``).join(", ");
+    lines.push(`Archived: ${fileList}${rest > 0 ? ` (+${rest} more)` : ""}`);
+  } else {
+    lines.push(`No archived logs.`);
+  }
+  const text = lines.join("\n");
+
+  if (!enabled) {
+    // Logging OFF state
+    const keyboard = [
+      [
+        { text: "⬆ Enable", callback_data: "logging:on" },
+        { text: "✖ Dismiss", callback_data: "logging:dismiss" },
+      ],
+    ];
+    return { text, keyboard };
+  }
+
+  // Logging ON state
+  const clearLabel = archived.length > 0 ? `🗑 Clear (${archived.length})` : "🗑 Clear";
+  const keyboard = [
+    [
+      { text: "📥 Archive active", callback_data: "logging:dump" },
+      { text: "⬇ Disable", callback_data: "logging:off" },
+    ],
+    [
+      { text: clearLabel, callback_data: "logging:flush" },
+      { text: "✖ Dismiss", callback_data: "logging:dismiss" },
+    ],
+  ];
+  return { text, keyboard };
+}
+
+// ---------------------------------------------------------------------------
+// /session panel — fleet management UI
 // ---------------------------------------------------------------------------
 
 async function handleSessionCommand(): Promise<void> {
@@ -1061,15 +1265,37 @@ async function handleSessionCommand(): Promise<void> {
   if (typeof chatId !== "number") return;
   const api = getApi();
 
-  const { text, keyboard } = buildSessionPanel();
+  const sessions = listSessions();
+  if (sessions.length === 0) {
+    try {
+      const msg = await api.sendMessage(chatId, "ℹ️ No active sessions.");
+      markInternalMessage(msg.message_id);
+    } catch { /* ignore */ }
+    return;
+  }
+
+  const { text, keyboard } = buildSessionListPanel(sessions);
   try {
     const msg = await api.sendMessage(chatId, text, {
-      parse_mode: "Markdown",
+      _skipHeader: true,
       reply_markup: { inline_keyboard: keyboard },
-    });
+    } as Record<string, unknown>);
     _activePanels.set(msg.message_id, "session");
     markInternalMessage(msg.message_id);
   } catch { /* ignore */ }
+}
+
+function buildSessionListPanel(
+  sessions: Array<{ sid: number; name: string; color: string }>,
+): { text: string; keyboard: { text: string; callback_data: string }[][] } {
+  const text = "🤖 Active sessions:";
+  const keyboard: { text: string; callback_data: string }[][] = [];
+  for (const s of sessions) {
+    const label = `${s.color} ${s.name} (SID ${s.sid})`;
+    keyboard.push([{ text: label, callback_data: `session:select:${s.sid}` }]);
+  }
+  keyboard.push([{ text: "✖ Cancel", callback_data: "session:cancel" }]);
+  return { text, keyboard };
 }
 
 async function handleSessionCallback(
@@ -1081,187 +1307,299 @@ async function handleSessionCallback(
   if (typeof chatId !== "number") return;
   const api = getApi();
 
-  // Ack the spinner immediately
   try { await api.answerCallbackQuery(callbackQueryId); } catch { /* ignore */ }
 
-  if (data === "session:dismiss") {
+  if (data === "session:cancel") {
     _activePanels.delete(panelMsgId);
     try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
     return;
   }
 
-  // ── Mode switches ─────────────────────────────────────────────────────
-  if (data === "session:disable") {
-    setSessionLogMode(null);
-    applySessionLogConfig();
-  } else if (data === "session:manual") {
-    setSessionLogMode("manual");
-    applySessionLogConfig();
-  } else if (data === "session:autodump") {
-    // Show threshold picker
+  if (data === "session:back") {
+    const sessions = listSessions();
+    if (sessions.length === 0) {
+      _activePanels.delete(panelMsgId);
+      try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+      return;
+    }
+    const { text, keyboard } = buildSessionListPanel(sessions);
     try {
-      await runInSessionContext(0, () => api.editMessageText(chatId, panelMsgId, "� *Auto-dump*\n\nDump the session record every N events:", {
-        parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: [
-          [
-            { text: "10", callback_data: "session:setauto:10" },
-            { text: "25", callback_data: "session:setauto:25" },
-            { text: "50", callback_data: "session:setauto:50" },
-            { text: "100", callback_data: "session:setauto:100" },
-          ],
-          [{ text: "✖ Cancel", callback_data: "session:dismiss" }],
-        ] },
+      await runInSessionContext(0, () => api.editMessageText(chatId, panelMsgId, text, {
+        _skipHeader: true,
+        reply_markup: { inline_keyboard: keyboard },
+      } as Record<string, unknown>));
+    } catch { /* ignore */ }
+    return;
+  }
+
+  if (data.startsWith("session:select:")) {
+    const sid = parseInt(data.slice("session:select:".length), 10);
+    if (isNaN(sid)) return;
+    await renderSessionDetail(chatId, panelMsgId, sid);
+    return;
+  }
+
+  if (data.startsWith("session:close:") && !data.startsWith("session:close_confirm:") && !data.startsWith("session:close_cancel:")) {
+    const sid = parseInt(data.slice("session:close:".length), 10);
+    if (isNaN(sid)) return;
+    const sessions = listSessions();
+    const target = sessions.find(s => s.sid === sid);
+    const targetName = target?.name || `Session ${sid}`;
+    try {
+      await runInSessionContext(0, () => api.editMessageText(
+        chatId,
+        panelMsgId,
+        `⚠️ Close *${targetName}* (SID ${sid})? This cannot be undone.`,
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "✅ Yes, close it", callback_data: `session:close_confirm:${sid}` },
+                { text: "✖ Cancel", callback_data: `session:close_cancel:${sid}` },
+              ],
+            ],
+          },
+        },
+      ));
+    } catch { /* ignore */ }
+    return;
+  }
+
+  if (data.startsWith("session:close_confirm:")) {
+    const sid = parseInt(data.slice("session:close_confirm:".length), 10);
+    if (isNaN(sid)) return;
+    _activePanels.delete(panelMsgId);
+    const closeResult = closeSessionById(sid);
+    const closeMsg = closeResult.closed
+      ? "✓ Session closed."
+      : "⚠️ Session was already closed.";
+    void refreshGovernorCommand();
+    try {
+      await runInSessionContext(0, () => api.editMessageText(
+        chatId,
+        panelMsgId,
+        closeMsg,
+        { reply_markup: { inline_keyboard: [] } },
+      ));
+    } catch { /* ignore */ }
+    return;
+  }
+
+  if (data.startsWith("session:close_cancel:")) {
+    const sid = parseInt(data.slice("session:close_cancel:".length), 10);
+    if (isNaN(sid)) return;
+    await renderSessionDetail(chatId, panelMsgId, sid);
+    return;
+  }
+
+  if (data.startsWith("session:primary:")) {
+    const sid = parseInt(data.slice("session:primary:".length), 10);
+    if (isNaN(sid)) return;
+    const sessions = listSessions();
+    const target = sessions.find(s => s.sid === sid);
+    if (!target) {
+      _activePanels.delete(panelMsgId);
+      try {
+        await runInSessionContext(0, () => api.editMessageText(
+          chatId,
+          panelMsgId,
+          "⚠️ Session no longer active.",
+          { reply_markup: { inline_keyboard: [] } },
+        ));
+      } catch { /* ignore */ }
+      return;
+    }
+
+    const oldSid = getGovernorSid();
+    setGovernorSid(sid);
+    const newLabel = `${target.color} ${target.name}`;
+
+    sendServiceMessage(`🔀 ${newLabel} is now the primary session.`).catch(() => {});
+
+    deliverServiceMessage(
+      sid,
+      `You are now the governor. Ambiguous messages will be routed to you.`,
+      "governor_changed",
+      { old_governor_sid: oldSid, new_governor_sid: sid },
+    );
+
+    if (oldSid > 0 && oldSid !== sid) {
+      const oldGovernor = sessions.find(s => s.sid === oldSid);
+      if (oldGovernor) {
+        deliverServiceMessage(
+          oldSid,
+          `You are no longer the governor. ${newLabel} is now the governor.`,
+          "governor_changed",
+          { old_governor_sid: oldSid, new_governor_sid: sid },
+        );
+      }
+    }
+
+    for (const s of sessions) {
+      if (s.sid === sid || s.sid === oldSid) continue;
+      deliverServiceMessage(
+        s.sid,
+        `Governor changed: ${newLabel} is now the governor.`,
+        "governor_changed",
+        { old_governor_sid: oldSid, new_governor_sid: sid },
+      );
+    }
+
+    _activePanels.delete(panelMsgId);
+    try {
+      await runInSessionContext(0, () => api.editMessageText(
+        chatId,
+        panelMsgId,
+        `✓ ${newLabel} is now the primary session.`,
+        { reply_markup: { inline_keyboard: [] } },
+      ));
+    } catch { /* ignore */ }
+    return;
+  }
+}
+
+async function renderSessionDetail(
+  chatId: number,
+  panelMsgId: number,
+  sid: number,
+): Promise<void> {
+  const api = getApi();
+  const sessions = listSessions();
+  const target = sessions.find(s => s.sid === sid);
+  if (!target) {
+    // Session gone — go back to list
+    if (sessions.length === 0) {
+      _activePanels.delete(panelMsgId);
+      try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
+      return;
+    }
+    const { text, keyboard } = buildSessionListPanel(sessions);
+    try {
+      await runInSessionContext(0, () => api.editMessageText(chatId, panelMsgId, text, {
+        reply_markup: { inline_keyboard: keyboard },
       }));
     } catch { /* ignore */ }
     return;
-  } else if (data.startsWith("session:setauto:")) {
-    const n = parseInt(data.slice("session:setauto:".length), 10);
-    if (!isNaN(n) && n > 0) {
-      setSessionLogMode(n);
-      applySessionLogConfig();
-    }
-  } else if (data === "session:dump") {
-    _activePanels.delete(panelMsgId);
-    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
-    await doTimelineDump(true);
-    return;
   }
 
-  // Refresh the panel with new state
-  const { text, keyboard } = buildSessionPanel();
+  const govSid = getGovernorSid();
+  const isGov = target.sid === govSid;
+  const idleSessions = getIdleSessions();
+  const idleInfo = idleSessions.find(s => s.sid === sid);
+  const statusLine = idleInfo
+    ? `Status: 🟢 Idle (${Math.round(idleInfo.idle_since_ms / 1000)}s)`
+    : "Status: 🔴 Active";
+  const lines = [
+    `${target.color} *${target.name}*`,
+    `SID: ${target.sid}`,
+    `Started: ${target.createdAt ? new Date(target.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "unknown"}`,
+    statusLine,
+    isGov ? "_This is the current primary session._" : "",
+  ].filter(Boolean);
+
+  const firstRow = isGov
+    ? [{ text: "🗑 Close session", callback_data: `session:close:${sid}` }]
+    : [
+        { text: "🗑 Close session", callback_data: `session:close:${sid}` },
+        { text: "⭐ Set as Primary", callback_data: `session:primary:${sid}` },
+      ];
+  const keyboard: { text: string; callback_data: string }[][] = [
+    firstRow,
+    [{ text: "← Back", callback_data: "session:back" }],
+  ];
+
   try {
-    await runInSessionContext(0, () => api.editMessageText(chatId, panelMsgId, text, {
-      parse_mode: "Markdown",
-      reply_markup: { inline_keyboard: keyboard },
-    }));
+    await runInSessionContext(0, () => api.editMessageText(
+      chatId,
+      panelMsgId,
+      lines.join("\n"),
+      {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: keyboard },
+      },
+    ));
   } catch { /* ignore */ }
 }
 
 // ---------------------------------------------------------------------------
-// Timeline dump — JSON file sent to Telegram
+// /log panel — session recording controls
 // ---------------------------------------------------------------------------
 
-/**
- * Take a snapshot of the message-store timeline, convert to JSON, and send
- * as a .json file to Telegram. Used by both manual (/session → Dump) and
- * auto-dump (threshold reached).
- *
- * @param incremental If true, only dump events since last dump (cursor-based).
- *                    If false (default), dump the full timeline.
- */
-export async function doTimelineDump(incremental = false): Promise<void> {
+async function _handleLogCommand(): Promise<void> {
   const chatId = resolveChat();
   if (typeof chatId !== "number") return;
   const api = getApi();
 
-  let timeline: Array<Record<string, unknown>>;
-  if (incremental) {
-    const result = dumpTimelineSince(_dumpCursor);
-    timeline = result.events.filter(evt => !isInternalTimelineEvent(evt));
-    _dumpCursor = result.nextCursor;
-  } else {
-    timeline = dumpTimeline().filter(evt => !isInternalTimelineEvent(evt));
-    _dumpCursor = timelineSize();
-  }
-
-  if (timeline.length === 0) {
-    if (!incremental) {
-      try {
-        const noEvtMsg = await api.sendMessage(chatId, "🗒 *Session Record*\n_(no events captured)_", {
-          parse_mode: "Markdown",
-        });
-        markInternalMessage(noEvtMsg.message_id);
-      } catch { /* ignore */ }
-    }
-    return;
-  }
-
-  const now = new Date().toISOString();
-  const payload = {
-    generated: now,
-    incremental,
-    event_count: timeline.length,
-    total_timeline: timelineSize(),
-    unique_messages: storeSize(),
-    timeline,
-  };
-
   try {
-    const { InputFile } = await import("grammy");
-    const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf-8");
-    const file = new InputFile(buf, `session-log-${now.replace(/[:.]/g, "-")}.json`);
-    const label = `🗒 Session record · ${timeline.length} events${incremental ? " (incremental)" : ""}`;
-    const msg = await api.sendDocument(chatId, file, { caption: label }) as {
-      message_id: number;
-      document?: { file_id?: string };
-    };
+    const msg = await api.sendMessage(chatId, "📋 *Session Recording*\n\nDump the current session event log to a file.", {
+      parse_mode: "Markdown",
+      _skipHeader: true,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "📥 Dump session record", callback_data: "log:dump" },
+            { text: "✖ Cancel", callback_data: "log:cancel" },
+          ],
+        ],
+      },
+    } as Record<string, unknown>);
+    _activePanels.set(msg.message_id, "log");
     markInternalMessage(msg.message_id);
+  } catch { /* ignore */ }
+}
 
-    // Amend caption with file_id so it's recoverable after a crash
-    const fileId = msg.document?.file_id;
-    if (fileId) {
-      try {
-        await api.editMessageCaption(chatId, msg.message_id, {
-          caption: `${label}\nFile ID: \`${fileId}\``,
-          parse_mode: "Markdown",
-        });
-      } catch { /* best effort */ }
-    }
-  } catch {
-    // Fallback: truncated message
+async function handleLogCallback(
+  callbackQueryId: string,
+  panelMsgId: number,
+  data: string,
+): Promise<void> {
+  const chatId = resolveChat();
+  if (typeof chatId !== "number") return;
+  const api = getApi();
+
+  try { await api.answerCallbackQuery(callbackQueryId); } catch { /* ignore */ }
+  _activePanels.delete(panelMsgId);
+
+  if (data === "log:dump") {
+    doTimelineDump();
     try {
-      const json = JSON.stringify(payload);
-      const fallbackMsg = await api.sendMessage(chatId, `\`\`\`json\n${json.slice(0, 3900)}\n\`\`\``, {
-        parse_mode: "Markdown",
-      });
-      markInternalMessage(fallbackMsg.message_id);
+      await runInSessionContext(0, () => api.editMessageText(
+        chatId,
+        panelMsgId,
+        "✓ Session record dumped.",
+        { parse_mode: "Markdown", _skipHeader: true, reply_markup: { inline_keyboard: [] } } as Record<string, unknown>,
+      ));
     } catch { /* ignore */ }
-  }
-}
-
-function buildSessionPanel(): { text: string; keyboard: { text: string; callback_data: string }[][] } {
-  const recordSize = dumpTimeline().filter(evt => !isInternalTimelineEvent(evt)).length;
-  const mSize = storeSize();
-  const mode = getSessionLogMode();
-
-  const lines = [
-    `🗒 *Session Record*`,
-    `Mode: ${sessionLogLabel()}`,
-    `Timeline: ${recordSize} events · ${mSize} messages`,
-  ];
-  if (typeof mode === "number") {
-    lines.push(`Auto-dump: every ${mode} events (${_eventsSinceLastDump} since last)`);
-  }
-
-  const text = lines.join("\n");
-
-  // Row 1: mode switches
-  const modeButtons: { text: string; callback_data: string }[] = [];
-  if (mode !== null) {
-    modeButtons.push({ text: "⏹ Disable", callback_data: "session:disable" });
-  }
-  if (mode !== "manual") {
-    modeButtons.push({ text: "🫵 Manual", callback_data: "session:manual" });
-  }
-  if (typeof mode !== "number") {
-    modeButtons.push({ text: "⏩ Auto-dump", callback_data: "session:autodump" });
   } else {
-    modeButtons.push({ text: `⏩ Auto (${mode})`, callback_data: "session:autodump" });
+    // cancel
+    try { await api.deleteMessage(chatId, panelMsgId); } catch { /* ignore */ }
   }
-
-  // Row 2: actions
-  const actionButtons: { text: string; callback_data: string }[] = [];
-  if (mode !== null && recordSize > 0) {
-    actionButtons.push({ text: "⬇️ Dump record", callback_data: "session:dump" });
-  }
-  actionButtons.push({ text: "✖ Dismiss", callback_data: "session:dismiss" });
-
-  const keyboard = [modeButtons, actionButtons];
-
-  return { text, keyboard };
 }
 
+// ---------------------------------------------------------------------------
+// Timeline dump — writes to local log file (no Telegram file send)
+// ---------------------------------------------------------------------------
 
+/**
+ * Roll the local log file. Called by manual (/logging → Dump) and at shutdown.
+ *
+ * The local log is always-on and captures all events continuously via the
+ * setOnLocalLog hook in index.ts. This function triggers a roll so the
+ * current log file is finalized and a new one starts.
+ *
+ * Emits a service notification to chat with the archived filename.
+ *
+ * @param incremental Retained for call-site compatibility; unused.
+ */
+export function doTimelineDump(_incremental = false): void {
+  try {
+    const filename = rollLog();
+    if (filename) {
+      void sendServiceMessage(`📋 Log file created: \`${filename}\``).catch(() => {});
+    }
+  } catch { /* best-effort */ }
+}
 
 /** For testing only: resets module-scoped state. */
 export function resetBuiltInCommandsForTest(): void {
