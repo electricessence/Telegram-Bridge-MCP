@@ -24,7 +24,7 @@
 ## Highlights
 
 | Feature | Description |
-|---|---|
+| --- | --- |
 | **Two-way messaging** | Text, Markdown, files, voice notes |
 | **Interactive controls** | Inline buttons, confirmations, questions |
 | **Super tools** | Self-pinning checklists and emoji progress bars that update in-place |
@@ -62,7 +62,7 @@ pnpm install && pnpm build
 
 Message [@BotFather](https://t.me/BotFather) on Telegram:
 
-```
+```text
 /newbot
 ```
 
@@ -87,7 +87,7 @@ See [`docs/setup.md`](docs/setup.md) for per-client config snippets (VS Code, Cl
 ## Transports
 
 | Transport | Entry Point | Best For |
-|---|---|---|
+| --- | --- | --- |
 | **Streamable HTTP** | `pnpm start -- --http` | Multiple clients sharing one server (recommended) |
 | **stdio** | `node dist/index.js` | Single client, no persistent server |
 | **Launcher bridge** | `node dist/launcher.js` | Auto-starts HTTP if needed, bridges stdio ↔ HTTP |
@@ -139,7 +139,7 @@ Version 6 consolidates the entire API into **4 tools** with type-based routing. 
 All outbound operations flow through a single `send` call. The `type` parameter determines behavior.
 
 | Type | Description |
-|---|---|
+| --- | --- |
 | `text` | Formatted Markdown text; pass `audio: "..."` to speak via TTS |
 | `file` | Photo, document, video, audio, or voice note |
 | `notification` | Status notification with severity: `info` · `success` · `warning` · `error` |
@@ -159,8 +159,8 @@ All outbound operations flow through a single `send` call. The `type` parameter 
 send({ token: 1234567, type: "text", text: "Hello from your AI agent!" })
 send({ token: 1234567, type: "notification", severity: "success", text: "Build passed." })
 send({ token: 1234567, type: "question", ask: "Proceed with deployment?" })
-send({ token: 1234567, type: "checklist", items: ["Design", "Implement", "Review", "Deploy"] })
-send({ token: 1234567, type: "progress", total: 10, label: "Processing files" })
+send({ token: 1234567, type: "checklist", steps: ["Design", "Implement", "Review", "Deploy"] })
+send({ token: 1234567, type: "progress", percent: 0 })
 ```
 
 ### `dequeue` — Receive Inbound Events
@@ -230,14 +230,14 @@ help({ topic: "send" })  // targeted reference for a specific tool or type
 
 Multiple agents can share one bot simultaneously without cross-talk.
 
-```
+```text
 session/start → token (integer) → pass on every call
 ```
 
 **Token format:** `token = sid * 1_000_000 + pin` — a single integer, returned by `action(type: "session/start")`.
 
 | Capability | Description |
-|---|---|
+| --- | --- |
 | **Isolated queues** | Per-session routing; no messages bleed between agents |
 | **Color identity** | Outbound messages prefixed with color + name (e.g., `🟩 Worker 1`) |
 | **Governor model** | First session is primary; additional sessions require operator approval via color-picker keyboard |
@@ -265,7 +265,7 @@ WHISPER_CACHE_DIR=/path/to/cache            # optional
 Triggered by `send(type: "text", audio: "...")`. Provider is selected automatically:
 
 | Environment Variable | Provider |
-|---|---|
+| --- | --- |
 | `TTS_HOST` | Any OpenAI-compatible `/v1/audio/speech` endpoint |
 | `OPENAI_API_KEY` | api.openai.com |
 | Neither set | Bundled ONNX model (zero config) |
@@ -306,7 +306,7 @@ See [`docs/security-model.md`](docs/security-model.md) for the full model.
 Five resources are available to any connected client — no tool call required:
 
 | URI | Contents |
-|---|---|
+| --- | --- |
 | `telegram-bridge-mcp://agent-guide` | Behavioral guide for AI agents |
 | `telegram-bridge-mcp://communication-guide` | Communication patterns and loop rules |
 | `telegram-bridge-mcp://quick-reference` | Hard rules + compact tool table |
@@ -382,7 +382,7 @@ See [`docs/agent-setup.md`](docs/agent-setup.md) for installation instructions f
 ## Documentation
 
 | Doc | Contents |
-|---|---|
+| --- | --- |
 | [`docs/setup.md`](docs/setup.md) | Full setup walkthrough with per-client config |
 | [`docs/multi-session-protocol.md`](docs/multi-session-protocol.md) | Multi-session routing and governor model |
 | [`docs/super-tools.md`](docs/super-tools.md) | Checklist and progress bar reference |
