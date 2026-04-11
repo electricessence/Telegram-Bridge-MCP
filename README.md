@@ -152,8 +152,8 @@ All outbound operations flow through a single `send` call. The `type` parameter 
 > Update in-place with `action(type: "checklist/update", message_id: ...)` and `action(type: "progress/update", message_id: ...)` respectively. See [`docs/super-tools.md`](docs/super-tools.md).
 
 ```js
-// Examples — token is required on all calls (returned by action(type: "session/start"))
-// token: 1234567 (required on all calls)
+// Examples — token required for all session-scoped calls; session/start and most help topics work without a token
+// token: 1234567 (required for all session-scoped calls)
 send({ token: 1234567, type: "text", text: "Hello from your AI agent!" })
 send({ token: 1234567, type: "notification", severity: "success", text: "Build passed." })
 send({ token: 1234567, type: "question", ask: "Proceed with deployment?" })
@@ -183,34 +183,34 @@ RESTful path routing via `type`. Supports progressive discovery:
 <details>
 <summary><strong>Full action reference</strong></summary>
 
-**Session**
+#### Session
 `session/start` · `session/close` · `session/list` · `session/rename`
 
-**Profile**
+#### Profile
 `profile/voice` · `profile/topic` · `profile/save` · `profile/load` · `profile/import` · `profile/dequeue-default`
 
-**Reminder**
+#### Reminder
 `reminder/set` · `reminder/cancel` · `reminder/list`
 
-**Animation**
+#### Animation
 `animation/default` · `animation/cancel`
 
-**Message**
+#### Message
 `message/edit` · `message/delete` · `message/pin` · `message/route` · `message/history` · `message/get`
 
-**Chat**
+#### Chat
 `chat/info`
 
-**Super Tools**
+#### Super Tools
 `checklist/update` · `progress/update`
 
-**Confirm Presets**
+#### Confirm Presets
 `confirm/ok` · `confirm/ok-cancel` · `confirm/yn`
 
-**Standalone**
+#### Standalone
 `react` · `acknowledge` · `show-typing` · `commands/set` · `logging/toggle` · `transcribe` · `download`
 
-**Governor-only**
+#### Governor-only
 `approve` · `shutdown` · `shutdown/warn` · `log/get` · `log/list` · `log/roll` · `log/delete` · `log/debug`
 
 </details>
@@ -268,7 +268,7 @@ Triggered by `send(type: "text", audio: "...")`. Provider is selected automatica
 | `OPENAI_API_KEY` | api.openai.com |
 | Neither set | Bundled ONNX model (zero config) |
 
-**Kokoro (recommended local TTS)**
+#### Kokoro (recommended local TTS)
 
 High-quality local TTS with 25+ voices. No API key, no cost.
 
