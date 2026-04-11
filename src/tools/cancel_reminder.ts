@@ -25,7 +25,7 @@ export function register(server: McpServer) {
     {
       description: "Cancel a scheduled reminder by ID. Returns an error if the ID is not found.",
       inputSchema: {
-        id: z.string().describe("Reminder ID to cancel (from set_reminder or action(type: 'reminder/list'))."),
+        id: z.string().describe("Reminder ID to cancel (from action(type: 'reminder/set', ...) or action(type: 'reminder/list'))."),
         token: TOKEN_SCHEMA,
       },
     },

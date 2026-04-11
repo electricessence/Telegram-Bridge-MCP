@@ -34,7 +34,7 @@ export function requireAuth(
   if (token === undefined) {
     return {
       code: "SID_REQUIRED",
-      message: "token is required. Pass the token returned by action(type: 'session/start', ...)." +
+      message: "token is required. Pass the token returned by action(type: 'session/start', ...). " +
         "token = sid * 1_000_000 + pin. Example: token: 1000123456",
     };
   }

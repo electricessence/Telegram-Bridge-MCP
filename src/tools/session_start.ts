@@ -358,7 +358,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
               `A session named "${existing.name}" already exists (SID ${existing.sid}). ` +
               `If you still have your token, resume with dequeue(token: <token>). ` +
               `To start a new session, choose a different name. ` +
-              `To reclaim this session, call action(type: 'session/start', reconnect: true) again.`,
+              `To reclaim this session, call action(type: 'session/start', name: '...', reconnect: true) again.`,
           });
         }
       }

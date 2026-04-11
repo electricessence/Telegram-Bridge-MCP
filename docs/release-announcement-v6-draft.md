@@ -29,7 +29,7 @@ Improvements:
 • Token-efficient design — minimal tool descriptions + caveman compression in every response. Agents spend less context learning the API and more on actual work
 • Unified send — text, voice, notifications, checklists, progress bars — all through one tool
 • Logging & debug tools — session logs, debug categories, roll & archive
-• 2,195 tests covering the full surface
+• 2,201 tests covering the full surface
 
 This was a week of intense work — 320 commits, 17.7K lines added, 259 files touched. Nearly 40% of the project's entire lifetime effort in 7 days.
 
