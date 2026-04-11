@@ -294,7 +294,7 @@ Per-session voice override: `action(type: "profile/voice")` or `/voice` in Teleg
 
 - **`ALLOWED_USER_ID`** — only this user's messages are processed; all others are silently dropped
 - **`chat_id` is never a parameter** — resolved internally from `ALLOWED_USER_ID`, not passed by the AI
-- **Token auth** — every tool call requires the session token; no token, no access
+- **Token auth** — every session-scoped tool call requires the session token; no token, no access
 - **Session approval** — additional sessions require explicit operator approval via inline keyboard
 
 See [`docs/security-model.md`](docs/security-model.md) for the full model.
