@@ -152,8 +152,7 @@ describe("session_start tool", () => {
       action: "fresh",
       pending: 0,
       discarded: 3,
-      profile_hint: "Call load_profile(key) to restore saved session configuration.",
-      instructions: expect.any(String),
+      hint: "Read: help(topic: 'startup')",
     });
   });
 
@@ -169,8 +168,7 @@ describe("session_start tool", () => {
       sessions_active: 1,
       action: "fresh",
       pending: 0,
-      profile_hint: "Call load_profile(key) to restore saved session configuration.",
-      instructions: expect.any(String),
+      hint: "Read: help(topic: 'startup')",
     });
   });
 
@@ -1637,29 +1635,27 @@ describe("session_start tool", () => {
   // instructions field — persistence & recovery hints (task 056)
   // =========================================================================
 
-  it("fresh session response includes instructions field", async () => {
+  it("fresh session response includes hint field", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
 
     const result = parseResult(await call({}));
 
-    expect(typeof result.instructions).toBe("string");
-    expect(result.instructions).toBeTruthy();
+    expect(typeof result.hint).toBe("string");
+    expect(result.hint).toBeTruthy();
   });
 
-  it("fresh session instructions mention session memory and SID", async () => {
+  it("fresh session returns hint pointing to startup topic", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
 
     const result = parseResult(await call({}));
 
-    const instructions = result.instructions as string;
-    expect(instructions).toContain("session memory");
-    expect(instructions).toContain("SID");
-    expect(instructions).toContain("help(topic: 'guide')");
-    expect(instructions).toContain("help(topic: 'compression')");
+    expect(result.hint).toContain("startup");
+    expect(result.profile_hint).toBeUndefined();
+    expect(result.instructions).toBeUndefined();
   });
 
   // =========================================================================
@@ -1782,7 +1778,7 @@ describe("session_start tool", () => {
     });
   });
 
-  it("reconnect response (name match + approved) includes instructions field", async () => {
+  it("reconnect response (name match + approved) includes hint field", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 123456, name: "Overseer", color: "🟦",
@@ -1796,11 +1792,11 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({ name: "Overseer", reconnect: true }));
 
-    expect(typeof result.instructions).toBe("string");
-    expect(result.instructions).toBeTruthy();
+    expect(typeof result.hint).toBe("string");
+    expect(result.hint).toBeTruthy();
   });
 
-  it("reconnect instructions mention SID and session memory", async () => {
+  it("reconnect returns hint pointing to startup topic", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 123456, name: "Overseer", color: "🟦",
@@ -1814,11 +1810,9 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({ name: "Overseer", reconnect: true }));
 
-    const instructions = result.instructions as string;
-    expect(instructions).toContain("SID");
-    expect(instructions).toContain("session memory");
-    expect(instructions).toContain("help(topic: 'guide')");
-    expect(instructions).toContain("help(topic: 'compression')");
+    expect(result.hint).toContain("startup");
+    expect(result.profile_hint).toBeUndefined();
+    expect(result.instructions).toBeUndefined();
   });
 
   // =========================================================================

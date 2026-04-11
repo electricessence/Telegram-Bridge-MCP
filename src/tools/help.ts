@@ -33,7 +33,8 @@ const DESCRIPTION =
   "Returns discovery information about this MCP server. " +
   "Call with no arguments for an overview and full tool index. " +
   "Pass topic: 'guide' for the full agent communication guide. " +
-  "Pass topic: 'compression' for the compression cheat sheet (save to memory). " +
+  "Pass topic: 'startup' for the post-session-start checklist. " +
+  "Pass topic: 'compression' for the compression cheat sheet. " +
   "Pass topic: '<tool_name>' for detailed docs on a specific tool.";
 
 /**
@@ -43,7 +44,7 @@ const DESCRIPTION =
  * added in the future, this list should be updated to match.
  */
 const TOOL_INDEX: Record<string, string> = {
-  help: "Discovery tool — overview, communication guide, and per-tool docs. Specialized topics: 'guide' (agent comms guide), 'compression' (compression cheat sheet — save to memory), 'checklist' (step statuses), 'animation' (frame guide). No auth required for most topics; topic: 'identity' requires a session token.",
+  help: "Discovery tool — overview, communication guide, and per-tool docs. Specialized topics: 'startup' (post-session checklist), 'guide' (agent comms guide), 'compression' (compression cheat sheet), 'checklist' (step statuses), 'animation' (frame guide). No auth required for most topics; topic: 'identity' requires a session token.",
   session_start: "Authenticate and start a named agent session. Returns a token for all subsequent calls.",
   close_session: "End the current agent session and release its slot.",
   list_sessions: "List all active sessions with their SIDs and display names.",
@@ -83,7 +84,7 @@ const TOOL_INDEX: Record<string, string> = {
   set_reminder: "Schedule a future reminder event delivered via dequeue.",
   cancel_reminder: "Cancel a scheduled reminder by ID.",
   list_reminders: "List all pending reminders for the current session.",
-  get_chat: "Return info about the configured Telegram chat.",
+  get_chat: "Request operator approval to read the configured chat metadata. Sends an interactive Allow/Deny prompt — requires an active session token.",
   save_profile: "Save the current session's profile (name, color, voice) to disk.",
   load_profile: "Load a saved profile and apply it to the current session.",
   import_profile: "Import a profile definition from a JSON object.",
@@ -159,11 +160,11 @@ export function register(server: McpServer) {
             join(__dirname, "..", "..", "docs", "behavior.md"),
             "utf-8"
           );
-          return toResult({ content: `# Agent Communication Guide\n\nRead compression rules: \`help(topic: 'compression')\` — save to memory.\n\n${content}` });
+          return toResult({ content: `# Agent Communication Guide\n\n${content}` });
         } catch {
           return toResult({
             content:
-              "# Agent Communication Guide\n\nRead compression rules: `help(topic: 'compression')` — save to memory.\n\nUnavailable: docs/behavior.md not found in distribution.",
+              "# Agent Communication Guide\n\nUnavailable: docs/behavior.md not found in distribution.",
           });
         }
       }
@@ -238,8 +239,6 @@ export function register(server: McpServer) {
           content: [
             "# Compression Cheat Sheet",
             "",
-            "> Save to session memory. Persists across compactions.",
-            "",
             "## Tiers",
             "| Tier | Use when |",
             "| --- | --- |",
@@ -273,6 +272,24 @@ export function register(server: McpServer) {
             "",
             "✗ `The implementation could potentially involve adding a check...`",
             "✓ `Impl: null-check before fn call.`",
+          ].join("\n"),
+        });
+      }
+
+      // topic: "startup" → post-session-start checklist
+      if (topic === "startup") {
+        return toResult({
+          content: [
+            "# Startup — Post-Session-Start",
+            "",
+            "**Token:** `token = sid * 1_000_000 + pin` — required for all calls. Both parts also in `sid`/`pin` fields.",
+            "**Reconnect:** If token lost, call `session_start(name: '...', reconnect: true)` for operator re-auth.",
+            "**Missed messages:** After reconnect, retrieve messages via `action(type: 'message/history')`.",
+            "",
+            "**Profile:** Restore voice/animation/reminders → `action(type: 'profile/load', key: '<name>')`.",
+            "",
+            "**Discover:** `help()` → tool index · `help(topic: 'guide')` → full comms guide · `help(topic: '<tool>')` → per-tool.",
+            "**Compression:** `help(topic: 'compression')` → message brevity tiers.",
           ].join("\n"),
         });
       }

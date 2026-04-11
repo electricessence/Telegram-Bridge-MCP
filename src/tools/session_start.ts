@@ -344,13 +344,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
               sessions_active: reconSessActive,
               action: "reconnected",
               pending,
-              profile_hint: "Call load_profile(key) to restore saved session configuration.",
-              instructions: `Your session token is ${reconToken} (SID ${fullSession.sid}). ` +
-                "Save your token to session memory NOW. " +
-                "You reconnected after a gap. " +
-                "Call get_chat_history to check for messages you may have missed. " +
-                "Read the guide: help(topic: 'guide'). " +
-                "Compression rules: help(topic: 'compression') — save to memory.",
+              hint: "Read: help(topic: 'startup')",
             });
           }
 
@@ -401,13 +395,7 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
           sessions_active: session.sessionsActive,
           action: reconnect ? "reconnected" : "fresh",
           pending: 0,
-          profile_hint: "Call load_profile(key) to restore saved session configuration.",
-          instructions: `IMPORTANT: Your session token is ${sessionToken} (SID ${session.sid}). ` +
-            "Save your token to session memory NOW. " +
-            "You will need it to reconnect after context compaction. " +
-            "On reconnect, call get_chat_history to recover any messages missed during the gap. " +
-            "Read the guide: help(topic: 'guide'). " +
-            "Save compression rules: help(topic: 'compression') — save to memory.",
+          hint: "Read: help(topic: 'startup')",
         };
         if (discarded > 0) res.discarded = discarded;
         if (isFirstSession) {

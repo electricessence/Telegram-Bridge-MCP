@@ -73,7 +73,6 @@ describe("help tool", () => {
     const { content } = parseResult<{ content: string }>(result);
     expect(content).toContain("# Agent Communication Guide");
     expect(content).toContain(MOCK_GUIDE);
-    expect(content).toContain("help(topic: 'compression')");
   });
 
   it("help(topic: 'compression') returns the compression cheat sheet", async () => {
@@ -81,7 +80,7 @@ describe("help tool", () => {
     expect(isError(result)).toBe(false);
     const { content } = parseResult<{ content: string }>(result);
     expect(content).toContain("# Compression Cheat Sheet");
-    expect(content).toContain("Save to session memory");
+    expect(content).not.toContain("Save to session memory");
     expect(content).toContain("Surface Map");
   });
 
