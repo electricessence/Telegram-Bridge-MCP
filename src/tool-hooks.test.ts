@@ -130,8 +130,7 @@ describe("hook throws or rejects", () => {
     });
     const result = await invokePreToolHook("any_tool", {});
     expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("Hook error:");
-    expect(result.reason).toContain("sync boom");
+    expect(result.reason).toContain("Hook error — see server logs for details.");
   });
 
   it("returns allowed:false when hook rejects asynchronously", async () => {
@@ -140,8 +139,7 @@ describe("hook throws or rejects", () => {
     });
     const result = await invokePreToolHook("any_tool", {});
     expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("Hook error:");
-    expect(result.reason).toContain("async boom");
+    expect(result.reason).toContain("Hook error — see server logs for details.");
   });
 });
 
