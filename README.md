@@ -219,7 +219,7 @@ RESTful path routing via `type`. Supports progressive discovery:
 <summary><strong>Full action reference</strong></summary>
 
 #### Session
-`session/start` · `session/close` · `session/list` · `session/rename`
+`session/start` · `session/close` · `session/list` · `session/rename` · `session/idle`
 
 #### Profile
 `profile/voice` · `profile/topic` · `profile/save` · `profile/load` · `profile/import` · `profile/dequeue-default`
