@@ -6,7 +6,7 @@ import { DIGITS_ONLY } from "../utils/patterns.js";
  * Human-readable description for the `token` parameter used in all tool schemas.
  */
 export const TOKEN_PARAM_DESCRIPTION =
-  "Session token from session_start (sid * 1_000_000 + pin). " +
+  "Session token from action(type: 'session/start') (sid * 1_000_000 + pin). " +
   "Always required — pass your token on every tool call.";
 
 // ---------------------------------------------------------------------------
@@ -36,11 +36,14 @@ const _tokenStringHintAls = new AsyncLocalStorage<{ wasString: boolean }>();
  * Call this in tool handlers that want to nudge the LLM toward passing the
  * correct type. Currently used by `dequeue`.
  */
+/** User-facing hint emitted when a token is passed as a numeric string instead of an integer. */
+export const TOKEN_STRING_HINT = "token was passed as a string — use a plain integer for better performance";
+
 export function consumeTokenStringHint(): string | undefined {
   const store = _tokenStringHintAls.getStore();
   if (store?.wasString) {
     store.wasString = false;
-    return "token was passed as a string — use a plain integer for better performance";
+    return TOKEN_STRING_HINT;
   }
   return undefined;
 }

@@ -24,7 +24,7 @@ export async function handleCloseSession({ token, target_sid }: { token?: number
   if (target_sid === undefined) {
     const result = closeSessionById(callerSid);
     void refreshGovernorCommand();
-    return toResult(result);
+    return toResult({ ...result, reason: result.closed ? "closed" : "not_found" });
   }
 
   // ── Governor-close path (target_sid provided) ─────────────────────────
@@ -77,7 +77,7 @@ export async function handleCloseSession({ token, target_sid }: { token?: number
   // 6. Execute close
   const result = closeSessionById(target_sid);
   void refreshGovernorCommand();
-  return toResult(result);
+  return toResult({ ...result, reason: "closed" });
 }
 
 export function register(server: McpServer) {

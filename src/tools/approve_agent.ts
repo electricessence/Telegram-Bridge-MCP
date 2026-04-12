@@ -38,9 +38,9 @@ export function handleApproveAgent({ token, target_name, color }: { token: numbe
   const pending = getPendingApproval(target_name);
   if (!pending) {
     return toError({
-      code: "UNKNOWN",
+      code: "NOT_PENDING",
       message:
-        `NOT_PENDING: No pending session_start request found for name "${target_name}". ` +
+        `No pending session_start request found for name "${target_name}". ` +
         "The request may have already been resolved, timed out, or the name is incorrect.",
     });
   }
@@ -48,9 +48,9 @@ export function handleApproveAgent({ token, target_name, color }: { token: numbe
   // Validate color if provided; fall back to first available if omitted.
   if (color && !(COLOR_PALETTE as readonly string[]).includes(color)) {
     return toError({
-      code: "UNKNOWN",
+      code: "INVALID_COLOR",
       message:
-        `INVALID_COLOR: "${color}" is not a valid color. ` +
+        `"${color}" is not a valid color. ` +
         `Valid options: ${COLOR_PALETTE.join(", ")}`,
     });
   }

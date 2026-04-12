@@ -454,7 +454,7 @@ When 2+ agent sessions are active simultaneously, additional rules apply.
 
 ### Session identity
 
-`action(type: "session/start")` returns a `sid` (session ID), your session `name` (if set), and a `fellow_sessions` list of co-active agents.
+`action(type: "session/start")` returns a `sid` (session ID), your session `name` (if set), a `discarded` count (always 0 when no pending messages were discarded), and a `fellow_sessions` list of co-active agents (always present; empty array in single-session).
 
 Your outbound messages automatically include a `🤖 YourName` header line — you do not need to add it manually.
 

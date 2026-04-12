@@ -10,7 +10,7 @@ const DESCRIPTION =
   "Restore a previously saved session profile. Sparse-merges into the current " +
   "session — keys present in the profile overwrite the session's current values; " +
   "absent keys are untouched. Multiple loads stack. " +
-  "Use load_profile after session_start to bootstrap voice, animations, and reminders.";
+  "Use load_profile after action(type: 'session/start') to bootstrap voice, animations, and reminders.";
 
 export function handleLoadProfile({ key, token }: { key: string; token: number }) {
   const _sid = requireAuth(token);

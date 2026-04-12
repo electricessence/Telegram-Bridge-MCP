@@ -156,6 +156,7 @@ describe("session_start tool", () => {
       action: "fresh",
       pending: 0,
       discarded: 3,
+      fellow_sessions: [],
       hint: "Save this token. Read: help(topic: 'startup')",
     });
   });
@@ -172,16 +173,18 @@ describe("session_start tool", () => {
       sessions_active: 1,
       action: "fresh",
       pending: 0,
+      discarded: 0,
+      fellow_sessions: [],
       hint: "Save this token. Read: help(topic: 'startup')",
     });
   });
 
-  it("omits discarded when nothing was pending", async () => {
+  it("returns discarded: 0 when nothing was pending", async () => {
     mocks.pendingCount.mockReturnValue(0);
 
     const result = parseResult(await call({}));
 
-    expect(result.discarded).toBeUndefined();
+    expect(result.discarded).toBe(0);
   });
 
   it("calls createSession with provided name", async () => {
@@ -308,13 +311,13 @@ describe("session_start tool", () => {
     expect(fellows.every(s => s.sid !== 6)).toBe(true);
   });
 
-  it("omits fellow_sessions when only one session is active", async () => {
+  it("returns fellow_sessions: [] when only one session is active", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 100001, name: "solo", sessionsActive: 1 });
 
     const result = parseResult(await call({ name: "solo" }));
 
-    expect(result.fellow_sessions).toBeUndefined();
+    expect(result.fellow_sessions).toEqual([]);
   });
 
   it("rolls back session on unexpected error during session setup", async () => {

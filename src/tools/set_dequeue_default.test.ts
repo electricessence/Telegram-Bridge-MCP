@@ -191,7 +191,7 @@ describe("integration: set_dequeue_default affects dequeue gate", () => {
     await callSetDefault({ token: 1_123_456, timeout: 60 });
     const result = await callDequeue({ timeout: 200, token: 1_123_456 });
     const data = parseResult<DequeueResult>(result);
-    expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+    expect(data.code).toBe("TIMEOUT_EXCEEDS_DEFAULT");
     expect(data.message).toContain("200");
     expect(data.message).toContain("60");
   });

@@ -127,13 +127,13 @@ describe("approve_agent tool", () => {
   // -------------------------------------------------------------------------
 
   describe("not pending", () => {
-    it("returns UNKNOWN error containing NOT_PENDING for unknown target_name", async () => {
+    it("returns NOT_PENDING error for unknown target_name", async () => {
       mocks.getPendingApproval.mockReturnValue(undefined);
       const result = await call({ token: VALID_TOKEN, target_name: "Ghost" });
       expect(isError(result)).toBe(true);
-      expect(errorCode(result)).toBe("UNKNOWN");
+      expect(errorCode(result)).toBe("NOT_PENDING");
       const parsed = parseResult(result);
-      expect(String(parsed.message)).toContain("NOT_PENDING");
+      expect(String(parsed.message)).toContain("Ghost");
     });
   });
 
@@ -142,12 +142,12 @@ describe("approve_agent tool", () => {
   // -------------------------------------------------------------------------
 
   describe("invalid color", () => {
-    it("returns UNKNOWN error containing INVALID_COLOR for unrecognised color string", async () => {
+    it("returns INVALID_COLOR error for unrecognised color string", async () => {
       const result = await call({ token: VALID_TOKEN, target_name: "Worker", color: "🔴" });
       expect(isError(result)).toBe(true);
-      expect(errorCode(result)).toBe("UNKNOWN");
+      expect(errorCode(result)).toBe("INVALID_COLOR");
       const parsed = parseResult(result);
-      expect(String(parsed.message)).toContain("INVALID_COLOR");
+      expect(String(parsed.message)).toContain("🔴");
     });
   });
 

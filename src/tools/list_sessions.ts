@@ -25,7 +25,7 @@ export function register(server: McpServer) {
       description: DESCRIPTION,
       inputSchema: {
         token: TOKEN_SCHEMA.describe(
-          "Session token from session_start (sid * 1_000_000 + pin). Required.",
+          "Session token from action(type: 'session/start') (sid * 1_000_000 + pin). Required.",
         ),
       },
     },

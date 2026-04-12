@@ -107,7 +107,7 @@ vi.mock("../reminder-state.js", () => ({
 
 
 
-import { register } from "./dequeue.js";
+import { register, _resetTimeoutHintForTest } from "./dequeue.js";
 
 function makeEvent(id: number, text: string, event = "message" as string): TimelineEvent {
   return {
@@ -147,6 +147,7 @@ describe("dequeue tool", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetTimeoutHintForTest();
     mocks.validateSession.mockReturnValue(true);
     reminderMocks.getActiveReminders.mockReturnValue([]);
     reminderMocks.popActiveReminders.mockReturnValue([]);
@@ -796,7 +797,7 @@ describe("dequeue tool", () => {
       const result = await call({ timeout: 200, token: 1_123_456 });
       expect(isError(result)).toBe(false);
       const data = parseResult(result);
-      expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+      expect(data.code).toBe("TIMEOUT_EXCEEDS_DEFAULT");
       expect(data.message).toContain("200");
       expect(data.message).toContain("60");
     });
@@ -805,7 +806,7 @@ describe("dequeue tool", () => {
       mocks.getDequeueDefault.mockReturnValue(60);
       const result = await call({ timeout: 200, force: false, token: 1_123_456 });
       const data = parseResult(result);
-      expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+      expect(data.code).toBe("TIMEOUT_EXCEEDS_DEFAULT");
     });
 
     it("allows timeout > session default when force is true", async () => {
@@ -851,10 +852,20 @@ describe("dequeue tool", () => {
       mocks.getDequeueDefault.mockReturnValue(60);
       const result = await call({ timeout: 200, token: 1_123_456 });
       const data = parseResult(result);
-      expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+      expect(data.code).toBe("TIMEOUT_EXCEEDS_DEFAULT");
       expect(typeof data.hint).toBe("string");
       expect(data.hint as string).toContain("force: true");
       expect(data.hint as string).toContain("profile/dequeue-default");
+    });
+
+    it("hint is omitted on subsequent TIMEOUT_EXCEEDS_DEFAULT responses for the same session", async () => {
+      mocks.getDequeueDefault.mockReturnValue(60);
+      // First call — hint should be present
+      const first = await call({ timeout: 200, token: 1_123_456 });
+      expect(parseResult(first).hint).toBeDefined();
+      // Second call — hint should be omitted
+      const second = await call({ timeout: 200, token: 1_123_456 });
+      expect(parseResult(second).hint).toBeUndefined();
     });
 
     it("rejects explicit timeout above schema cap (timeout: 301) with a validation error", async () => {
@@ -900,7 +911,7 @@ describe("dequeue tool", () => {
       mocks.getDequeueDefault.mockReturnValue(60);
       const result = await call({ timeout: 300, token: 1_123_456 });
       const data = parseResult(result);
-      expect(data.error).toBe("TIMEOUT_EXCEEDS_DEFAULT");
+      expect(data.code).toBe("TIMEOUT_EXCEEDS_DEFAULT");
       expect(data.message).toContain("300");
       expect(data.message).toContain("60");
       // Reset to a value >= 300 so the reminder fire path test is not affected.

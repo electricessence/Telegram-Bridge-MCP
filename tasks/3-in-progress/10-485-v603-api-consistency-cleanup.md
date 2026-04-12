@@ -61,7 +61,7 @@ PR #135 (v6.0.2) fixed legacy tool name references and minor text. But deeper qu
 - All error responses use `{ code, message, hint? }` shape — no `error` field
 - Token formula removed from all user-facing strings
 - All approve error codes are specific (never `UNKNOWN` with message prefix)
-- session_start always returns same field set
+- session_start fresh-connect always returns same field set (`discarded: 0`, `fellow_sessions: []` always present); reconnect path intentionally omits these fields (different semantics — to be addressed by 10-489 API split)
 - Zero legacy tool name references remain
 - Content tests use constants, not hardcoded strings
 - Orphaned docs deleted
@@ -72,3 +72,31 @@ PR #135 (v6.0.2) fixed legacy tool name references and minor text. But deeper qu
 - After this task, TMCP should be clean enough for v6.0.3 release
 - Items 1-2 are the highest priority — start there
 - This is a single branch, single PR task
+
+## Completion
+
+**Branch:** `10-485` | **Commit:** `f252602`
+
+### What changed (18 files)
+
+- **`src/action-registry.ts`** — Removed redundant `Promise<unknown>` union from `ActionHandler` return type (lint fix)
+- **`src/tools/session_start.ts`** — Removed token formula from DESCRIPTION; `discarded` and `fellow_sessions` always present in response
+- **`src/tools/dequeue.ts`** — `TIMEOUT_EXCEEDS_DEFAULT` response uses `code` (not `error`); hint de-duplicated per session (fires once); added `_timeoutHintShownForSession` Set + test-reset export
+- **`src/tools/approve_agent.ts`** — `"UNKNOWN"` → `"NOT_PENDING"` / `"INVALID_COLOR"` error codes
+- **`src/tools/close_session.ts`** — `reason` field always present: `"closed"`, `"not_found"`, or `"cancelled"`
+- **`src/tools/identity-schema.ts`** — Extracted `TOKEN_STRING_HINT` constant; updated token param description
+- **`src/tools/list_sessions.ts`**, **`load_profile.ts`** — Legacy "from session_start" refs updated
+- **`src/tools/*.test.ts`** (4 files) — Tests updated for new error codes, normalization, hint dedup; constants replace inline strings
+- **`docs/release-announcement-v6-draft.md`** — Deleted (orphaned)
+- **`docs/behavior.md`**, **`docs/message-response-standard.md`**, **`docs/multi-session.md`**, **`docs/multi-session-flow.md`** — Stale token formula and conditional field references corrected
+- **2202 tests pass**
+
+### Deferred
+
+- **Item 7: `send.ts` conditional `info` field** — low impact, recommend separate task
+- **`session_start.ts` reconnect path** — `discarded`/`fellow_sessions` intentionally omitted from reconnect response (different semantics)
+
+### Minor findings (Code Reviewer, not blocking)
+
+- `_timeoutHintShownForSession` Set not cleared on session close — negligible memory impact but should call `delete(sid)` in session teardown
+- `close_session.test.ts` missing assertions for new `reason` field on self-close and governor-close success paths

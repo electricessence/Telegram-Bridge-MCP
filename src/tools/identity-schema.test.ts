@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { TOKEN_SCHEMA, decodeToken, consumeTokenStringHint, runInTokenHintContext } from "./identity-schema.js";
+import { TOKEN_SCHEMA, TOKEN_STRING_HINT, decodeToken, consumeTokenStringHint, runInTokenHintContext } from "./identity-schema.js";
 
 // ---------------------------------------------------------------------------
 // Replicate the MCP SDK's Zod v4 → JSON Schema conversion.
@@ -177,7 +177,7 @@ describe("consumeTokenStringHint", () => {
       TOKEN_SCHEMA.safeParse("1000000");
       return consumeTokenStringHint();
     });
-    expect(hint).toBe("token was passed as a string — use a plain integer for better performance");
+    expect(hint).toBe(TOKEN_STRING_HINT);
   });
 
   it("returns undefined when token was passed as an integer", () => {
@@ -229,7 +229,7 @@ describe("consumeTokenStringHint", () => {
     ]);
 
     // First context should see the string hint; second should see undefined.
-    expect(results[0]).toBe("token was passed as a string — use a plain integer for better performance");
+    expect(results[0]).toBe(TOKEN_STRING_HINT);
     expect(results[1]).toBeUndefined();
   });
 

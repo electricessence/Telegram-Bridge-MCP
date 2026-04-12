@@ -46,7 +46,7 @@ Rules:
 
 | Bad | Good |
 | --- | --- |
-| `"Save this token to memory."` | `"Save this token — it encodes both sid and pin as sid * 1_000_000 + pin."` |
+| `"Save this token to memory."` | `"Save this token — pass it on every subsequent call."` |
 | `"Remember: always call dequeue after session_start."` | `"Read help(topic: 'startup') for the post-session checklist."` |
 | `"**Important:** Use force: true for one-time overrides."` | `"Pass force: true for a one-time override, or call action(type: 'profile/dequeue-default', timeout: N) to raise your default."` |
 

@@ -63,6 +63,17 @@ const DESCRIPTION =
   "pending > 0 → call again. Omit timeout to use session default (action(type: 'profile/dequeue-default'), fallback 300 s); max explicit: 300 s. " +
   "Call `help(topic: 'dequeue')` for details.";
 
+/**
+ * Tracks which sessions have already received the TIMEOUT_EXCEEDS_DEFAULT hint.
+ * The hint is only included in the first occurrence per session to avoid repetition.
+ */
+const _timeoutHintShownForSession = new Set<number>();
+
+/** Exported for test reset only — do not call in production code. */
+export function _resetTimeoutHintForTest(): void {
+  _timeoutHintShownForSession.clear();
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "dequeue",
@@ -108,11 +119,16 @@ export function register(server: McpServer) {
       const sessionDefault = getDequeueDefault(sid);
       const effectiveTimeout = timeout ?? sessionDefault;
       if (timeout !== undefined && timeout > sessionDefault && !force) {
-        return toResult({
-          error: "TIMEOUT_EXCEEDS_DEFAULT",
+        const firstOccurrence = !_timeoutHintShownForSession.has(sid);
+        _timeoutHintShownForSession.add(sid);
+        const response: Record<string, unknown> = {
+          code: "TIMEOUT_EXCEEDS_DEFAULT",
           message: `timeout ${timeout} exceeds your current default of ${sessionDefault}s.`,
-          hint: `Pass force: true for a one-time override, or call action(type: 'profile/dequeue-default', timeout: ${timeout}) to raise your default.`,
-        });
+        };
+        if (firstOccurrence) {
+          response.hint = `Pass force: true for a one-time override, or call action(type: 'profile/dequeue-default', timeout: ${timeout}) to raise your default.`;
+        }
+        return toResult(response);
       }
 
       const sessionQueue = getSessionQueue(sid);

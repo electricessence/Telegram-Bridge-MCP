@@ -220,7 +220,6 @@ const DESCRIPTION =
   "approval the same token is returned. " +
   "Returns { token, sid, pin, sessions_active, action, pending } so " +
   "the agent knows its identity and how to proceed. " +
-  "The token encodes both sid and pin as a single integer (sid * 1_000_000 + pin). " +
   "Call help() first to load the API guide, then call action(type: 'session/start', ...) to join.";
 
 export async function handleSessionStart({ name, reconnect, color }: { name: string; reconnect: boolean; color?: string }) {
@@ -399,9 +398,10 @@ export async function handleSessionStart({ name, reconnect, color }: { name: str
           sessions_active: session.sessionsActive,
           action: reconnect ? "reconnected" : "fresh",
           pending: 0,
+          discarded,
+          fellow_sessions: [] as unknown[],
           hint: "Save this token. Read: help(topic: 'startup')",
         };
-        if (discarded > 0) res.discarded = discarded;
         if (isFirstSession) {
           // First session is the governor by default
           setGovernorSid(session.sid);
