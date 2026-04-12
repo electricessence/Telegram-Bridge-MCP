@@ -34,6 +34,7 @@ const DESCRIPTION =
   "Call with no arguments for an overview and full tool index. " +
   "Pass topic: 'guide' for the full agent communication guide. " +
   "Pass topic: 'startup' for the post-session-start checklist. " +
+  "Pass topic: 'quick_start' for the minimum-operational guide (dequeue loop, send, DM). " +
   "Pass topic: 'compression' for the compression cheat sheet. " +
   "Pass topic: '<tool_name>' for detailed docs on a specific tool.";
 
@@ -44,7 +45,7 @@ const DESCRIPTION =
  * added in the future, this list should be updated to match.
  */
 const TOOL_INDEX: Record<string, string> = {
-  help: "Discovery tool — overview, communication guide, and per-tool docs. Specialized topics: 'startup' (post-session checklist), 'guide' (agent comms guide), 'compression' (compression cheat sheet), 'checklist' (step statuses), 'animation' (frame guide). No auth required for most topics; topic: 'identity' requires a session token.",
+  help: "Discovery tool — overview, communication guide, and per-tool docs. Specialized topics: 'startup' (post-session checklist), 'quick_start' (dequeue loop + send basics), 'guide' (agent comms guide), 'compression' (compression cheat sheet), 'checklist' (step statuses), 'animation' (frame guide). No auth required for most topics; topic: 'identity' requires a session token.",
   session_start: "Authenticate and start a named agent session. Returns a token for all subsequent calls.",
   close_session: "End the current agent session and release its slot.",
   list_sessions: "List all active sessions with their SIDs and display names.",
@@ -276,14 +277,47 @@ export function register(server: McpServer) {
           content: [
             "Startup — Post-Session-Start",
             "",
-            "Token: token = sid * 1_000_000 + pin. Required for all session-bound calls. Save it now.",
-            "Reconnect: action(type: 'session/start', name: '...', reconnect: true) if token is lost.",
+            "Token: save it now — pass it on every subsequent call.",
+            "Reconnect: if token is lost, call action(type: 'session/start', name: '...', reconnect: true).",
             "Missed messages: action(type: 'message/history', count: 20) after reconnect.",
             "",
-            "Profile: action(type: 'profile/load', key: '<name>') to restore voice/animation/reminders.",
+            "Profile (optional): action(type: 'profile/load', key: '<name>') — restores voice, animation presets, and reminders. Skip if no profile exists.",
+            "",
+            "Next step: help(topic: 'quick_start') → dequeue loop, send basics, DM pattern.",
             "",
             "Discover: help() → tool index · help(topic: 'guide') → full comms guide · help(topic: '<tool>') → per-tool docs.",
             "Compression: help(topic: 'compression') → message brevity tiers.",
+          ].join("\n"),
+        });
+      }
+
+      // topic: "quick_start" → minimum-operational guide
+      if (topic === "quick_start") {
+        return toResult({
+          content: [
+            "Quick Start — Minimum to Operate",
+            "",
+            "## 1. Dequeue loop",
+            "Your heartbeat. Call dequeue() to receive messages and events.",
+            "- Block mode: dequeue() — waits up to 300s for next message. Returns { timed_out: true } on timeout — call again.",
+            "- Drain mode: dequeue(timeout: 0) — instant poll. Returns { empty: true } if nothing queued.",
+            "Pattern: drain → block → handle → drain again.",
+            "When pending > 0: call dequeue(timeout: 0) until pending == 0, then block.",
+            "",
+            "## 2. Send a message",
+            "send(type: \"text\", token: <token>, text: \"Hello\") → text message",
+            "send(type: \"notification\", token: <token>, title: \"Done\", text: \"Task complete\", severity: \"success\") → formatted alert",
+            "send(type: \"dm\", token: <token>, target_sid: <sid>, text: \"...\") → private message to another session",
+            "",
+            "## 3. React to a message",
+            "Acknowledge receipt silently: action(type: \"react\", token: <token>, message_id: <id>, emoji: \"👍\")",
+            "Show typing: action(type: \"show-typing\", token: <token>) — auto-cleared when you send",
+            "",
+            "## 4. Discover more",
+            "help(topic: \"guide\") — full communication guide (behaviors, routing, multi-session)",
+            "help(topic: \"<tool_name>\") — docs for a specific tool",
+            "help(topic: \"checklist\") — step status values",
+            "help(topic: \"compression\") — message brevity tiers",
           ].join("\n"),
         });
       }

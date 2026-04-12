@@ -56,3 +56,42 @@ Deputy audit (2026-04-11) found:
 - [ ] All actions in the happy path include forward-pointing hints
 - [ ] Tests cover hint presence in action responses
 - [ ] Token formula NOT exposed in startup topic (per 10-485 item 1)
+
+## Completion
+
+**Branch:** `10-488` | **Commit:** `824b471`
+
+### What changed (7 files)
+
+- **`src/tools/help.ts`** — Added `quick_start` topic (dequeue loop, send patterns, react/typing, discover-more links); updated `startup` topic (removed token formula, added `quick_start` forward pointer, improved profile/load explanation); added `quick_start` to DESCRIPTION and TOOL_INDEX
+- **`src/tools/dequeue.ts`** — Added `_firstDequeueShownForSession` Set + per-session first-dequeue hint on all 5 return paths; `buildHint()` helper merges token-string hint and first-dequeue hint; exported `_resetFirstDequeueHintForTest()`
+- **`src/tools/load_profile.ts`** — Successful load response includes `hint: "Profile loaded. Call dequeue() to enter the message loop."`
+- **`src/tools/help.test.ts`** — Updated startup test (no token formula assertion, quick_start assertion); new quick_start topic test
+- **`src/tools/dequeue.test.ts`** — 4 new first-dequeue hint tests
+- **`src/tools/load_profile.test.ts`** — New hint field test
+- **`src/action-registry.ts`** — Pre-existing lint fix (redundant `Promise<unknown>` union removed)
+- **2207 tests pass**
+
+### Must Have checklist
+
+- [x] `help(topic: 'quick_start')` added
+- [x] `startup` topic references `quick_start` explicitly
+- [x] `profile/load` hint added
+- [x] First `dequeue` hint added (per-session, fires once)
+- [x] Breadcrumb chain: `session/start → startup → quick_start → help`
+
+### Should Have
+
+- [ ] Review all action handlers for missing hints — deferred (broad scope, separate task)
+- [x] `startup` topic explains WHY to call `profile/load`
+- [x] Reduced reliance on `guide` topic — `quick_start` is now the first step up from `startup`
+
+### Deferred
+
+- **Tutorial mode** — Could Have, operator ideation — separate task if needed
+- **All action handlers hints review** — Should Have but broad scope; coverage of happy path (session/start, profile/load, dequeue) is the priority
+
+### Minor findings (Code Reviewer, not blocking)
+
+- `_firstDequeueShownForSession` Set not cleared on session close — SID reuse could suppress hint for new sessions. Fix: call `delete(sid)` in `session-teardown.ts` (same pattern needed for 10-485's `_timeoutHintShownForSession`)
+- Outer `beforeEach` in `dequeue.test.ts` doesn't reset `_firstDequeueShownForSession` — currently harmless but could cause non-determinism with test ordering changes

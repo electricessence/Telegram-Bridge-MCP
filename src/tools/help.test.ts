@@ -92,14 +92,23 @@ describe("help tool", () => {
     expect(content).toContain("notification");
   });
 
-  it("help(topic: 'startup') returns token formula, reconnect hint, and message/history with count", async () => {
+  it("help(topic: 'startup') returns reconnect hint and message/history with count", async () => {
     const result = await call({ topic: "startup" });
     expect(isError(result)).toBe(false);
     const { content } = parseResult<{ content: string }>(result);
-    expect(content).toContain("sid * 1_000_000");
+    expect(content).not.toContain("sid * 1_000_000 + pin");
     expect(content).toContain("reconnect: true");
     expect(content).toContain("message/history");
     expect(content).toContain("count: 20");
+    expect(content).toContain("quick_start");
+  });
+
+  it("help(topic: 'quick_start') returns dequeue and send content", async () => {
+    const result = await call({ topic: "quick_start" });
+    expect(isError(result)).toBe(false);
+    const { content } = parseResult<{ content: string }>(result);
+    expect(content).toContain("dequeue");
+    expect(content).toContain("send");
   });
 
   it("help(topic: 'unknown_tool') returns isError: true with UNKNOWN code", async () => {

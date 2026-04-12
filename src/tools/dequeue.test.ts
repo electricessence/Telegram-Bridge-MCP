@@ -950,6 +950,70 @@ describe("dequeue tool", () => {
   });
 
   // =========================================================================
+  // First-dequeue hint — one-time orientation hint per session
+  // =========================================================================
+
+  describe("first-dequeue hint", () => {
+    beforeEach(async () => {
+      // Import and reset the hint set before each test in this suite.
+      const mod = await import("./dequeue.js");
+      mod._resetFirstDequeueHintForTest();
+    });
+
+    it("includes hint on first dequeue call for a session (empty result)", async () => {
+      mocks.dequeueBatch.mockReturnValue([]);
+      const result = await call({ timeout: 0, token: 1_123_456 });
+      const data = parseResult(result);
+      expect(data.empty).toBe(true);
+      expect(typeof data.hint).toBe("string");
+      expect(data.hint as string).toContain("heartbeat");
+    });
+
+    it("includes hint on first dequeue call for a session (batch result)", async () => {
+      const evt = makeEvent(200, "first call with events");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      const result = await call({ timeout: 0, token: 1_123_456 });
+      const data = parseResult(result);
+      expect(data.updates).toBeDefined();
+      expect(typeof data.hint).toBe("string");
+      expect(data.hint as string).toContain("heartbeat");
+    });
+
+    it("does not include first-dequeue hint on second call for same session", async () => {
+      // First call — consumes the hint
+      mocks.dequeueBatch.mockReturnValue([]);
+      await call({ timeout: 0, token: 1_123_456 });
+      // Second call — hint should be absent (and no tokenHint either)
+      const result2 = await call({ timeout: 0, token: 1_123_456 });
+      const data2 = parseResult(result2);
+      expect(data2.hint).toBeUndefined();
+    });
+
+    it("gives hint to each distinct session on their first call", async () => {
+      mocks.dequeueBatch.mockReturnValue([]);
+
+      // Session 1 first call
+      const r1 = await call({ timeout: 0, token: 1_123_456 });
+      const d1 = parseResult(r1);
+      expect(typeof d1.hint).toBe("string");
+
+      // Session 2 first call — different SID, should also get hint
+      const mockQueue2 = {
+        dequeueBatch: vi.fn(() => [] as TimelineEvent[]),
+        pendingCount: vi.fn(() => 0),
+        waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+      };
+      mocks.getSessionQueue.mockImplementation((sid: number) =>
+        sid === 2 ? mockQueue2 : { dequeueBatch: () => [], pendingCount: () => 0, waitForEnqueue: () => Promise.resolve() },
+      );
+      const r2 = await call({ timeout: 0, token: 2_001_234 });
+      const d2 = parseResult(r2);
+      expect(typeof d2.hint).toBe("string");
+      expect(d2.hint as string).toContain("heartbeat");
+    });
+  });
+
+  // =========================================================================
   // Reminder fire path — tokenHint propagation
   // =========================================================================
 

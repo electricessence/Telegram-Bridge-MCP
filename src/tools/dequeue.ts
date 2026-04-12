@@ -19,6 +19,14 @@ import {
 /** Defensive clamp for a single setTimeout call, kept below Node.js's ~2^31-1 ms overflow limit. */
 const MAX_SET_TIMEOUT_MS = 2_000_000_000;
 
+/** Sessions that have already received the first-dequeue hint. */
+const _firstDequeueShownForSession = new Set<number>();
+
+/** Reset the first-dequeue hint set — for use in tests only. */
+export function _resetFirstDequeueHintForTest(): void {
+  _firstDequeueShownForSession.clear();
+}
+
 /** Seconds an active reminder must be idle before it fires within dequeue. */
 const REMINDER_IDLE_THRESHOLD_MS = 60_000;
 
@@ -83,6 +91,19 @@ export function register(server: McpServer) {
       // Capture the token-string hint now (before any early returns consume it).
       const tokenHint = consumeTokenStringHint();
 
+      // First-dequeue hint: shown once per session to orient new agents.
+      const isFirstDequeue = !_firstDequeueShownForSession.has(sid);
+      if (isFirstDequeue) _firstDequeueShownForSession.add(sid);
+      const firstDequeueHint = isFirstDequeue
+        ? "Drain mode: dequeue(timeout: 0) returns immediately. Block mode: dequeue() waits up to 300s. Call again after handling — the loop is your heartbeat."
+        : undefined;
+
+      /** Combine token-string hint and first-dequeue hint into one hint string (or undefined). */
+      function buildHint(tokenH: string | undefined, firstH: string | undefined): string | undefined {
+        if (tokenH && firstH) return `${tokenH}; ${firstH}`;
+        return tokenH ?? firstH;
+      }
+
       // Gate: reject timeout values above the session default unless force is set
       const sessionDefault = getDequeueDefault(sid);
       const effectiveTimeout = timeout ?? sessionDefault;
@@ -137,14 +158,16 @@ export function register(server: McpServer) {
         const pending = pendingCountAny();
         const result: Record<string, unknown> = { updates: compactBatch(batch, sid) };
         if (pending > 0) result.pending = pending;
-        if (tokenHint) result.hint = tokenHint;
+        const hint0 = buildHint(tokenHint, firstDequeueHint);
+        if (hint0) result.hint = hint0;
         resyncActiveSession();
         return toResult(result);
       }
 
       if (effectiveTimeout === 0) {
         const emptyResult: Record<string, unknown> = { empty: true, pending: pendingCountAny() };
-        if (tokenHint) emptyResult.hint = tokenHint;
+        const hint1 = buildHint(tokenHint, firstDequeueHint);
+        if (hint1) emptyResult.hint = hint1;
         return toResult(emptyResult);
       }
 
@@ -170,7 +193,8 @@ export function register(server: McpServer) {
             const fired = popActiveReminders(sid);
             resyncActiveSession();
             const reminderResult: Record<string, unknown> = { updates: fired.map(buildReminderEvent), pending: pendingCountAny() };
-            if (tokenHint) reminderResult.hint = tokenHint;
+            const hint2 = buildHint(tokenHint, firstDequeueHint);
+            if (hint2) reminderResult.hint = hint2;
             return toResult(reminderResult);
           }
 
@@ -198,7 +222,8 @@ export function register(server: McpServer) {
             const pending = pendingCountAny();
             const result: Record<string, unknown> = { updates: compactBatch(batch, sid) };
             if (pending > 0) result.pending = pending;
-            if (tokenHint) result.hint = tokenHint;
+            const hint3 = buildHint(tokenHint, firstDequeueHint);
+            if (hint3) result.hint = hint3;
             resyncActiveSession();
             return toResult(result);
           }
@@ -206,7 +231,8 @@ export function register(server: McpServer) {
 
         resyncActiveSession();
         const timedOutResult: Record<string, unknown> = { timed_out: true, pending: pendingCountAny() };
-        if (tokenHint) timedOutResult.hint = tokenHint;
+        const hint4 = buildHint(tokenHint, firstDequeueHint);
+        if (hint4) timedOutResult.hint = hint4;
         return toResult(timedOutResult);
       } finally {
         // Note: if two concurrent dequeue calls share the same sid (unusual but

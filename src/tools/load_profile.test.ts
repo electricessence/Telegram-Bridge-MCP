@@ -69,6 +69,15 @@ describe("load_profile tool", () => {
     expect(mocks.setSessionSpeed).toHaveBeenCalledWith(1.2);
   });
 
+  it("successful load includes a hint pointing to dequeue", async () => {
+    mocks.readProfile.mockReturnValue({ voice: "alloy" });
+    const result = await call({ key: "Test", token: 1123456 });
+    expect(isError(result)).toBe(false);
+    const data = parseResult<{ hint: string }>(result);
+    expect(typeof data.hint).toBe("string");
+    expect(data.hint).toContain("dequeue");
+  });
+
   it("uses content hash as reminder ID (not random UUID)", async () => {
     mocks.readProfile.mockReturnValue({
       reminders: [{ text: "Check CI", delay_seconds: 0, recurring: false }],
