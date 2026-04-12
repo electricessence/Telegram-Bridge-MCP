@@ -33,6 +33,21 @@ process.stderr.write(`[info] MCP Streamable HTTP server listening on http://127.
 
 ## Acceptance Criteria
 
-- [ ] stdio mode logs a startup message to stderr (e.g., `[info] MCP stdio transport connected`)
-- [ ] Message appears after successful `server.connect(transport)` call
-- [ ] No stdout pollution (stderr only — stdout is the stdio transport channel)
+- [x] stdio mode logs a startup message to stderr (e.g., `[info] MCP stdio transport connected`)
+- [x] Message appears after successful `server.connect(transport)` call
+- [x] No stdout pollution (stderr only — stdout is the stdio transport channel)
+
+## Completion
+
+**Branch:** `10-365` | **Commit:** `f37d459`
+
+### What changed (2 files)
+
+- **`src/index.ts`** — Added `process.stderr.write("[info] MCP stdio transport connected\n")` after `server.connect(transport)` in the stdio branch. Matches `[info]` prefix and `process.stderr.write` pattern used by HTTP branch.
+- **`src/action-registry.ts`** — Removed redundant `Promise<unknown> |` from `ActionHandler` return type (pre-existing lint error, same fix as 10-485/10-488).
+
+### Notes
+
+- No test added: top-level `await` startup code requires full process-spawn harness to test; absence accepted by Code Reviewer.
+- Code review: Clean — no findings.
+- 2201 tests pass.

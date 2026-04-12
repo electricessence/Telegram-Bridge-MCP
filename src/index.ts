@@ -209,6 +209,7 @@ if (mcpPort !== undefined) {
   const server = createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  process.stderr.write("[info] MCP stdio transport connected\n");
 }
 
 // Register built-in commands and start the background poller after server startup.
