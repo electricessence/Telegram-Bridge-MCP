@@ -52,6 +52,10 @@ PR #135 (v6.0.2) fixed legacy tool name references and minor text. But deeper qu
 
 11. **Refactor brittle content tests** — Tests that assert exact prose strings (e.g., `expect(content).not.toContain("save to session memory")`) should be refactored. Extract user-facing strings to constants. Tests verify structure and response codes, not exact wording.
 
+### Cross-Cutting
+
+12. ~~**Unknown parameter warning**~~ — Moved to backlog as standalone task 20-490. Not v6.0.3 scope.
+
 ## Acceptance Criteria
 
 - All error responses use `{ code, message, hint? }` shape — no `error` field
