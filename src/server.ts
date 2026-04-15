@@ -3,10 +3,11 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runInSessionContext } from "./session-context.js";
-import { getActiveSession } from "./session-manager.js";
+import { getActiveSession, getSession } from "./session-manager.js";
 import { runInTokenHintContext } from "./tools/identity-schema.js";
 import { invokePreToolHook } from "./tool-hooks.js";
 import { toError } from "./telegram.js";
+import { recordToolCall } from "./trace-log.js";
 
 import { register as registerDequeueUpdate } from "./tools/dequeue.js";
 import { register as registerSend } from "./tools/send.js";
@@ -79,6 +80,8 @@ export function createServer(): McpServer {
           // A hook returning allowed:false short-circuits the call and
           // returns a 403-style error.  If the hook itself throws, we
           // fail safe by treating it as blocked.
+          const sessionName = (sid > 0 ? getSession(sid)?.name : undefined) ?? "";
+
           let hookResult: { allowed: boolean; reason?: string };
           try {
             hookResult = await invokePreToolHook(name, args);
@@ -86,14 +89,47 @@ export function createServer(): McpServer {
             // Hook threw — treat as blocked to fail safe
             const reason = err instanceof Error ? err.message : "Hook error";
             logBlockedToolCall(name, reason);
+            recordToolCall(name, args, sid, sessionName, "blocked", "HOOK_ERROR");
             return toError({ code: "BLOCKED", message: `Pre-tool hook error: ${reason}` });
           }
           if (!hookResult.allowed) {
             const reason = hookResult.reason ?? "Blocked by pre-tool hook";
             logBlockedToolCall(name, reason);
+            recordToolCall(name, args, sid, sessionName, "blocked", "BLOCKED");
             return toError({ code: "BLOCKED", message: reason });
           }
-          return original(args, extra);
+
+          let callResult: unknown;
+          try {
+            callResult = await Promise.resolve(original(args, extra));
+          } catch (err) {
+            const code = err instanceof Error ? err.message : "UNKNOWN_ERROR";
+            recordToolCall(name, args, sid, sessionName, "error", code);
+            throw err;
+          }
+
+          // Detect error responses returned as values (isError: true in MCP content)
+          const isError = (callResult as { isError?: boolean }).isError === true;
+
+          // Also check for toResult-wrapped error objects (e.g. TIMEOUT_EXCEEDS_DEFAULT)
+          let isStructuredError = false;
+          try {
+            const text = (callResult as { content?: Array<{ text?: string }> }).content?.[0]?.text;
+            if (text) {
+              const parsed = JSON.parse(text);
+              isStructuredError = typeof parsed === "object" && parsed !== null &&
+                ("error" in parsed || "code" in parsed) && !("updates" in parsed) && !("timed_out" in parsed) && !("empty" in parsed);
+            }
+          } catch { /* ignore parse errors */ }
+
+          recordToolCall(
+            name,
+            args,
+            sid,
+            sessionName,
+            (isError || isStructuredError) ? "error" : "ok",
+          );
+          return callResult;
         };
 
         if (sid > 0) {

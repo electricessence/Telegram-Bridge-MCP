@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { dlog } from "./debug-log.js";
+import { recordNonToolEvent } from "./trace-log.js";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -161,6 +162,7 @@ export function createSession(name = "", colorHint?: string, forceColor = false)
   };
   _sessions.set(sid, session);
   dlog("session", `created sid=${sid} name=${JSON.stringify(name)} color=${color} total=${_sessions.size}`);
+  recordNonToolEvent("session_create", sid, name);
   return { sid, pin, name, color, sessionsActive: _sessions.size };
 }
 
@@ -174,8 +176,12 @@ export function validateSession(sid: number, pin: number): boolean {
 }
 
 export function closeSession(sid: number): boolean {
+  const session = _sessions.get(sid);
   const deleted = _sessions.delete(sid);
-  if (deleted) dlog("session", `closed sid=${sid} remaining=${_sessions.size}`);
+  if (deleted) {
+    dlog("session", `closed sid=${sid} remaining=${_sessions.size}`);
+    recordNonToolEvent("session_close", sid, session?.name ?? "");
+  }
   return deleted;
 }
 
