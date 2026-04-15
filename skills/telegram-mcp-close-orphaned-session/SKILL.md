@@ -1,7 +1,6 @@
 ---
-skill: telegram-mcp-close-orphaned-session
+name: telegram-mcp-close-orphaned-session
 description: Procedure for closing an orphaned Worker session (no active agent, session still registered in bridge)
-applies_to: [Overseer, Curator]
 ---
 
 # Skill: Close Orphaned Session
