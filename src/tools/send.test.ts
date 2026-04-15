@@ -288,6 +288,68 @@ describe("send tool", () => {
 });
 
 // =============================================================================
+// 10-508: message alias tests
+// =============================================================================
+describe("send — message alias", () => {
+  let call: (args: Record<string, unknown>) => Promise<unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.resolveChat.mockReturnValue(42);
+    mocks.validateText.mockReturnValue(null);
+    mocks.isTtsEnabled.mockReturnValue(true);
+    mocks.stripForTts.mockImplementation((t: string) => t);
+    mocks.applyTopicToText.mockImplementation((t: string) => t);
+    mocks.markdownToV2.mockImplementation((t: string) => t);
+    mocks.splitMessage.mockImplementation((t: string) => [t]);
+    mocks.synthesizeToOgg.mockResolvedValue(Buffer.from("ogg"));
+    mocks.sendMessage.mockResolvedValue(SENT_MSG);
+    mocks.sendVoiceDirect.mockResolvedValue(SENT_VOICE_MSG);
+    mocks.showTyping.mockResolvedValue(undefined);
+
+    const server = createMockServer();
+    register(server);
+    call = server.getHandler("send");
+  });
+
+  it("message alias: send(message: 'hello') succeeds and returns hint field", async () => {
+    const result = await call({ message: "hello", token: TOKEN });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.message_id).toBe(42);
+    expect(data.hint).toBe("'message' is accepted as an alias. Canonical parameter: 'text'.");
+  });
+
+  it("message alias: send(text: 'hello', message: 'world') uses text (no hint)", async () => {
+    const result = await call({ text: "hello", message: "world", token: TOKEN });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.message_id).toBe(42);
+    expect(data.hint).toBeUndefined();
+    // Confirm text wins — applyTopicToText was called with "hello" not "world"
+    expect(mocks.applyTopicToText).toHaveBeenCalledWith("hello", expect.anything());
+  });
+
+  it("message alias: send(message: 'hello', audio: 'spoken') works — voice with caption alias", async () => {
+    const result = await call({ message: "caption via alias", audio: "spoken content", token: TOKEN });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.audio).toBe(true);
+    expect(data.hint).toBe("'message' is accepted as an alias. Canonical parameter: 'text'.");
+    expect(mocks.sendVoiceDirect).toHaveBeenCalledOnce();
+  });
+
+  it("canonical text still works normally (no hint)", async () => {
+    const result = await call({ text: "hello", token: TOKEN });
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.message_id).toBe(42);
+    expect(data.hint).toBeUndefined();
+  });
+});
+
+// =============================================================================
 // Type routing tests
 // =============================================================================
 describe("send type routing", () => {
