@@ -10,7 +10,7 @@ const HINT_MAP: Record<string, string> = {
   confirm:
     "Tip: confirm blocks until the user taps a button or the timeout expires. Drain any pending updates with dequeue(timeout: 0) before calling, or pass ignore_pending: true to proceed immediately.",
   choose:
-    "Tip: choose waits for a button tap and returns { label, value }. If the user types instead, you receive { skipped: true, text_response }. Drain pending updates first or pass ignore_pending: true.",
+    "Tip: choose waits for a button tap and returns { label, value }; if the user types instead, you receive { skipped: true, text_response }. Drain pending updates first or pass ignore_pending: true.",
 };
 
 const REACTION_HINT =
