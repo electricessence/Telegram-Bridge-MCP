@@ -158,19 +158,40 @@ async function handleSetReactionArray(
   // Sort by priority ascending (lowest first)
   resolved.sort((a, b) => a.priority - b.priority);
 
+  // Helper: try emoji candidates in order, same fallback pattern as single-emoji path
+  async function tryWithFallback(candidates: string[]): Promise<string | null> {
+    for (const [i, candidate] of candidates.entries()) {
+      try {
+        await getApi().setMessageReaction(chatId, message_id, [{ type: "emoji" as const, emoji: candidate as ReactionEmoji }], {});
+        if (PREMIUM_EMOJI.has(candidate)) _botIsPremium = true;
+        return candidate;
+      } catch (err) {
+        const isLast = i === candidates.length - 1;
+        if (isReactionInvalid(err) && !isLast) {
+          if (PREMIUM_EMOJI.has(candidate)) _botIsPremium = false;
+          continue;
+        }
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Strip candidates from layers output (internal detail)
+  const layers = resolved.map(({ emoji, priority, temporary }) => ({ emoji, priority, temporary }));
+
   // All permanent path (no temp items)
   if (tempItems.length === 0) {
-    // Apply the highest-priority permanent item directly
+    // Apply the highest-priority permanent item directly, with fallback
     const top = resolved[resolved.length - 1];
-    try {
-      await getApi().setMessageReaction(chatId, message_id, [{ type: "emoji" as const, emoji: top.emoji as ReactionEmoji }], {});
-      recordBotReaction(message_id, top.emoji);
-    } catch {
+    const usedEmoji = await tryWithFallback(top.candidates);
+    if (!usedEmoji) {
       return toError({ code: "UNKNOWN" as const, message: "Failed to set permanent reaction." });
     }
+    recordBotReaction(message_id, usedEmoji);
     // Fix 4: Warn when multiple permanent items were provided but only one can be applied
     const note = resolved.length > 1 ? ` (only highest-priority item applied — Telegram supports 1 reaction)` : "";
-    return toResult({ ok: true, message_id, visible: top.emoji, layers: resolved, restore_emoji: null, note: note || undefined });
+    return toResult({ ok: true, message_id, visible: usedEmoji, layers, restore_emoji: null, note: note || undefined });
   }
 
   // Mixed path: permanent base + temp overlay
@@ -178,25 +199,38 @@ async function handleSetReactionArray(
   // Fix 2: Use tempItems[0] for topItem — exactly one temp item is guaranteed here
   const topItem = tempItems[0];
 
+  // Resolve the temp item emoji with fallback to get the actual emoji to display
+  let resolvedTopEmoji = topItem.emoji;
+  if (topItem.candidates.length > 1 && _botIsPremium === false) {
+    const free = topItem.candidates.filter(c => !PREMIUM_EMOJI.has(c));
+    resolvedTopEmoji = free.length > 0 ? free[0] : topItem.emoji;
+  }
+
   // Fix 1: Capture restoreEmoji before the API call, but defer recordBotReaction until after success
   let restoreEmoji: ReactionEmoji | undefined;
   if (baseItem) {
-    restoreEmoji = baseItem.emoji as ReactionEmoji;
+    // Resolve base emoji with fallback
+    let resolvedBaseEmoji = baseItem.emoji;
+    if (baseItem.candidates.length > 1 && _botIsPremium === false) {
+      const free = baseItem.candidates.filter(c => !PREMIUM_EMOJI.has(c));
+      resolvedBaseEmoji = free.length > 0 ? free[0] : baseItem.emoji;
+    }
+    restoreEmoji = resolvedBaseEmoji as ReactionEmoji;
   }
 
-  const ok = await setTempReaction(message_id, topItem.emoji as ReactionEmoji, restoreEmoji, timeout_seconds);
+  const ok = await setTempReaction(message_id, resolvedTopEmoji as ReactionEmoji, restoreEmoji, timeout_seconds);
   if (!ok) return toError({ code: "UNKNOWN" as const, message: "Failed to set reaction — message may be too old or unavailable." });
 
   // Fix 1: Only record the bot reaction after setTempReaction succeeds
-  if (baseItem) {
-    recordBotReaction(message_id, baseItem.emoji);
+  if (baseItem && restoreEmoji) {
+    recordBotReaction(message_id, restoreEmoji);
   }
 
   return toResult({
     ok: true,
     message_id,
-    visible: topItem.emoji,
-    layers: resolved,
+    visible: resolvedTopEmoji,
+    layers,
     restore_emoji: restoreEmoji ?? null,
   });
 }
