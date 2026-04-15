@@ -420,10 +420,22 @@ export async function handleSessionReconnect({ name }: { name: string }) {
   const existing = listSessions().find(
     s => s.name.toLowerCase() === trimmedName.toLowerCase(),
   );
+
   if (!existing) {
     return toError({
       code: "SESSION_NOT_FOUND",
       message: `No active session named "${trimmedName}" found. If your session closed, start a new one with action(type: 'session/start', ...).`,
+    });
+  }
+
+  // Get full session object (listSessions omits PIN)
+  const fullSession = getSession(existing.sid);
+  if (!fullSession) {
+    return toError({
+      code: "SESSION_NOT_FOUND",
+      message:
+        `Session "${existing.name}" (SID ${existing.sid}) closed before reconnect completed. ` +
+        `Call action(type: 'session/start', ...) with a fresh name to create a new session.`,
     });
   }
 
@@ -435,16 +447,6 @@ export async function handleSessionReconnect({ name }: { name: string }) {
     return toError({
       code: "SESSION_DENIED",
       message: `Session reconnect for "${existing.name}" was denied by the operator. Check memory for a previously saved token — if found, use that token directly without calling action(type: 'session/reconnect', ...) again.`,
-    });
-  }
-
-  // Get full session object (listSessions omits PIN)
-  const fullSession = getSession(existing.sid);
-  if (!fullSession) {
-    return toError({
-      code: "SESSION_NOT_FOUND",
-      message:
-        `Session "${existing.name}" (SID ${existing.sid}) closed before reconnect completed. Call action(type: 'session/start', ...) with a fresh name to create a new session.`,
     });
   }
 
@@ -517,7 +519,6 @@ export async function handleSessionReconnect({ name }: { name: string }) {
   return toResult({
     token: reconToken,
     sid: fullSession.sid,
-    pin: fullSession.pin,
     sessions_active: reconSessActive,
     action: "reconnected",
     pending,

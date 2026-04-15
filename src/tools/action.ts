@@ -199,7 +199,7 @@ export function register(server: McpServer): void {
           ),
         // Auth token — required for all paths except session/start and session/reconnect
         token: TOKEN_SCHEMA.optional().describe(
-          "Session token (sid * 1_000_000 + pin). Required for all paths except `session/start` and `session/reconnect`.",
+          "Session token from action(type: 'session/start'). Required for all paths except `session/start` and `session/reconnect`.",
         ),
         // session/start and session/reconnect params
         name: z

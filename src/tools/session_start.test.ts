@@ -1426,9 +1426,9 @@ describe("session_start tool", () => {
     expect(approveRow.some(b => String(b.callback_data).startsWith("approve_"))).toBe(false);
     // No new session created
     expect(mocks.createSession).not.toHaveBeenCalled();
-    // Returns the existing SID and PIN
+    // Returns the existing SID and token
     expect(result.sid).toBe(1);
-    expect(result.pin).toBe(123456);
+    expect(result.token).toBe(1123456);
     expect(result.action).toBe("reconnected");
   });
 
@@ -1447,7 +1447,7 @@ describe("session_start tool", () => {
 
     const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
 
-    expect(result.pin).toBe(999999);
+    expect(result.token).toBe(1999999);
     expect(mocks.drainQueue).not.toHaveBeenCalled();
     expect(mocks.setActiveSession).toHaveBeenCalledWith(1);
     // Health state reset (mutations on the fakeSession object)
@@ -2244,7 +2244,7 @@ describe("handleSessionReconnect", () => {
     expect(result.action).toBe("reconnected");
   });
 
-  it("approval flow: returns existing SID/PIN and action='reconnected'", async () => {
+  it("approval flow: returns existing SID+token and action='reconnected'", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 2, name: "Worker", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 2, pin: 654321, name: "Worker", color: "🟩",
@@ -2258,7 +2258,6 @@ describe("handleSessionReconnect", () => {
     const result = parseResult(await handleSessionReconnect({ name: "Worker" }));
 
     expect(result.sid).toBe(2);
-    expect(result.pin).toBe(654321);
     expect(result.token).toBe(2654321);
     expect(result.action).toBe("reconnected");
   });
