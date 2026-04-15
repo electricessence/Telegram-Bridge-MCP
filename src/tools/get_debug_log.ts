@@ -16,38 +16,44 @@ const DESCRIPTION =
   "Filter by category, limit count, or toggle debug mode. " +
   "Use this to inspect routing decisions, session lifecycle events, queue operations, " +
   "and DM deliveries during a live session. " +
-  "Pass `trace: true` to query the behavioral audit trace log instead (always-on, 10 000 entries).";
+  "Use action(type: 'log/trace') to query the behavioral audit trace log instead (always-on, 10 000 entries).";
 
-export function handleGetDebugLog({ count, category, since, enable, trace, session_id, tool, since_ts, token }: {
+export function handleGetTraceLog({ count, session_id, tool, since_ts, since, token }: {
   count?: number;
-  category?: string;
-  since?: number;
-  enable?: boolean;
-  trace?: boolean;
   session_id?: number;
   tool?: string;
   since_ts?: string;
+  since?: number;
   token: number;
 }) {
   const _sid = requireAuth(token);
   if (typeof _sid !== "number") return toError(_sid);
 
-  if (trace) {
-    const entries = getTraceLog({
-      sid: session_id,
-      tool,
-      since_ts,
-      since_seq: since,
-      limit: count ?? 100,
-      caller_sid: _sid,
-      governor_sid: getGovernorSid(),
-    });
-    return toResult({
-      source: "trace",
-      returned: entries.length,
-      entries,
-    });
-  }
+  const entries = getTraceLog({
+    sid: session_id,
+    tool,
+    since_ts,
+    since_seq: since,
+    limit: count ?? 100,
+    caller_sid: _sid,
+    governor_sid: getGovernorSid(),
+  });
+  return toResult({
+    source: "trace",
+    returned: entries.length,
+    entries,
+  });
+}
+
+export function handleGetDebugLog({ count, category, since, enable, token }: {
+  count?: number;
+  category?: string;
+  since?: number;
+  enable?: boolean;
+  token: number;
+}) {
+  const _sid = requireAuth(token);
+  if (typeof _sid !== "number") return toError(_sid);
 
   if (enable !== undefined) setDebugEnabled(enable);
 
@@ -67,21 +73,13 @@ export function register(server: McpServer) {
       description: DESCRIPTION,
       inputSchema: {
         count: z.number().int().min(1).max(500).optional()
-          .describe("Max entries to return (default 50 for debug log, 100 for trace log)"),
+          .describe("Max entries to return (default 50)"),
         category: z.enum(CATEGORIES).optional()
-          .describe("Filter to a single debug category (ignored when trace: true)"),
+          .describe("Filter to a single debug category"),
         since: z.number().int().min(0).optional()
-          .describe("Only return entries with id/seq > since (cursor-based pagination)"),
+          .describe("Only return entries with id > since (cursor-based pagination)"),
         enable: z.boolean().optional()
-          .describe("Set to true/false to toggle debug logging on/off (ignored when trace: true)"),
-        trace: z.boolean().optional()
-          .describe("Pass true to query the behavioral audit trace log instead of the debug log"),
-        session_id: z.number().int().positive().optional()
-          .describe("trace: Filter to a specific session ID (governor-only for other sessions)"),
-        tool: z.string().optional()
-          .describe("trace: Filter to a specific tool name"),
-        since_ts: z.string().optional()
-          .describe("trace: Only return entries at or after this ISO timestamp"),
+          .describe("Set to true/false to toggle debug logging on/off"),
         token: TOKEN_SCHEMA,
       },
     },

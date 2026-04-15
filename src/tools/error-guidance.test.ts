@@ -67,6 +67,7 @@ const mocks = vi.hoisted(() => ({
   handleRollLog: vi.fn(),
   handleDeleteLog: vi.fn(),
   handleGetDebugLog: vi.fn(),
+  handleGetTraceLog: vi.fn(),
   handleDumpSessionRecord: vi.fn(),
   handleCancelAnimation: vi.fn(),
   handleShowTyping: vi.fn(),
@@ -150,7 +151,7 @@ vi.mock("./get_log.js", () => ({ handleGetLog: mocks.handleGetLog, register: vi.
 vi.mock("./list_logs.js", () => ({ handleListLogs: mocks.handleListLogs, register: vi.fn() }));
 vi.mock("./roll_log.js", () => ({ handleRollLog: mocks.handleRollLog, register: vi.fn() }));
 vi.mock("./delete_log.js", () => ({ handleDeleteLog: mocks.handleDeleteLog, register: vi.fn() }));
-vi.mock("./get_debug_log.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, register: vi.fn() }));
+vi.mock("./get_debug_log.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, handleGetTraceLog: mocks.handleGetTraceLog, register: vi.fn() }));
 vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: mocks.handleDumpSessionRecord, register: vi.fn() }));
 vi.mock("./cancel_animation.js", () => ({ handleCancelAnimation: mocks.handleCancelAnimation, register: vi.fn() }));
 vi.mock("./show_typing.js", () => ({ handleShowTyping: mocks.handleShowTyping, register: vi.fn() }));

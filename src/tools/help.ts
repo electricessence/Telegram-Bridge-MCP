@@ -103,7 +103,7 @@ const TOOL_INDEX: Record<string, string> = {
   list_logs: "List all available local log files.",
   delete_log: "Delete a named local log file.",
   toggle_logging: "Enable or disable local event logging.",
-  get_debug_log: "Read recent entries from the debug log.",
+  get_debug_log: "Read recent entries from the debug log. Use action(type: 'log/trace') for behavioral audit trace queries.",
   send_direct_message: "Send a message directly to a specific session (bypasses routing).",
   route_message: "Route a message to a specific session or change routing mode.",
   approve_agent: "Approve a pending session_start request by name. Only available when agent delegation is enabled by the operator via the /approve panel.",
