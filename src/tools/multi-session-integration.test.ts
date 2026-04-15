@@ -329,7 +329,8 @@ describe("multi-session tool integration", () => {
 
       const server = createMockServer();
       registerCloseSession(server);
-      await server.getHandler("close_session")({ token: sid1 * 1_000_000 + pin1 });
+      // force: true is required when closing the last session (last-session guard)
+      await server.getHandler("close_session")({ token: sid1 * 1_000_000 + pin1, force: true });
 
       expect(getGovernorSid()).toBe(0);
     });

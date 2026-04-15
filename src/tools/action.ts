@@ -454,11 +454,11 @@ export function register(server: McpServer): void {
           .string()
           .optional()
           .describe("approve: Name of the pending session to approve."),
-        // shutdown params
+        // shutdown / session/close params
         force: z
           .boolean()
           .optional()
-          .describe("shutdown: Bypass the pending-message safety guard."),
+          .describe("shutdown: Bypass the pending-message safety guard. session/close: Force-close the last remaining session (bypasses the last-session guard)."),
         // shutdown/warn params
         reason: z
           .string()

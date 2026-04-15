@@ -107,7 +107,7 @@ describe("close_session tool", () => {
     mocks.closeSession.mockReturnValue(true);
     mocks.getGovernorSid.mockReturnValue(0);
     mocks.listSessions.mockReturnValue([]);
-    mocks.activeSessionCount.mockReturnValue(0);
+    mocks.activeSessionCount.mockReturnValue(2);
     mocks.sendServiceMessage.mockResolvedValue(undefined);
     mocks.getSession.mockReturnValue({ token: 1123456, name: "Alpha", createdAt: "2026-03-17" });
     mocks.drainQueue.mockReturnValue([]);
@@ -601,7 +601,7 @@ describe("close_session tool", () => {
 
   it("does not stop poller when sessions remain after close", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 2, name: "Worker", createdAt: "2026-03-22" }]);
-    mocks.activeSessionCount.mockReturnValue(1);
+    mocks.activeSessionCount.mockReturnValue(1); // 1 remains after close — poller stays up
 
     await call({ token: 1123456 });
 
@@ -697,6 +697,44 @@ describe("close_session tool", () => {
     expect(result.closed).toBe(false);
     expect(result.reason).toBe("cancelled");
     expect(mocks.closeSession).not.toHaveBeenCalled();
+  });
+
+  // =========================================================================
+  // Last-session guard (task: session/close safety)
+  // =========================================================================
+
+  it("rejects self-close when it is the last session and force is omitted", async () => {
+    mocks.activeSessionCount.mockReturnValue(1);
+
+    const result = await call({ token: 1123456 });
+
+    expect(isError(result)).toBe(true);
+    const parsed = parseResult(result);
+    expect(parsed.code).toBe("LAST_SESSION");
+    expect(parsed.message).toContain("You are the last session");
+    expect(parsed.message).toContain("action(type: 'shutdown')");
+    expect(mocks.closeSession).not.toHaveBeenCalled();
+  });
+
+  it("closes normally when it is the last session and force is true", async () => {
+    // force=true short-circuits the guard (no activeSessionCount call there).
+    // The only call is in session-teardown after close, where 0 triggers stopPoller.
+    mocks.activeSessionCount.mockReturnValueOnce(0);
+
+    const result = parseResult(await call({ token: 1123456, force: true }));
+
+    expect(result.closed).toBe(true);
+    expect(mocks.closeSession).toHaveBeenCalledWith(1);
+    expect(mocks.stopPoller).toHaveBeenCalled();
+  });
+
+  it("closes normally without force when sessions remain (non-last session)", async () => {
+    mocks.activeSessionCount.mockReturnValue(2);
+
+    const result = parseResult(await call({ token: 1123456 }));
+
+    expect(result.closed).toBe(true);
+    expect(mocks.closeSession).toHaveBeenCalledWith(1);
   });
 
   // =========================================================================
