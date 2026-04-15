@@ -38,11 +38,18 @@ export async function setTempReaction(
   if (typeof resolved !== "number") return false;
 
   const sid = getCallerSid();
+
+  // When replacing a temp on the same message, inherit the restore target from the
+  // outgoing slot so the chain resolves back to the original stable reaction, not
+  // the intermediate temp emoji that recordBotReaction recorded.
+  const outgoingSlot = _slots.get(sid);
+  const inheritedRestore = outgoingSlot?.messageId === messageId ? outgoingSlot.restoreEmoji : null;
+
   // Cancel any previous pending slot for this session (no restore — caller replaced it)
   _clearSlot(sid);
 
   // Capture previous reaction before we overwrite it
-  const previousEmoji = getBotReaction(messageId) as ReactionEmoji | null;
+  const previousEmoji = inheritedRestore ?? (getBotReaction(messageId) as ReactionEmoji | null);
   const resolvedRestore: ReactionEmoji | null =
     restoreEmoji !== undefined ? restoreEmoji : previousEmoji;
 
