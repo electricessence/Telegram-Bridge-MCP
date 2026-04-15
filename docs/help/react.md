@@ -8,8 +8,13 @@ Omit/empty emoji to remove reaction.
 token: session token (required)
 message_id: message ID to react to (required)
 emoji: emoji or semantic alias (optional; omit to remove)
-  Aliases: thinking 🤔 · working ⏳ · done ✅→👍 · salute 🫡 · reading 👀 · approve 👍
-           ok 👌 · fire 🔥 · rocket 🚀 · tada 🎉 · heart ❤ · reject 👎 · no 👎
+  Aliases (premium→free fallback shown where applicable):
+    done/complete/finished ✅→👍  · error/failed/stop/blocked ⛔→👎
+    rocket/launch 🚀→🔥
+    thinking 🤔 · working/processing/busy ⏳ · approve/yes/good 👍
+    ok/okay 👌 · salute/acknowledged/understood 🫡 · reading/looking/watching 👀
+    heart/love ❤ · reject/no/bad 👎 · fire/hot 🔥
+    tada/celebrate/party 🎉
 is_big: use big animation (optional; default false; permanent reactions only)
 temporary: auto-revert on next outbound action or timeout (optional; default false)
 restore_emoji: emoji to restore to after temporary expires (optional; implies temporary=true)

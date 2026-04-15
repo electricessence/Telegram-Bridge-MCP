@@ -8,14 +8,8 @@ Returns confirmed: true/false, timed_out, or skipped.
 token: session token (required)
 text: question requiring confirmation (required)
 timeout_seconds: wait time in seconds (optional; default 600)
-yes_text: OK button label (optional; default "OK")
-no_text: Cancel button label (optional; default "Cancel"; "" = single-button mode)
 yes_style: OK button color (optional; "success" | "primary" | "danger"; default "primary")
-no_style: Cancel button color (optional)
-reply_to: reply to this message ID (optional)
 ignore_pending: skip pending-updates check (optional)
-ignore_parity: bypass emoji consistency check (optional)
-audio: spoken TTS text for voice note variant (optional)
 
 ## Examples
 Standard:

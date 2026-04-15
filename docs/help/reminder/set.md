@@ -12,7 +12,7 @@ trigger: "time" (default) | "startup"
   startup: fires automatically on session/start or reconnect
 delay_seconds: seconds before reminder becomes active (optional; default 0; max 86400; ignored for startup)
 recurring: re-arm after firing (optional; default false)
-id: custom ID for cancellation (optional; auto-generated if omitted)
+id: custom ID for cancellation (optional; auto-generated content hash if omitted — deterministic dedup)
 
 ## Examples
 Time reminder (10 min):

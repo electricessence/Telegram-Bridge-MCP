@@ -3,8 +3,6 @@ logging/toggle — Enable or disable local session logging.
 When disabled, no new events written to log file. Events queued for async write.
 To archive current log before disabling, call log/roll first.
 
-Note: naming inconsistency — this should be log/toggle in future refactor.
-
 ## Params
 token: session token (required)
 enabled: true to enable logging, false to disable (required)

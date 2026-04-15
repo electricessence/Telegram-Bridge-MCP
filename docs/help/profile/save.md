@@ -16,4 +16,4 @@ action(type: "profile/save", token: 3165424, key: "Worker")
 - Only saves sections that differ from defaults
 - Overwrites existing profile with same key
 
-Related: profile/load, profile/import, set_voice, animation/default, reminder/set
+Related: profile/load, profile/import, profile/voice, animation/default, reminder/set

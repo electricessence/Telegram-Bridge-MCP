@@ -7,14 +7,8 @@ Same behavior as confirm/ok-cancel but with Yes/No framing.
 token: session token (required)
 text: yes/no question (required)
 timeout_seconds: wait time in seconds (optional; default 600)
-yes_text: Yes button label (optional; default "🟢 Yes")
-no_text: No button label (optional; default "🔴 No"; "" = single-button mode)
 yes_style: Yes button color (optional; "success" | "primary" | "danger")
-no_style: No button color (optional)
-reply_to: reply to this message ID (optional)
 ignore_pending: skip pending-updates check (optional)
-ignore_parity: bypass emoji consistency check (optional)
-audio: spoken TTS text for voice note variant (optional)
 
 ## Examples
 Standard:

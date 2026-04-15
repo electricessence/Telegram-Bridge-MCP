@@ -8,7 +8,7 @@ name: exact name of session to reclaim (required; case-insensitive match)
 
 ## Example
 action(type: "session/reconnect", name: "Worker 2")
-→ { token: 3165424, sid: 3, action: "reconnected", pending: 4 }
+→ { token: 3165424, sid: 3, action: "reconnected", pending: 4, sessions_active: 2 }
 
 Save token immediately after reconnect.
 
