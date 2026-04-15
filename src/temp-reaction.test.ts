@@ -88,6 +88,39 @@ describe("temp-reaction", () => {
     expect(hasTempReaction()).toBe(true);
   });
 
+  it("replacing temp on same message restores to original stable reaction, not intermediate temp", async () => {
+    // Permanent reaction 👍 is the stable state
+    mocks.getBotReaction.mockReturnValue("👍");
+
+    // First temp 👀 — restore target captured from getBotReaction → 👍
+    await setTempReaction(100, "👀" as never);
+
+    // Simulate handleSetReaction recording 👀 as the new bot reaction
+    mocks.getBotReaction.mockReturnValue("👀");
+    vi.clearAllMocks();
+
+    // Second temp 🤔 on the same message — should inherit restore target 👍 from outgoing slot
+    await setTempReaction(100, "🤔" as never);
+
+    // Restore must resolve to 👍, not 👀
+    await fireTempReactionRestore();
+    expect(mocks.trySetMessageReaction).toHaveBeenLastCalledWith(42, 100, "👍");
+  });
+
+  it("replacing temp on a different message does not inherit restore from old slot", async () => {
+    // Slot on message 100 with restore 🫡
+    mocks.getBotReaction.mockReturnValue("🫡");
+    await setTempReaction(100, "👀" as never);
+
+    // New temp on message 200 — different message, restore comes from getBotReaction(200)
+    mocks.getBotReaction.mockReturnValue("❤" as never);
+    vi.clearAllMocks();
+    await setTempReaction(200, "🤔" as never);
+
+    await fireTempReactionRestore();
+    expect(mocks.trySetMessageReaction).toHaveBeenLastCalledWith(42, 200, "❤");
+  });
+
   it("auto-restores to previously recorded reaction when restore_emoji is omitted", async () => {
     mocks.getBotReaction.mockReturnValue("🫡");
     await setTempReaction(100, "👀");
