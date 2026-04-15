@@ -53,6 +53,8 @@ const mocks = vi.hoisted(() => ({
   handleApproveAgent: vi.fn(),
   handleShutdown: vi.fn(),
   handleNotifyShutdownWarning: vi.fn(),
+  handleSessionRestore: vi.fn(),
+  handleSessionBounce: vi.fn(),
   handleTranscribeVoice: vi.fn(),
   handleDownloadFile: vi.fn(),
   handleUpdateChecklist: vi.fn(),
@@ -142,6 +144,8 @@ vi.mock("./confirm.js", () => ({ handleConfirm: (...args: unknown[]) => mocks.ha
 vi.mock("./approve_agent.js", () => ({ handleApproveAgent: mocks.handleApproveAgent, register: vi.fn() }));
 vi.mock("./shutdown.js", () => ({ handleShutdown: mocks.handleShutdown, register: vi.fn() }));
 vi.mock("./notify_shutdown_warning.js", () => ({ handleNotifyShutdownWarning: mocks.handleNotifyShutdownWarning, register: vi.fn() }));
+vi.mock("./session_restore.js", () => ({ handleSessionRestore: mocks.handleSessionRestore, register: vi.fn() }));
+vi.mock("./session_bounce.js", () => ({ handleSessionBounce: mocks.handleSessionBounce, register: vi.fn() }));
 vi.mock("./transcribe_voice.js", () => ({ handleTranscribeVoice: mocks.handleTranscribeVoice, register: vi.fn() }));
 vi.mock("./download_file.js", () => ({ handleDownloadFile: mocks.handleDownloadFile, register: vi.fn() }));
 vi.mock("./send_new_checklist.js", () => ({ handleUpdateChecklist: mocks.handleUpdateChecklist, register: vi.fn() }));

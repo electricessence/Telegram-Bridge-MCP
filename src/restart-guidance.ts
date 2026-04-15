@@ -1,3 +1,5 @@
 /** Shared restart guidance appended to both shutdown and pre-warning messages. */
 export const RESTART_GUIDANCE =
-  "When you receive a shutdown event, stop retrying dequeue. After the server restarts (typically 10\u201360 s), call action(type: 'session/start', ...) to establish a new session.";
+  "Wait ~30s for restart, then probe: action(type: \"session/list\") — no token needed. " +
+  "If your SID is in the list, try your saved token: action(type: \"session/reconnect\", token: <saved>, name: \"...\"). " +
+  "Token accepted → resume. SID missing → bridge restarted fresh → session/start.";
