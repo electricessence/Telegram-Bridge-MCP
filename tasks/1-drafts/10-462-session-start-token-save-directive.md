@@ -1,6 +1,6 @@
 ---
 Created: 2026-04-10
-Status: Draft
+Status: Subsumed by 10-494
 Host: local
 Priority: 10-462
 Source: Operator directive
@@ -27,7 +27,7 @@ reduces compaction recovery friction across all agent types.
 The `session/start` response hint must use this **exact canon text**:
 
 ```text
-Save this token to session memory. Then call help("start").
+Save this token. Read: help(topic: 'session/started')
 ```
 
 This is the first instruction any agent receives. It must be unambiguous and
@@ -37,7 +37,7 @@ not "persist," not "ensure," not "store." Exact words.
 ## Acceptance Criteria
 
 - [ ] `session/start` response hint uses the exact canon text above
-- [ ] Hint directs to `help("start")` as the next step (not `help("startup")`)
+- [ ] Hint directs to `help(topic: 'session/started')` as the next step
 - [ ] Token-save directive is first sentence, help reference is second
 - [ ] Existing session/start behavior is unchanged (no regression)
 - [ ] Directive text references "token" (not "PIN" or "SID")

@@ -38,7 +38,16 @@ This caused a false-positive hook trigger: the bridge was reachable but no sessi
 
 ## Acceptance Criteria
 
-- [ ] `session/close` on last session rejects with shutdown hint (without `force`)
-- [ ] `session/close` with `force: true` on last session closes normally
-- [ ] `session/close` on non-last session is unaffected
-- [ ] Tests cover all three cases
+- [x] `session/close` on last session rejects with shutdown hint (without `force`)
+- [x] `session/close` with `force: true` on last session closes normally
+- [x] `session/close` on non-last session is unaffected
+- [x] Tests cover all three cases
+
+## Completion
+
+- **Branch:** `10-492`
+- **Worktree:** `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-492`
+- **Commit:** `c7512f1` — feat(session): add last-session close guard (10-492)
+- **Tests:** 2222 passed (109 files)
+- **Files changed:** `src/tools/close_session.ts`, `src/tools/action.ts`, `src/tools/close_session.test.ts`, `src/tools/multi-session-integration.test.ts`, `src/telegram.ts`, `src/tools/help.ts`, `changelog/unreleased.md`
+- **Completed:** 2026-04-15

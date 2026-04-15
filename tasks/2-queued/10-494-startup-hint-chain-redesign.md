@@ -30,6 +30,7 @@ Operator directive: rename `startup` to `start`, collapse `quick_start` into
 `start`, frame guide as optional reference.
 
 Subsumes 10-462 — the canon token-save text is part of this redesign.
+Uses `session/started` as the help topic name (per operator directive 2026-04-14).
 
 ## Changes
 

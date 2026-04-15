@@ -43,6 +43,17 @@ When the Deputy session closed, governor reassignment logic may have set governo
 
 ## Acceptance Criteria
 
-- [ ] Governor closing a non-governor session does not disrupt governor role
-- [ ] `shutdown` succeeds when called by the actual governor after closing other sessions
-- [ ] Test: close subordinate session → shutdown → succeeds
+- [x] Governor closing a non-governor session does not disrupt governor role
+- [x] `shutdown` succeeds when called by the actual governor after closing other sessions
+- [x] Test: close subordinate session → shutdown → succeeds
+
+## Completion
+
+- **Branch:** `10-493`
+- **Worktree:** `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-493`
+- **Commit:** `9262ee0` — fix(session): preserve governor role on non-governor 2→1 close (10-493)
+- **Root cause:** `session-teardown.ts` unconditionally called `setGovernorSid(0)` on 2→1 transition regardless of `wasGovernor`
+- **Fix:** check `wasGovernor` before mutating; non-governor close leaves governor SID untouched; governor close promotes remaining session
+- **Tests:** 2220 passed (109 files)
+- **Files changed:** `src/session-teardown.ts`, `src/tools/close_session.test.ts`, `src/tools/multi-session-integration.test.ts`, `docs/multi-session-protocol.md`, `changelog/unreleased.md`
+- **Completed:** 2026-04-15

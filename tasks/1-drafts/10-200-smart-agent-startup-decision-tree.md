@@ -1,6 +1,6 @@
 ---
 Created: 2026-04-03
-Status: Draft
+Status: Stale
 Priority: 10
 Source: Operator directive (voice, 21948 + 21953)
 Repo: electricessence/Telegram-Bridge-MCP
