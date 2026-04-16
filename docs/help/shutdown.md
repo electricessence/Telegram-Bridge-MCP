@@ -3,7 +3,7 @@ Graceful Shutdown — Clean exit for Telegram-enabled agents.
 Triggered by: operator stop command or action(type: "shutdown/warn") DM from governor.
 
 ## Common Shutdown (All Agents)
-1. Drain queue. dequeue(timeout: 0) loop until pending = 0 and response = empty.
+1. Drain queue. dequeue(max_wait: 0) loop until pending = 0 and response = empty.
    ALWAYS drain — unread messages lost when session ends.
 2. Finish current step. Don't drop mid-operation.
 3. DM superior with status:
@@ -17,7 +17,7 @@ Triggered by: operator stop command or action(type: "shutdown/warn") DM from gov
 7. Stop. No more tool calls after session/close.
 
 ## Governor Shutdown (Curator Only)
-1. Drain queue. dequeue(timeout: 0) until empty.
+1. Drain queue. dequeue(max_wait: 0) until empty.
 2. Wipe session memory file.
 3. DM each session: "Shutting down — close your session."
 4. Wait for session_closed events (brief timeout).

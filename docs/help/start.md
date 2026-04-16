@@ -10,8 +10,12 @@ Call dequeue(token) to enter the loop. Default timeout
 is 5 minutes. This is intentional — blocking reduces
 token use.
 Returns { timed_out: true } on timeout → call again. Returns { empty: true } on instant poll.
-Pattern: drain → block → handle → drain again. When pending > 0: dequeue(timeout: 0) until pending == 0, then block.
-Claude Code sessions (long-lived): action(type: 'profile/dequeue-default', timeout: N, token) to increase timeout.
+Pattern: drain → block → handle → drain again.
+When pending > 0: dequeue(max_wait: 0, token) until
+pending == 0, then block.
+Claude Code sessions (long-lived):
+action(type: 'profile/dequeue-default', timeout: N,
+token) to increase default.
 
 ## Send Basics
 send(type: 'text', token, text: 'Hello') → text message

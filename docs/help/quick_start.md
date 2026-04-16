@@ -3,9 +3,9 @@ Quick Start — Minimum to Operate
 ## 1. Dequeue loop
 Your heartbeat. Call dequeue() to receive messages and events.
 - Block mode: dequeue() — waits up to 300s for next message. Returns { timed_out: true } on timeout — call again.
-- Drain mode: dequeue(timeout: 0) — instant poll. Returns { empty: true } if nothing queued.
+- Drain mode: dequeue(max_wait: 0) — instant poll. Returns { empty: true } if nothing queued.
 Pattern: drain → block → handle → drain again.
-When pending > 0: call dequeue(timeout: 0) until pending == 0, then block.
+When pending > 0: call dequeue(max_wait: 0) until pending == 0, then block.
 
 ## 2. Send a message
 send(type: "text", token: <token>, text: "Hello") → text message
