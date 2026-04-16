@@ -361,12 +361,12 @@ describe("send — message alias", () => {
     call = server.getHandler("send");
   });
 
-  it("message alias: send(message: 'hello') succeeds and returns hint field", async () => {
+  it("message alias: send(message: 'hello') succeeds and returns message_id (no hint field)", async () => {
     const result = await call({ message: "hello", token: TOKEN });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.message_id).toBe(42);
-    expect(data.hint).toBe("'message' is accepted as an alias. Canonical parameter: 'text'.");
+    expect(data.hint).toBeUndefined();
   });
 
   it("message alias: send(text: 'hello', message: 'world') uses text (no hint)", async () => {
@@ -379,12 +379,12 @@ describe("send — message alias", () => {
     expect(mocks.applyTopicToText).toHaveBeenCalledWith("hello", expect.anything());
   });
 
-  it("message alias: send(message: 'hello', audio: 'spoken') works — voice with caption alias", async () => {
+  it("message alias: send(message: 'hello', audio: 'spoken') works — voice with caption alias (no hint)", async () => {
     const result = await call({ message: "caption via alias", audio: "spoken content", token: TOKEN });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.audio).toBe(true);
-    expect(data.hint).toBe("'message' is accepted as an alias. Canonical parameter: 'text'.");
+    expect(data.hint).toBeUndefined();
     expect(mocks.sendVoiceDirect).toHaveBeenCalledOnce();
   });
 

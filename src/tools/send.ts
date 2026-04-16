@@ -166,7 +166,6 @@ export function register(server: McpServer) {
     },
     async (args, { signal }) => {
       // 'message' is a universal alias for 'text' — resolve before any routing
-      const usedMessageAlias = !args.text && !!args.message;
       const { type, audio } = args;
       const text = args.text ?? args.message;
 
@@ -179,8 +178,6 @@ export function register(server: McpServer) {
       if (!type && !text && !audio) {
         return toResult({
           available_types: SEND_TYPES,
-          hint: 'Pass type: "<type>" with required params, or just text/audio for plain text mode.',
-          help: 'Call help(topic: "send") for full documentation.',
         });
       }
 
@@ -270,7 +267,6 @@ export function register(server: McpServer) {
                 });
                 message_ids.push(msg.message_id);
               }
-              const aliasHint = usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {};
               if (captionOverflow && finalTextForSplit) {
                 const splitText = finalTextForSplit;
                 const textMsg = await callApi(() =>
@@ -286,7 +282,6 @@ export function register(server: McpServer) {
                     split: true,
                     audio: true,
                     _hint: `Caption exceeded limit; audio sent as msg ${message_ids[0]}, text sent separately as msg ${textMsg.message_id}.`,
-                    ...aliasHint,
                   });
                 }
                 return toResult({
@@ -295,13 +290,12 @@ export function register(server: McpServer) {
                   split: true,
                   audio: true,
                   _hint: `Caption exceeded limit; audio sent as msgs ${message_ids.join(", ")}, text sent separately as msg ${textMsg.message_id}.`,
-                  ...aliasHint,
                 });
               }
               if (message_ids.length === 1) {
-                return toResult({ message_id: message_ids[0], audio: true, ...aliasHint });
+                return toResult({ message_id: message_ids[0], audio: true });
               }
-              return toResult({ message_ids, split_count: message_ids.length, split: true, audio: true, ...aliasHint });
+              return toResult({ message_ids, split_count: message_ids.length, split: true, audio: true });
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
               if (msg.includes("user restricted receiving of voice note messages")) {
@@ -345,9 +339,9 @@ export function register(server: McpServer) {
             }
             const hasTable = containsMarkdownTable(text ?? "");
             if (message_ids.length === 1) {
-              return toResult(hasTable ? { message_id: message_ids[0], info: TABLE_WARNING, ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) } : { message_id: message_ids[0], ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) });
+              return toResult(hasTable ? { message_id: message_ids[0], info: TABLE_WARNING } : { message_id: message_ids[0] });
             }
-            return toResult(hasTable ? { message_ids, split_count: message_ids.length, split: true, info: TABLE_WARNING, ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) } : { message_ids, split_count: message_ids.length, split: true, ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) });
+            return toResult(hasTable ? { message_ids, split_count: message_ids.length, split: true, info: TABLE_WARNING } : { message_ids, split_count: message_ids.length, split: true });
           } catch (err) {
             return toError(err);
           }

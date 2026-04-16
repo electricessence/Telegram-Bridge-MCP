@@ -59,7 +59,7 @@ describe("send_new_checklist tool", () => {
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.message_id).toBe(10);
-    expect(data.hint).toBeDefined();
+    expect(data.hint).toBeUndefined();
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
     expect(mocks.editMessageText).not.toHaveBeenCalled();
   });

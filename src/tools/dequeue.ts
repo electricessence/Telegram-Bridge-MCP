@@ -7,10 +7,9 @@ import {
   type TimelineEvent,
 } from "../message-store.js";
 import { setActiveSession, touchSession, getDequeueDefault, setDequeueIdle, getSession } from "../session-manager.js";
-import { getTutorialReactionHint } from "../tutorial-hints.js";
 import { recordNonToolEvent } from "../trace-log.js";
 import { getSessionQueue, getMessageOwner } from "../session-queue.js";
-import { TOKEN_SCHEMA, consumeTokenStringHint } from "./identity-schema.js";
+import { TOKEN_SCHEMA } from "./identity-schema.js";
 import {
   promoteDeferred,
   getActiveReminders,
@@ -21,14 +20,6 @@ import {
 
 /** Defensive clamp for a single setTimeout call, kept below Node.js's ~2^31-1 ms overflow limit. */
 const MAX_SET_TIMEOUT_MS = 2_000_000_000;
-
-/** Sessions that have already received the first-dequeue hint. */
-const _firstDequeueShownForSession = new Set<number>();
-
-/** Reset the first-dequeue hint set — for use in tests only. */
-export function _resetFirstDequeueHintForTest(): void {
-  _firstDequeueShownForSession.clear();
-}
 
 /** Seconds an active reminder must be idle before it fires within dequeue. */
 const REMINDER_IDLE_THRESHOLD_MS = 60_000;
@@ -77,6 +68,11 @@ export function _resetTimeoutHintForTest(): void {
   _timeoutHintShownForSession.clear();
 }
 
+/** Exported for test reset only — kept for backward compat with tests. */
+export function _resetFirstDequeueHintForTest(): void {
+  // No-op: first-dequeue hint removed.
+}
+
 export function register(server: McpServer) {
   server.registerTool(
     "dequeue",
@@ -110,22 +106,6 @@ export function register(server: McpServer) {
       const _sid = requireAuth(token);
       if (typeof _sid !== "number") return toError(_sid);
       const sid = _sid;
-
-      // Capture the token-string hint now (before any early returns consume it).
-      const tokenHint = consumeTokenStringHint();
-
-      // First-dequeue hint: shown once per session to orient new agents.
-      const isFirstDequeue = !_firstDequeueShownForSession.has(sid);
-      if (isFirstDequeue) _firstDequeueShownForSession.add(sid);
-      const firstDequeueHint = isFirstDequeue
-        ? "Drain mode: dequeue(max_wait: 0) returns immediately. Block mode: dequeue() waits up to 300s. Call again after handling — the loop is your heartbeat."
-        : undefined;
-
-      /** Combine token-string hint and first-dequeue hint into one hint string (or undefined). */
-      function buildHint(tokenH: string | undefined, firstH: string | undefined): string | undefined {
-        if (tokenH && firstH) return `${tokenH}; ${firstH}`;
-        return tokenH ?? firstH;
-      }
 
       // Gate: reject timeout values above the session default unless force is set
       const sessionDefault = getDequeueDefault(sid);
@@ -199,27 +179,13 @@ export function register(server: McpServer) {
         const pending = pendingCountAny();
         const result: Record<string, unknown> = { updates: compactBatch(batch, sid) };
         if (pending > 0) result.pending = pending;
-        const hint0 = buildHint(tokenHint, firstDequeueHint);
-        if (hint0) result.hint = hint0;
-        const hasUserReaction0 = batch.some(
-          (e) => e.event === "reaction" && e.from === "user" &&
-          Array.isArray((e.content as { added?: unknown[] }).added) &&
-          ((e.content as { added?: unknown[] }).added?.length ?? 0) > 0
-        );
-        if (hasUserReaction0) {
-          const rxHint0 = getTutorialReactionHint(sid);
-          if (rxHint0) result.tutorial = rxHint0;
-        }
         resyncActiveSession();
         dlog("queue", `dequeue returning sid=${sid} batch=${batch.length} payloadLen=${JSON.stringify(result).length}`);
         return toResult(result);
       }
 
       if (effectiveTimeout === 0) {
-        const emptyResult: Record<string, unknown> = { empty: true, pending: pendingCountAny() };
-        const hint1 = buildHint(tokenHint, firstDequeueHint);
-        if (hint1) emptyResult.hint = hint1;
-        return toResult(emptyResult);
+        return toResult({ empty: true, pending: pendingCountAny() });
       }
 
       // Block until something arrives or timeout expires.
@@ -248,8 +214,6 @@ export function register(server: McpServer) {
             }
             resyncActiveSession();
             const reminderResult: Record<string, unknown> = { updates: fired.map(buildReminderEvent), pending: pendingCountAny() };
-            const hint2 = buildHint(tokenHint, firstDequeueHint);
-            if (hint2) reminderResult.hint = hint2;
             dlog("queue", `dequeue returning sid=${sid} batch=${fired.length} payloadLen=${JSON.stringify(reminderResult).length}`);
             return toResult(reminderResult);
           }
@@ -275,17 +239,6 @@ export function register(server: McpServer) {
               const pending = pendingCountAny();
               const result: Record<string, unknown> = { updates: compactBatch(batch, sid) };
               if (pending > 0) result.pending = pending;
-              const hint3a = buildHint(tokenHint, firstDequeueHint);
-              if (hint3a) result.hint = hint3a;
-              const hasUserReaction3a = batch.some(
-                (e) => e.event === "reaction" && e.from === "user" &&
-                Array.isArray((e.content as { added?: unknown[] }).added) &&
-                ((e.content as { added?: unknown[] }).added?.length ?? 0) > 0
-              );
-              if (hasUserReaction3a) {
-                const rxHint3a = getTutorialReactionHint(sid);
-                if (rxHint3a) result.tutorial = rxHint3a;
-              }
               resyncActiveSession();
               dlog("queue", `dequeue returning sid=${sid} batch=${batch.length} payloadLen=${JSON.stringify(result).length}`);
               return toResult(result);
@@ -308,17 +261,6 @@ export function register(server: McpServer) {
             const pending = pendingCountAny();
             const result: Record<string, unknown> = { updates: compactBatch(batch, sid) };
             if (pending > 0) result.pending = pending;
-            const hint3 = buildHint(tokenHint, firstDequeueHint);
-            if (hint3) result.hint = hint3;
-            const hasUserReaction3 = batch.some(
-              (e) => e.event === "reaction" && e.from === "user" &&
-              Array.isArray((e.content as { added?: unknown[] }).added) &&
-              ((e.content as { added?: unknown[] }).added?.length ?? 0) > 0
-            );
-            if (hasUserReaction3) {
-              const rxHint3 = getTutorialReactionHint(sid);
-              if (rxHint3) result.tutorial = rxHint3;
-            }
             resyncActiveSession();
             dlog("queue", `dequeue returning sid=${sid} batch=${batch.length} payloadLen=${JSON.stringify(result).length}`);
             return toResult(result);
@@ -326,10 +268,7 @@ export function register(server: McpServer) {
         }
 
         resyncActiveSession();
-        const timedOutResult: Record<string, unknown> = { timed_out: true, pending: pendingCountAny() };
-        const hint4 = buildHint(tokenHint, firstDequeueHint);
-        if (hint4) timedOutResult.hint = hint4;
-        return toResult(timedOutResult);
+        return toResult({ timed_out: true, pending: pendingCountAny() });
       } finally {
         // Note: if two concurrent dequeue calls share the same sid (unusual but
         // possible), the second finally will clear the idle flag while the first

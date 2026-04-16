@@ -150,7 +150,7 @@ describe("session_start tool", () => {
     call = server.getHandler("session_start");
   });
 
-  it("auto-drains pending messages and returns discarded count", async () => {
+  it("auto-drains pending messages and returns lean response", async () => {
     mocks.pendingCount.mockReturnValue(3);
     mocks.dequeue
       .mockReturnValueOnce({ id: 1 })
@@ -163,17 +163,11 @@ describe("session_start tool", () => {
     expect(result).toEqual({
       token: 1123456,
       sid: 1,
-      pin: 123456,
-      sessions_active: 1,
-      action: "fresh",
-      pending: 0,
-      discarded: 3,
-      fellow_sessions: [],
-      instruction: "Do this now: save this token, then call help('start') for post-session setup.",
+      instruction: "Call dequeue now. Messages are waiting.",
     });
   });
 
-  it("creates session and returns fresh when no pending", async () => {
+  it("creates session and returns lean response when no pending", async () => {
     mocks.pendingCount.mockReturnValue(0);
 
     const result = parseResult(await call({}));
@@ -181,22 +175,18 @@ describe("session_start tool", () => {
     expect(result).toEqual({
       token: 1123456,
       sid: 1,
-      pin: 123456,
-      sessions_active: 1,
-      action: "fresh",
-      pending: 0,
-      discarded: 0,
-      fellow_sessions: [],
-      instruction: "Do this now: save this token, then call help('start') for post-session setup.",
+      instruction: "Call dequeue now. Messages are waiting.",
     });
   });
 
-  it("returns discarded: 0 when nothing was pending", async () => {
+  it("returns token and sid (no discarded field in lean response)", async () => {
     mocks.pendingCount.mockReturnValue(0);
 
     const result = parseResult(await call({}));
 
-    expect(result.discarded).toBe(0);
+    expect(result.token).toBeDefined();
+    expect(result.sid).toBeDefined();
+    expect(result.discarded).toBeUndefined();
   });
 
   it("calls createSession with provided name", async () => {
@@ -234,8 +224,8 @@ describe("session_start tool", () => {
     const result = parseResult(await call({ name: "scout" }));
 
     expect(result.sid).toBe(3);
-    expect(result.pin).toBe(719304);
-    expect(result.sessions_active).toBe(3);
+    expect(result.token).toBeDefined();
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
   });
 
   it("calls setActiveSession with the new session SID", async () => {
@@ -283,15 +273,14 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({ name: "scout" }));
 
-    expect(result.action).toBe("fresh");
-    expect(Array.isArray(result.fellow_sessions)).toBe(true);
-    // Only the OTHER session is in fellow_sessions (not self)
-    const fellows = result.fellow_sessions as Array<{ sid: number }>;
-    expect(fellows.every(s => s.sid !== 4)).toBe(true);
-    expect(fellows.some(s => s.sid === 3)).toBe(true);
+    expect(result.sid).toBe(4);
+    expect(result.token).toBeDefined();
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
+    // fellow_sessions removed from lean response
+    expect(result.fellow_sessions).toBeUndefined();
   });
 
-  it("includes fellow_sessions when auto-draining with multiple sessions", async () => {
+  it("returns lean response when auto-draining with multiple sessions", async () => {
     mocks.pendingCount.mockReturnValue(2);
     mocks.activeSessionCount.mockReturnValue(1);
     mocks.createSession.mockReturnValue({ sid: 6, pin: 666666, name: "gamma", sessionsActive: 2 });
@@ -316,20 +305,23 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({ name: "gamma" }));
 
-    expect(result.action).toBe("fresh");
-    expect(result.discarded).toBe(2);
-    const fellows = result.fellow_sessions as Array<{ sid: number }>;
-    expect(fellows.some(s => s.sid === 5)).toBe(true);
-    expect(fellows.every(s => s.sid !== 6)).toBe(true);
+    expect(result.sid).toBe(6);
+    expect(result.token).toBeDefined();
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
+    // fellow_sessions and discarded removed from lean response
+    expect(result.fellow_sessions).toBeUndefined();
+    expect(result.discarded).toBeUndefined();
   });
 
-  it("returns fellow_sessions: [] when only one session is active", async () => {
+  it("returns lean response { token, sid, instruction } when only one session is active", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 100001, name: "solo", sessionsActive: 1 });
 
     const result = parseResult(await call({ name: "solo" }));
 
-    expect(result.fellow_sessions).toEqual([]);
+    expect(result.token).toBeDefined();
+    expect(result.sid).toBeDefined();
+    expect(result.fellow_sessions).toBeUndefined();
   });
 
   it("rolls back session on unexpected error during session setup", async () => {
@@ -860,7 +852,7 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({}));
 
-    expect(result.action).toBe("fresh");
+    expect(result.token).toBeDefined();
   });
 
   it("session/start approval prompt says 'New session requesting access'", async () => {
@@ -936,7 +928,7 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({ name: "Worker" }));
 
-    expect(result.action).toBe("fresh");
+    expect(result.token).toBeDefined();
   });
 
   it("reconnect: false (default) keeps fresh/joined behavior unchanged", async () => {
@@ -947,7 +939,7 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({}));
 
-    expect(result.action).toBe("fresh");
+    expect(result.token).toBeDefined();
   });
 
   // =========================================================================
@@ -1480,7 +1472,7 @@ describe("session_start tool", () => {
     // Returns the existing SID and token
     expect(result.sid).toBe(1);
     expect(result.token).toBe(1123456);
-    expect(result.action).toBe("reconnected");
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
   });
 
   it("reconnect: true + approved → preserves queued messages and resets health state", async () => {
@@ -1506,7 +1498,7 @@ describe("session_start tool", () => {
     expect(fakeSession.healthy).toBe(true);
   });
 
-  it("reconnect: true + approved → returns actual pending count from session queue", async () => {
+  it("reconnect: true + approved → returns lean response with token and sid", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 999999, name: "Overseer", color: "🟦",
@@ -1521,10 +1513,12 @@ describe("session_start tool", () => {
 
     const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
 
-    expect(result.pending).toBe(5);
+    expect(result.token).toBeDefined();
+    expect(result.sid).toBe(1);
+    expect(result.pending).toBeUndefined();
   });
 
-  it("reconnect: true + approved → returns pending 0 when queue is missing", async () => {
+  it("reconnect: true + approved → lean response even when queue is missing", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 999999, name: "Overseer", color: "🟦",
@@ -1539,7 +1533,9 @@ describe("session_start tool", () => {
 
     const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
 
-    expect(result.pending).toBe(0);
+    expect(result.token).toBeDefined();
+    expect(result.sid).toBe(1);
+    expect(result.pending).toBeUndefined();
   });
 
   it("reconnect: true + operator denies → SESSION_DENIED, no session created", async () => {
@@ -1693,14 +1689,14 @@ describe("session_start tool", () => {
     expect(result.instruction).toBeTruthy();
   });
 
-  it("fresh session returns instruction pointing to start topic", async () => {
+  it("fresh session returns instruction to call dequeue", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
 
     const result = parseResult(await call({}));
 
-    expect(result.instruction).toContain("start");
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
     expect(result.profile_hint).toBeUndefined();
     expect(result.instructions).toBeUndefined();
   });
@@ -1825,7 +1821,7 @@ describe("session_start tool", () => {
     });
   });
 
-  it("reconnect response (name match + approved) includes instruction field", async () => {
+  it("reconnect response (name match + approved) includes lean instruction field", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 123456, name: "Overseer", color: "🟦",
@@ -1840,11 +1836,10 @@ describe("session_start tool", () => {
     const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
 
     expect(typeof result.instruction).toBe("string");
-    expect(result.instruction).toBeTruthy();
-    expect(result.instruction).toContain("save this token");
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
   });
 
-  it("reconnect returns instruction pointing to start topic", async () => {
+  it("reconnect returns instruction to call dequeue", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 123456, name: "Overseer", color: "🟦",
@@ -1858,7 +1853,7 @@ describe("session_start tool", () => {
 
     const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
 
-    expect(result.instruction).toContain("start");
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
     expect(result.profile_hint).toBeUndefined();
     expect(result.instructions).toBeUndefined();
   });
@@ -1897,7 +1892,8 @@ describe("session_start tool", () => {
 
     // registerCallbackHook should NOT have been called (no approval dialog was shown)
     expect(mocks.registerCallbackHook).not.toHaveBeenCalled();
-    expect(result.action).toBe("reconnected");
+    expect(result.token).toBeDefined();
+    expect(result.sid).toBe(3);
   });
 
   // =========================================================================
@@ -2292,10 +2288,10 @@ describe("handleSessionReconnect", () => {
     expect(row.some(b => String(b.callback_data).startsWith("approve_"))).toBe(false);
     expect(mocks.createSession).not.toHaveBeenCalled();
     expect(result.sid).toBe(1);
-    expect(result.action).toBe("reconnected");
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
   });
 
-  it("approval flow: returns existing SID+token and action='reconnected'", async () => {
+  it("approval flow: returns existing SID+token with lean instruction", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 2, name: "Worker", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 2, pin: 654321, name: "Worker", color: "🟩",
@@ -2310,7 +2306,7 @@ describe("handleSessionReconnect", () => {
 
     expect(result.sid).toBe(2);
     expect(result.token).toBe(2654321);
-    expect(result.action).toBe("reconnected");
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
   });
 
   it("denial flow: returns SESSION_DENIED, no session created", async () => {
@@ -2327,7 +2323,7 @@ describe("handleSessionReconnect", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("instruction includes token save directive and 'start' after approval", async () => {
+  it("instruction is lean 'call dequeue' directive after approval", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 111111, name: "Overseer", color: "🟦",
@@ -2340,8 +2336,7 @@ describe("handleSessionReconnect", () => {
 
     const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
 
-    expect(result.instruction).toContain("save this token");
-    expect(result.instruction).toContain("start");
+    expect(result.instruction).toBe("Call dequeue now. Messages are waiting.");
   });
 
   it("operator dialog text is just the name — no explanation text", async () => {
@@ -2375,6 +2370,7 @@ describe("handleSessionReconnect", () => {
     const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
 
     expect(mocks.registerCallbackHook).not.toHaveBeenCalled();
-    expect(result.action).toBe("reconnected");
+    expect(result.token).toBeDefined();
+    expect(result.sid).toBe(3);
   });
 });

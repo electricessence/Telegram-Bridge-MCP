@@ -115,7 +115,7 @@ vi.mock("../reminder-state.js", () => ({
 
 
 
-import { register, _resetTimeoutHintForTest } from "./dequeue.js";
+import { register, _resetTimeoutHintForTest, _resetFirstDequeueHintForTest } from "./dequeue.js";
 
 function makeEvent(id: number, text: string, event = "message" as string): TimelineEvent {
   return {
@@ -1015,66 +1015,37 @@ describe("dequeue tool", () => {
   });
 
   // =========================================================================
-  // First-dequeue hint — one-time orientation hint per session
+  // First-dequeue hint — removed (lean responses)
   // =========================================================================
 
-  describe("first-dequeue hint", () => {
-    beforeEach(async () => {
-      // Import and reset the hint set before each test in this suite.
-      const mod = await import("./dequeue.js");
-      mod._resetFirstDequeueHintForTest();
+  describe("first-dequeue hint (removed)", () => {
+    beforeEach(() => {
+      _resetFirstDequeueHintForTest();
     });
 
-    it("includes hint on first dequeue call for a session (empty result)", async () => {
+    it("does not include hint on first dequeue call (empty result)", async () => {
       mocks.dequeueBatch.mockReturnValue([]);
       const result = await call({ timeout: 0, token: 1_123_456 });
       const data = parseResult(result);
       expect(data.empty).toBe(true);
-      expect(typeof data.hint).toBe("string");
-      expect(data.hint as string).toContain("heartbeat");
+      expect(data.hint).toBeUndefined();
     });
 
-    it("includes hint on first dequeue call for a session (batch result)", async () => {
+    it("does not include hint on first dequeue call (batch result)", async () => {
       const evt = makeEvent(200, "first call with events");
       mocks.dequeueBatch.mockReturnValueOnce([evt]);
       const result = await call({ timeout: 0, token: 1_123_456 });
       const data = parseResult(result);
       expect(data.updates).toBeDefined();
-      expect(typeof data.hint).toBe("string");
-      expect(data.hint as string).toContain("heartbeat");
+      expect(data.hint).toBeUndefined();
     });
 
-    it("does not include first-dequeue hint on second call for same session", async () => {
-      // First call — consumes the hint
+    it("no hint on any subsequent calls either", async () => {
       mocks.dequeueBatch.mockReturnValue([]);
       await call({ timeout: 0, token: 1_123_456 });
-      // Second call — hint should be absent (and no tokenHint either)
       const result2 = await call({ timeout: 0, token: 1_123_456 });
       const data2 = parseResult(result2);
       expect(data2.hint).toBeUndefined();
-    });
-
-    it("gives hint to each distinct session on their first call", async () => {
-      mocks.dequeueBatch.mockReturnValue([]);
-
-      // Session 1 first call
-      const r1 = await call({ timeout: 0, token: 1_123_456 });
-      const d1 = parseResult(r1);
-      expect(typeof d1.hint).toBe("string");
-
-      // Session 2 first call — different SID, should also get hint
-      const mockQueue2 = {
-        dequeueBatch: vi.fn(() => [] as TimelineEvent[]),
-        pendingCount: vi.fn(() => 0),
-        waitForEnqueue: vi.fn().mockResolvedValue(undefined),
-      };
-      mocks.getSessionQueue.mockImplementation((sid: number) =>
-        sid === 2 ? mockQueue2 : { dequeueBatch: () => [], pendingCount: () => 0, waitForEnqueue: () => Promise.resolve() },
-      );
-      const r2 = await call({ timeout: 0, token: 2_001_234 });
-      const d2 = parseResult(r2);
-      expect(typeof d2.hint).toBe("string");
-      expect(d2.hint as string).toContain("heartbeat");
     });
   });
 
@@ -1083,7 +1054,7 @@ describe("dequeue tool", () => {
   // =========================================================================
 
   describe("reminder fire path", () => {
-    it("includes tokenHint hint when a string token is used and a reminder fires", async () => {
+    it("fires reminder events and returns updates with no hint fields", async () => {
       // Strategy: mock Date.now so that idleDuration immediately exceeds
       // REMINDER_IDLE_THRESHOLD_MS (60_000 ms) on the first loop iteration.
       // This lets us test the reminder-fire return path without real delays
@@ -1106,17 +1077,14 @@ describe("dequeue tool", () => {
         reminderMocks.getActiveReminders.mockReturnValue([fakeReminder]);
         reminderMocks.popActiveReminders.mockReturnValue([fakeReminder]);
 
-        // Pass token as a string to trigger the tokenHint, with a long timeout
-        // (300s deadline). The loop fires reminders before the deadline.
-        const result = await call({ timeout: 300, token: "1123456" as unknown as number });
+        const result = await call({ timeout: 300, token: 1_123_456 });
         const data = parseResult(result);
 
         // The reminder-fire path should have fired
         expect(data.updates).toBeDefined();
         expect(Array.isArray(data.updates)).toBe(true);
-        // tokenHint must be present because token was passed as a string
-        expect(typeof data.hint).toBe("string");
-        expect(data.hint as string).toContain("string");
+        // No hint field in lean response
+        expect(data.hint).toBeUndefined();
       } finally {
         Date.now = realDateNow;
       }

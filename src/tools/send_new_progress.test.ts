@@ -48,7 +48,7 @@ describe("send_new_progress tool", () => {
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.message_id).toBe(42);
-    expect(data.hint).toBeDefined();
+    expect(data.hint).toBeUndefined();
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
   });
 
