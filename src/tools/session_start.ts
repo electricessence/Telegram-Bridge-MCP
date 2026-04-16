@@ -323,11 +323,10 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
           deliverServiceMessage(session.sid, "Save your token. Write it to your session memory file now so you can reconnect after compaction or restart. Token = sid * 1_000_000 + pin. You already have it from session/start.", "onboarding_token_save");
+          // First session is always governor — no ternary needed.
           deliverServiceMessage(
             session.sid,
-            session.sid === getGovernorSid()
-              ? "You are the governor (primary session). The operator is aware of your presence. Announce yourself in chat if you wish — or stay silent until messaged. Use help('send') for communication options. Route ambiguous messages here; participant sessions DM you, not the operator."
-              : "You are a participant session. Do not message the chat by default — wait for DMs or routed messages from the governor. The governor routes tasks and context to you.",
+            "You are the governor (primary session). The operator is aware of your presence. Announce yourself in chat if you wish — or stay silent until messaged. Use help('send') for communication options. Route ambiguous messages here; participant sessions DM you, not the operator.",
             "onboarding_role",
           );
           deliverServiceMessage(session.sid, "Signal activity. Never go silent between receiving a message and responding. React immediately on receipt: 🫡 = salute/received (permanent), 👀 = reading/processing (5s temp), 🤔 = thinking/working (temp, clears on send), 👍 = on it (permanent). Use show-typing before every text send. Use animations for long operations. The operator judges responsiveness by what they see, not what you do internally.", "onboarding_protocol");
@@ -396,13 +395,8 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
           deliverServiceMessage(session.sid, "Save your token. Write it to your session memory file now so you can reconnect after compaction or restart. Token = sid * 1_000_000 + pin. You already have it from session/start.", "onboarding_token_save");
-          deliverServiceMessage(
-            session.sid,
-            session.sid === getGovernorSid()
-              ? "You are the governor (primary session). The operator is aware of your presence. Announce yourself in chat if you wish — or stay silent until messaged. Use help('send') for communication options. Route ambiguous messages here; participant sessions DM you, not the operator."
-              : "You are a participant session. Do not message the chat by default — wait for DMs or routed messages from the governor. The governor routes tasks and context to you.",
-            "onboarding_role",
-          );
+          // session_orientation already carries role info (governor vs participant) for multi-session.
+          // Skip onboarding_role here to avoid duplication.
           deliverServiceMessage(session.sid, "Signal activity. Never go silent between receiving a message and responding. React immediately on receipt: 🫡 = salute/received (permanent), 👀 = reading/processing (5s temp), 🤔 = thinking/working (temp, clears on send), 👍 = on it (permanent). Use show-typing before every text send. Use animations for long operations. The operator judges responsiveness by what they see, not what you do internally.", "onboarding_protocol");
         }
         void refreshGovernorCommand();

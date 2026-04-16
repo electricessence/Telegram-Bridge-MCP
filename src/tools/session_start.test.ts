@@ -846,7 +846,7 @@ describe("session_start tool", () => {
     expect(String(protocol![1])).toContain("Signal activity");
   });
 
-  it("second session (participant): onboarding_role uses participant text", async () => {
+  it("second session (participant): onboarding_role is NOT injected — session_orientation covers role", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(1);
     mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", sessionsActive: 2 });
@@ -866,13 +866,12 @@ describe("session_start tool", () => {
     await call({ name: "Worker" });
 
     const calls = mocks.deliverServiceMessage.mock.calls;
+    // onboarding_role is skipped for multi-session — session_orientation already delivers role info
     const role = calls.find((c: unknown[]) => c[0] === 2 && c[2] === "onboarding_role");
-    expect(role).toBeDefined();
-    expect(String(role![1])).toContain("participant session");
-    expect(String(role![1])).not.toContain("You are the governor");
+    expect(role).toBeUndefined();
   });
 
-  it("second session (participant): all 3 onboarding messages injected", async () => {
+  it("second session (participant): token_save and protocol messages are injected (no onboarding_role)", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(1);
     mocks.createSession.mockReturnValue({ sid: 2, pin: 200002, name: "Worker", sessionsActive: 2 });
@@ -893,7 +892,7 @@ describe("session_start tool", () => {
     const calls = mocks.deliverServiceMessage.mock.calls;
     const toNew = (type: string) => calls.find((c: unknown[]) => c[0] === 2 && c[2] === type);
     expect(toNew("onboarding_token_save")).toBeDefined();
-    expect(toNew("onboarding_role")).toBeDefined();
+    expect(toNew("onboarding_role")).toBeUndefined();
     expect(toNew("onboarding_protocol")).toBeDefined();
   });
 
