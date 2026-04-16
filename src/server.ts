@@ -182,7 +182,7 @@ export function createServer(): McpServer {
 
   // ── Resources ────────────────────────────────────────────────────────────
   const agentGuideContent = readFileSync(
-    join(__dirname, "..", "docs", "behavior.md"),
+    join(__dirname, "..", "docs", "help", "guide.md"),
     "utf-8"
   );
   const communicationContent = readFileSync(

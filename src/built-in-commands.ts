@@ -665,6 +665,7 @@ async function handleVersionCommand(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function handleShutdownCommand(): void {
+  process.stderr.write("[built-in] /shutdown received\n");
   // Fire on the next tick so the poller can finish handling this update.
   // This avoids waiting on the poll loop from inside the poll loop itself.
   setImmediate(() => { void elegantShutdown(); });

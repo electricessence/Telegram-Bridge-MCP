@@ -16,6 +16,7 @@
 - Built-in command stale filtering now includes a 30-second clock-skew grace window so fresh slash commands are not incorrectly ignored as stale
 - `dequeue` wait loop: fixed a lost-wakeup race where an event enqueued between the empty-check and waiter registration could leave the agent blocked until another message arrived
 - `AUTH_FAILED` guidance now explicitly mentions closed/restarted sessions so mid-session token failures direct agents to `action(type: 'session/reconnect', ...)`
+- Graceful shutdown now has a hard-exit watchdog and duplicate-request guard so `/shutdown` cannot hang indefinitely on stalled network cleanup calls
 
 ## v6.0.2 — 2026-04-11
 

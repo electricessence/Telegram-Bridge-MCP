@@ -7,6 +7,12 @@ import { saveSessionState } from "./session-persistence.js";
 import { getSessionLogMode } from "./config.js";
 import { flushCurrentLog, isLoggingEnabled, rollLog } from "./local-log.js";
 
+/** Hard-stop guard: force process exit if graceful shutdown stalls. */
+const HARD_EXIT_TIMEOUT_MS = 20_000;
+
+/** Prevent duplicate concurrent shutdown sequences. */
+let _shutdownInProgress = false;
+
 /**
  * Clears all registered slash-command menus on shutdown.
  * Clears both the active chat scope and the global default scope.
@@ -54,6 +60,22 @@ export function setShutdownDumpHook(hook: () => Promise<void>): void {
  * @param planned - When true, saves session state and sends reconnect-aware message.
  */
 export async function elegantShutdown(planned = false): Promise<never> {
+  if (_shutdownInProgress) {
+    process.stderr.write("[shutdown] already in progress — ignoring duplicate request\n");
+    return new Promise<never>(() => {});
+  }
+  _shutdownInProgress = true;
+
+  const hardExitTimer = setTimeout(() => {
+    process.stderr.write(
+      `[shutdown] hard-exit timeout (${HARD_EXIT_TIMEOUT_MS}ms) reached — forcing exit\n`,
+    );
+    process.exit(0);
+  }, HARD_EXIT_TIMEOUT_MS);
+  // Do not keep the process alive solely because of the watchdog timer.
+  hardExitTimer.unref();
+
+  try {
   // Mark planned bounce early so the state file is updated before anything else
   if (planned) {
     markPlannedBounce();
@@ -144,4 +166,8 @@ export async function elegantShutdown(planned = false): Promise<never> {
   // Clear command menus and exit
   await clearCommandsOnShutdown();
   process.exit(0);
+  } finally {
+    _shutdownInProgress = false;
+    clearTimeout(hardExitTimer);
+  }
 }
