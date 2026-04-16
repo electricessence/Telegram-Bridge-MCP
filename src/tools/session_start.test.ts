@@ -2430,7 +2430,7 @@ describe("handleSessionReconnect", () => {
     // Must return the existing session token
     expect(result.action).toBe("reconnected");
     expect(result.sid).toBe(2);
-    expect(result.pin).toBe(200123);
+    expect(result.token).toBe(2 * 1_000_000 + 200123);
   });
 
   it("planned bounce: isPlannedBounce true → returns correct token", async () => {
