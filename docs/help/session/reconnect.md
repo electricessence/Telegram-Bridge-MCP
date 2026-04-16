@@ -13,7 +13,7 @@ action(type: "session/reconnect", name: "Worker 2")
 Save token immediately after reconnect.
 
 ## After reconnect
-1. If pending > 0: drain with dequeue(token: ..., timeout: 0) loop
+1. If pending > 0: drain with dequeue(max_wait: 0, token: ...) loop
 2. Load profile: action(type: "profile/load", token: ..., key: "Worker")
 3. Enter dequeue loop
 
