@@ -9,6 +9,7 @@
 ### Fixed
 
 - `session/close`: rejects with `LAST_SESSION` error code (and actionable hint) when called on the last active session without `force: true`; prevents accidental orphaning of the bridge process
+- Fixed governor SID being cleared when governor closes a non-governor session in a 2-session setup (10-493). Governor role is now correctly preserved when a non-governor session closes.
 
 ## v6.0.2 — 2026-04-11
 
