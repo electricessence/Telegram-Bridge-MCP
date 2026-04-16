@@ -188,6 +188,16 @@ if (mcpPort !== undefined) {
       res.status(400).send("Invalid or missing session ID");
       return;
     }
+
+    // SSE keepalive: periodic comment pings prevent idle transport death.
+    // The MCP client already skips events with no data (priming events, keep-alives).
+    const keepaliveTimer = setInterval(() => {
+      if (res.headersSent && !res.writableEnded && !res.destroyed) {
+        res.write(":keepalive\n\n");
+      }
+    }, 30_000);
+    res.on("close", () => clearInterval(keepaliveTimer));
+
     await transport.handleRequest(req, res);
   });
 
