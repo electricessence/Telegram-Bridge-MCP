@@ -55,7 +55,7 @@ const DESCRIPTION =
 const TOOL_INDEX: Record<string, string> = {
   help: "Discovery tool — overview, communication guide, and per-tool docs. Specialized topics: 'index' (categorized skill menu), 'start' (post-session checklist: profile, dequeue loop, send basics), 'guide' (agent comms guide), 'compression' (compression cheat sheet), 'checklist' (step statuses), 'animation' (frame guide), 'dequeue' (loop rules), 'shutdown' (graceful shutdown), 'forced-stop' (context-limit recovery), 'reminders' (delegation follow-up), 'dump' (session dump filing), 'orphaned' (close dangling session), 'stop-hook' (VS Code stop hook). No auth required for most topics; topic: 'identity' requires a session token.",
   session_start: "Authenticate and start a named agent session. Returns a token for all subsequent calls.",
-  close_session: "End the current agent session and release its slot.",
+  close_session: "End the current agent session. If this is the last active session, use action(type: 'shutdown') instead — or pass force: true to close anyway.",
   list_sessions: "List all active sessions with their SIDs and display names.",
   rename_session: "Rename the current session's display name.",
   dequeue: "Poll for new Telegram messages and events. Core loop — call repeatedly.",
@@ -396,7 +396,7 @@ export function register(server: McpServer) {
             "4. Wipe session memory file. Overwrite with empty content.",
             "   Prevents next launch from offering resume on dead session.",
             "5. Write handoff (if applicable). Required: Overseer, Sentinel. Optional: Workers.",
-            "6. action(type: \"session/close\") — closes YOUR session only. No target_sid.",
+            "6. action(type: \"session/close\") — closes YOUR session only. No target_sid. If you are the last session, this will return LAST_SESSION. Use action(type: 'shutdown') to stop the bridge, or action(type: 'session/close', force: true) to force-close.",
             "7. Stop. No more tool calls after session/close.",
             "",
             "## Governor Shutdown (Curator Only)",

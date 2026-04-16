@@ -1,5 +1,15 @@
 # [Unreleased]
 
+## v6.0.3 — Unreleased
+
+### Added
+
+- `session/close` action: added `force?: boolean` parameter — when `true`, allows closing the last active session without triggering the last-session guard
+
+### Fixed
+
+- `session/close`: rejects with `LAST_SESSION` error code (and actionable hint) when called on the last active session without `force: true`; prevents accidental orphaning of the bridge process
+
 ## v6.0.2 — 2026-04-11
 
 ### Fixed

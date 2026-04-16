@@ -98,6 +98,9 @@ export type TelegramErrorCode =
   | "UNKNOWN_ACTION"
   | "UNKNOWN_TYPE"
   | "NOT_GOVERNOR"
+  | "LAST_SESSION"
+  | "SESSION_NOT_FOUND"
+  | "PERMISSION_DENIED"
   | "UNKNOWN";
 
 export interface TelegramError {
