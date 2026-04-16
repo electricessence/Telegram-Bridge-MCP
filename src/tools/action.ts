@@ -55,8 +55,6 @@ import { handleConfirm } from "./confirm.js";
 import { handleApproveAgent } from "./approve_agent.js";
 import { handleShutdown } from "./shutdown.js";
 import { handleNotifyShutdownWarning } from "./notify_shutdown_warning.js";
-import { handleSessionRestore } from "./session_restore.js";
-import { handleSessionBounce } from "./session_bounce.js";
 import { handleTranscribeVoice } from "./transcribe_voice.js";
 import { handleDownloadFile } from "./download_file.js";
 import { handleUpdateChecklist } from "./send_new_checklist.js";
@@ -166,8 +164,6 @@ export function setupActionRegistry(): void {
   registerAction("approve", handleApproveAgent as unknown as ActionHandler, { governor: true });
   registerAction("shutdown", handleShutdown as unknown as ActionHandler, { governor: true });
   registerAction("shutdown/warn", handleNotifyShutdownWarning as unknown as ActionHandler, { governor: true });
-  registerAction("session/restore", handleSessionRestore as unknown as ActionHandler);
-  registerAction("session/bounce", handleSessionBounce as unknown as ActionHandler, { governor: true });
   registerAction("transcribe", handleTranscribeVoice as unknown as ActionHandler);
   registerAction("download", handleDownloadFile as unknown as ActionHandler);
   registerAction("checklist/update", handleUpdateChecklist as unknown as ActionHandler);

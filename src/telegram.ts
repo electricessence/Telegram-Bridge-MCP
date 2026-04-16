@@ -457,20 +457,6 @@ export function resetOffset(): void {
   _offset = 0;
 }
 
-/** Returns the current Telegram update polling offset. Used for snapshot persistence. */
-export function getPollerOffset(): number {
-  return _offset;
-}
-
-/**
- * Restore the polling offset from a persisted snapshot.
- * Must be called before the poller starts to prevent duplicate update delivery.
- */
-export function restorePollerOffset(offset: number): void {
-  _offset = offset;
-  process.stderr.write(`[telegram] poller offset restored to ${offset}\n`);
-}
-
 /** Returns true if the agent channel is enabled for hijack warnings. */
 export function hijackNotifyAgent(): boolean {
   const raw = (process.env.HIJACK_NOTIFY ?? "console,telegram").toLowerCase();

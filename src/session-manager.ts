@@ -1,24 +1,6 @@
 import { randomInt } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { dlog } from "./debug-log.js";
 import { recordNonToolEvent } from "./trace-log.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-/** Path to the simple session-state file at the project root. */
-export const SESSION_STATE_PATH = resolve(__dirname, "..", "session-state.json");
-
-// ---------------------------------------------------------------------------
-// Persistence types
-// ---------------------------------------------------------------------------
-
-export interface PersistedSessionState {
-  nextId: number;
-  sessions: Array<{ sid: number; pin: number; name: string; color: string; createdAt: string }>;
-  plannedBounce?: boolean;
-}
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -66,13 +48,6 @@ const PIN_MAX = 999_999;
 
 let _nextId = 1;
 const _sessions = new Map<number, Session>();
-
-/**
- * SIDs that were restored from a snapshot and have not yet been confirmed by a
- * successful `session/restore` token exchange. Restored sessions are not fully
- * live until the agent proves it holds the original token.
- */
-const _restoredSids = new Set<number>();
 
 /**
  * LRU color queue. Index 0 = least recently used (freshest for next assignment);
@@ -190,7 +165,6 @@ export function createSession(name = "", colorHint?: string, forceColor = false)
   _sessions.set(sid, session);
   dlog("session", `created sid=${sid} name=${JSON.stringify(name)} color=${color} total=${_sessions.size}`);
   recordNonToolEvent("session_create", sid, name);
-  persistSessions();
   return { sid, pin, name, color, sessionsActive: _sessions.size };
 }
 
@@ -209,7 +183,6 @@ export function closeSession(sid: number): boolean {
   if (deleted) {
     dlog("session", `closed sid=${sid} remaining=${_sessions.size}`);
     recordNonToolEvent("session_close", sid, session?.name ?? "");
-    persistSessions();
   }
   return deleted;
 }
@@ -309,7 +282,6 @@ export function resetSessions(): void {
   _activeSessionId = 0;
   _colorLRU = [...COLOR_PALETTE];
   _everUsedColors.clear();
-  _restoredSids.clear();
 }
 
 /** Store the message ID of the session's online announcement for later unpin. */
@@ -366,83 +338,6 @@ export function getIdleSessions(): Array<SessionInfo & { idle_since_ms: number }
 
 // ── Snapshot Restore ───────────────────────────────────────
 
-export interface RestoredSessionSnapshot {
-  sid: number;
-  pin: number;
-  name: string;
-  color: string;
-  createdAt: string;
-  dequeueDefault?: number;
-}
-
-/**
- * Restore sessions from a persisted snapshot.
- *
- * Sessions are added to `_sessions` in "restored-unconfirmed" state:
- *   - `healthy: false`  — not proven live yet
- *   - `lastPollAt: undefined` — no poll on record
- *
- * `_nextId` is seeded above the highest restored SID so future `createSession`
- * calls produce IDs that do not collide with any restored session.
- */
-export function restoreSessionsFromSnapshot(sessions: RestoredSessionSnapshot[]): void {
-  let maxSid = 0;
-  for (const snap of sessions) {
-    const session: Session = {
-      sid: snap.sid,
-      pin: snap.pin,
-      name: snap.name,
-      color: snap.color,
-      createdAt: snap.createdAt,
-      lastPollAt: undefined,
-      healthy: false,
-      ...(snap.dequeueDefault !== undefined && { dequeueDefault: snap.dequeueDefault }),
-    };
-    _sessions.set(snap.sid, session);
-    _restoredSids.add(snap.sid);
-    if (snap.sid > maxSid) maxSid = snap.sid;
-    dlog("session", `restored sid=${snap.sid} name=${JSON.stringify(snap.name)}`);
-  }
-  if (maxSid >= _nextId) {
-    _nextId = maxSid + 1;
-  }
-  dlog("session", `restoreSessionsFromSnapshot count=${sessions.length} nextId=${_nextId}`);
-}
-
-/** Returns true if `sid` is in the restored-unconfirmed set. */
-export function isRestoredSession(sid: number): boolean {
-  return _restoredSids.has(sid);
-}
-
-/**
- * Remove `sid` from the restored-unconfirmed set.
- * Called after a successful `session/restore` token exchange.
- */
-export function markSessionRestored(sid: number): void {
-  _restoredSids.delete(sid);
-  dlog("session", `markSessionRestored sid=${sid}`);
-}
-
-/**
- * Clear the entire restored-unconfirmed set.
- * Called by `expireRestoredSessions` (5-minute startup timeout) to ensure stale
- * snapshots cannot permanently bypass operator approval.
- */
-export function resetRestoredSids(): void {
-  _restoredSids.clear();
-  dlog("session", "resetRestoredSids — all restored SIDs expired");
-}
-
-/**
- * Returns the session object only if `sid` is currently in the
- * restored-unconfirmed set. Returns undefined if the session does not exist
- * or has already been confirmed.
- */
-export function getRestoredSessionBySid(sid: number): Session | undefined {
-  if (!_restoredSids.has(sid)) return undefined;
-  return _sessions.get(sid);
-}
-
 /**
  * Rename a session. Sets the name unconditionally — callers are responsible
  * for uniqueness validation before calling (see `rename_session.ts` tool for
@@ -458,7 +353,6 @@ export function renameSession(
   const old_name = session.name;
   session.name = newName;
   dlog("session", `renamed sid=${sid} "${old_name}" → "${newName}"`);
-  persistSessions();
   return { old_name, new_name: newName };
 }
 
@@ -489,109 +383,4 @@ export function markTutorialToolSeen(sid: number, toolKey: string): boolean {
   if (session.tutorialSeenTools.has(toolKey)) return false;
   session.tutorialSeenTools.add(toolKey);
   return true;
-}
-
-// ---------------------------------------------------------------------------
-// Simple session persistence (bounce protocol)
-// ---------------------------------------------------------------------------
-
-/**
- * Write current sessions and `_nextId` to `session-state.json` at the project
- * root. Sets `plannedBounce: false` so a plain persist does not trigger the
- * fast-reconnect path on next startup. Best-effort — swallows all errors.
- */
-export function persistSessions(): void {
-  try {
-    const state: PersistedSessionState = {
-      nextId: _nextId,
-      sessions: [..._sessions.values()].map(({ sid, pin, name, color, createdAt }) => ({
-        sid,
-        pin,
-        name,
-        color,
-        createdAt,
-      })),
-      plannedBounce: false,
-    };
-    writeFileSync(SESSION_STATE_PATH, JSON.stringify(state, null, 2) + "\n", "utf-8");
-  } catch {
-    // Best-effort — ignore disk errors
-  }
-}
-
-/**
- * Read `session-state.json` and restore sessions into `_sessions`.
- * Seeds `_nextId` to `max(SIDs) + 1` to avoid collisions.
- * Immediately clears `plannedBounce` from the file after reading.
- *
- * Returns `true` if the file contained `plannedBounce: true` (planned bounce),
- * `false` otherwise. No-op and returns `false` if the file is absent or invalid.
- */
-export function restoreSessions(): boolean {
-  if (!existsSync(SESSION_STATE_PATH)) return false;
-  let state: PersistedSessionState;
-  try {
-    const raw = readFileSync(SESSION_STATE_PATH, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return false;
-    state = parsed as PersistedSessionState;
-    if (!Array.isArray(state.sessions)) return false;
-  } catch {
-    return false;
-  }
-
-  const wasPlanned = state.plannedBounce === true;
-
-  // Restore sessions
-  let maxSid = 0;
-  for (const snap of state.sessions) {
-    const session: Session = {
-      sid: snap.sid,
-      pin: snap.pin,
-      name: snap.name,
-      color: snap.color,
-      createdAt: snap.createdAt,
-      lastPollAt: undefined,
-      healthy: false,
-    };
-    _sessions.set(snap.sid, session);
-    _restoredSids.add(snap.sid);
-    if (snap.sid > maxSid) maxSid = snap.sid;
-  }
-  _nextId = maxSid + 1;
-  if (typeof state.nextId === "number" && state.nextId > _nextId) {
-    _nextId = state.nextId;
-  }
-  dlog("session", `restoreSessions count=${state.sessions.length} nextId=${_nextId} planned=${wasPlanned}`);
-
-  // Clear plannedBounce from file immediately after reading
-  try {
-    const cleared: PersistedSessionState = { ...state, plannedBounce: false };
-    writeFileSync(SESSION_STATE_PATH, JSON.stringify(cleared, null, 2) + "\n", "utf-8");
-  } catch {
-    // Best-effort
-  }
-
-  return wasPlanned;
-}
-
-/**
- * Write current in-memory sessions to `session-state.json` with
- * `plannedBounce: true`. Called during `elegantShutdown(planned: true)` so
- * the next startup knows it was a deliberate bounce and can skip reconnect
- * approval. Always builds from `_sessions` (never re-reads disk) so any
- * in-memory changes made since the last `persistSessions()` call are captured.
- * Best-effort — swallows all errors.
- */
-export function markPlannedBounce(): void {
-  try {
-    const state: PersistedSessionState = {
-      nextId: _nextId,
-      sessions: Array.from(_sessions.values()).map(s => ({
-        sid: s.sid, pin: s.pin, name: s.name, color: s.color, createdAt: s.createdAt,
-      })),
-      plannedBounce: true,
-    };
-    writeFileSync(SESSION_STATE_PATH, JSON.stringify(state, null, 2), "utf-8");
-  } catch { /* best-effort */ }
 }

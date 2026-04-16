@@ -9,19 +9,15 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "./server.js";
-import { getSecurityConfig, getApi, resolveChat, installOutboundProxy, sendServiceMessage, restorePollerOffset } from "./telegram.js";
+import { getSecurityConfig, getApi, resolveChat, installOutboundProxy, sendServiceMessage } from "./telegram.js";
 import { clearCommandsOnShutdown } from "./shutdown.js";
 import { BUILT_IN_COMMANDS, applySessionLogConfig, doTimelineDump } from "./built-in-commands.js";
 import { startPoller, stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
 import { startHealthCheck } from "./health-check.js";
 import { setAuthHook } from "./session-gate.js";
-import { touchSession, getSessionReauthDialogMsgId, clearSessionReauthDialogMsgId, restoreSessionsFromSnapshot, restoreSessions, listSessions } from "./session-manager.js";
-import { setPlannedBounce } from "./bounce-state.js";
+import { touchSession, getSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "./session-manager.js";
 import { createOutboundProxy } from "./outbound-proxy.js";
 import { loadConfig, getSessionLogMode, isDebugConfig, getPreToolDenyPatterns, getSessionApproval } from "./config.js";
-import { loadSessionState, clearSessionState, expireRestoredSessions } from "./session-persistence.js";
-import { setGovernorSid } from "./routing-mode.js";
-import { createSessionQueue } from "./session-queue.js";
 import { setDelegationEnabled } from "./agent-approval.js";
 import { setPreToolHook, buildDenyPatternHook } from "./tool-hooks.js";
 import { timelineSize, setOnLocalLog } from "./message-store.js";
@@ -39,38 +35,6 @@ getSecurityConfig();
 
 // Load persistent MCP config
 loadConfig();
-
-// Restore session-manager state from bounce-state file (fast-restart protocol)
-{
-  const isPlanned = restoreSessions();
-  setPlannedBounce(isPlanned);
-  // Ensure queues exist for every restored session
-  for (const session of listSessions()) {
-    createSessionQueue(session.sid);
-  }
-  if (isPlanned) {
-    process.stderr.write(`[startup] planned bounce detected — reconnect approval will be skipped\n`);
-  }
-}
-
-// Restore session state from a prior planned bounce, if available
-{
-  const snapshot = loadSessionState();
-  if (snapshot) {
-    restoreSessionsFromSnapshot(snapshot.sessions);
-    setGovernorSid(snapshot.governorSid);
-    restorePollerOffset(snapshot.pollerOffset);
-    clearSessionState();
-    process.stderr.write(`[startup] restored ${snapshot.sessions.length} session(s) from snapshot\n`);
-    // Ensure queues exist for every session restored from the snapshot
-    for (const session of listSessions()) {
-      createSessionQueue(session.sid);
-    }
-    // Expire the restored-session bypass after 5 minutes so stale snapshots
-    // cannot permanently bypass operator approval.
-    setTimeout(() => void expireRestoredSessions(), 5 * 60 * 1000);
-  }
-}
 
 // Auto-enable delegation if configured
 if (getSessionApproval() === "governor") {
