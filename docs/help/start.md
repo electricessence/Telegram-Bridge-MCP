@@ -1,6 +1,7 @@
 Start — Post-Session Operational Guide
 
 ## Profile
+
 If you have a saved profile: action(type: 'profile/load', key: 'YourProfileKey', token)
 Restores voice, animation presets, reminders. Skip if no profile exists.
 

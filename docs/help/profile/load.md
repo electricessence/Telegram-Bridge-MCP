@@ -11,13 +11,12 @@ key: profile key to load (required)
 
 ## Example
 action(type: "profile/load", token: 3165424, key: "Worker")
-→ { loaded: true, key: "Worker", summary: "voice: en-US. 2 animation presets. 1 startup reminder, 0 recurring. → help('reminders') for reminder docs. reminders/list for details.", instruction: "Do this now: call dequeue() to enter the message loop." }
+→ { loaded: true, key: "Worker", summary: "voice: en-US. 2 animation presets. 1 startup reminder, 0 recurring. → help('reminders') for reminder docs. reminders/list for details." }
 
 ## Response fields
 loaded: true on success
 key: the profile key that was loaded
 summary: human-readable summary of what was applied (voice, animation presets, reminder counts)
-instruction: imperative instruction that must be acted on immediately (e.g. call dequeue())
 
 ## Standard startup sequence
 action(type: "session/start", name: "Worker 2")

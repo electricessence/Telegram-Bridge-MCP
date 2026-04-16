@@ -11,7 +11,7 @@ const DESCRIPTION =
   "session — keys present in the profile overwrite the session's current values; " +
   "absent keys are untouched. Multiple loads stack. " +
   "Use load_profile after action(type: 'session/start') to bootstrap voice, animations, and reminders. " +
-  "Returns { loaded, key, summary, instruction } where instruction is imperative and must be acted on immediately.";
+  "Returns { loaded, key, summary }.";
 
 export function handleLoadProfile({ key, token }: { key: string; token: number }) {
   const _sid = requireAuth(token);
@@ -55,8 +55,10 @@ export function handleLoadProfile({ key, token }: { key: string; token: number }
     parts.push(`${startupCount} startup reminder${s}, ${recurringCount} recurring.`);
   }
 
-  // Always end with reminder navigation hint
-  parts.push("→ help('reminders') for reminder docs. reminders/list for details.");
+  // Reminder navigation hint — only when reminders were loaded
+  if (reminders.length > 0) {
+    parts.push("→ help('reminders') for reminder docs. reminders/list for details.");
+  }
 
   const summary = parts.join(" ");
   return toResult({ loaded: true, key, summary });
