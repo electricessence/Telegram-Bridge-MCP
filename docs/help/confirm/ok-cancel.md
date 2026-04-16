@@ -26,6 +26,6 @@ User typed instead of pressing:
 → { skipped: true, text_response: "not now", message_id: 42 }
 
 ## Notes
-Drain pending first: dequeue(token: ..., timeout: 0)
+Drain pending first: dequeue(token: ..., max_wait: 0)
 
 Related: confirm/ok, confirm/yn, acknowledge

@@ -44,27 +44,27 @@ When starting a new session with this MCP:
 | Mode | Call | Behavior |
 | --- | --- | --- |
 | **Block** (normal loop) | `dequeue()` — no args | Waits up to 300 s for the next update. Returns `{ timed_out: true }` on timeout — call again immediately. |
-| **Instant poll** (drain) | `dequeue(timeout: 0)` | Returns immediately — an update if one exists, or `{ empty: true }`. |
-| **Shorter wait** | `dequeue(timeout: 60)` | Waits up to 60 s — only for shutdown sequences or specific short-lived events. |
+| **Instant poll** (drain) | `dequeue(max_wait: 0)` | Returns immediately — an update if one exists, or `{ empty: true }`. |
+| **Shorter wait** | `dequeue(max_wait: 60)` | Waits up to 60 s — only for shutdown sequences or specific short-lived events. |
 
 Normal drain-then-block sequence:
 
 ```text
-1. drain: call dequeue(timeout: 0) until empty: true — handles any backlog
+1. drain: call dequeue(max_wait: 0) until empty: true — handles any backlog
 2. block: call dequeue()           — waits up to 300 s for the next task
 3. On update: handle it, then go to step 1
 ```
 
-`pending` (included when more updates are queued) tells you how many items are still waiting. When `pending > 0`, skip straight to another `dequeue(timeout: 0)` instead of blocking.
+`pending` (included when more updates are queued) tells you how many items are still waiting. When `pending > 0`, skip straight to another `dequeue(max_wait: 0)` instead of blocking.
 
 ### Handling a full timeout
 
-When `dequeue()` returns `{ timed_out: true }` after a full blocking wait (not a `timeout: 0` drain poll), 5 minutes have passed with no activity. Do not silently loop:
+When `dequeue()` returns `{ timed_out: true }` after a full blocking wait (not a `max_wait: 0` drain poll), 5 minutes have passed with no activity. Do not silently loop:
 
 1. Send a brief `send(type: "notification")` checking in (e.g. "Still listening — are you there?").
 2. Continue the `dequeue` loop as normal.
 
-Do **not** check in after `timeout: 0` drain polls — those are expected to return immediately.
+Do **not** check in after `max_wait: 0` drain polls — those are expected to return immediately.
 
 ### Looking up prior messages
 
@@ -409,7 +409,7 @@ The `/session` built-in command provides a Telegram-side panel for manual dumps 
 After the server has restarted (whether from `shutdown`, a crash, or an external restart), previous sessions are invalidated:
 
 1. **Call `action(type: "session/start")`** to create a new session — old SIDs and PINs no longer work
-2. Drain stale messages: call `dequeue(timeout: 0)` in a loop until `pending == 0`
+2. Drain stale messages: call `dequeue(max_wait: 0)` in a loop until `pending == 0`
 3. Send a "back online" `send(type: "notification")` describing what changed
 4. Return to `dequeue` loop
 
@@ -432,7 +432,7 @@ When the server shuts down, every active session receives a `service_message` ev
 2. Workers receive the DM, finish their current atomic step, and call `action(type: "session/close")` — fires a `session_closed` event back to the governor
 3. Governor watches `dequeue` for `session_closed` events; once all non-governor sessions have closed (or after a grace period), proceed
 4. Governor calls `action(type: "shutdown")` — returns `{ shutting_down: true }` immediately; actual shutdown runs asynchronously
-5. Governor calls `dequeue(timeout: 60)` one final time — receives a `shutdown` service event confirming exit; stops looping
+5. Governor calls `dequeue(max_wait: 60)` one final time — receives a `shutdown` service event confirming exit; stops looping
 6. Governor waits for the MCP host to relaunch, then reconnects via `action(type: "session/reconnect", ...)`
 
 ⚠️ **`action(type: "session/close")` must NOT be called by the governor before `action(type: "shutdown")`.** It disconnects the session but leaves the server running.

@@ -20,6 +20,6 @@ Timeout:
 
 ## Notes
 Single-button CTA mode: user taps OK or sends text/voice (skipped result).
-Drain pending before calling: dequeue(token: ..., timeout: 0)
+Drain pending before calling: dequeue(token: ..., max_wait: 0)
 
 Related: confirm/ok-cancel, confirm/yn, acknowledge

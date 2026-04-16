@@ -8,7 +8,7 @@ Routes:
 action(type: "confirm") — lists sub-paths in live API.
 
 All variants block until button pressed, timeout, or text/voice reply (skipped).
-Drain pending messages before calling: dequeue(token: ..., timeout: 0)
+Drain pending messages before calling: dequeue(token: ..., max_wait: 0)
 
 ## Choosing variant
 - confirm/ok: acknowledgments, "tap to continue" CTAs

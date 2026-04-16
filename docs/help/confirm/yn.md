@@ -22,7 +22,7 @@ Timeout:
 → { timed_out: true, message_id: 42 }
 
 ## Notes
-Drain pending first: dequeue(token: ..., timeout: 0)
+Drain pending first: dequeue(token: ..., max_wait: 0)
 Emoji parity: both buttons have emoji by default — consistent styling enforced.
 
 Related: confirm/ok, confirm/ok-cancel, acknowledge

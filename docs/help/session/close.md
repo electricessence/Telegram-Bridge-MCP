@@ -17,7 +17,7 @@ action(type: "session/close", token: 1000001, target_sid: 3)
 → { closed: true, sid: 3, reason: "closed" }
 
 ## Rules
-- Always drain queue before closing: dequeue(token: ..., timeout: 0) until empty
+- Always drain queue before closing: dequeue(token: ..., max_wait: 0) until empty
 - DM superior before closing
 - Wipe session memory file before close
 - No tool calls after session/close
