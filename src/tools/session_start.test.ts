@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { createMockServer, parseResult, isError, type ToolHandler } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({
+  isPlannedBounce: vi.fn().mockReturnValue(false),
   sendMessage: vi.fn(),
   editMessageText: vi.fn().mockResolvedValue(undefined),
   editMessageReplyMarkup: vi.fn().mockResolvedValue(undefined),
@@ -34,6 +35,8 @@ const mocks = vi.hoisted(() => ({
   startPoller: vi.fn(),
   isPollerRunning: vi.fn().mockReturnValue(false),
   checkAndConsumeAutoApprove: vi.fn().mockReturnValue(false),
+  isRestoredSession: vi.fn().mockReturnValue(false),
+  markSessionRestored: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -73,6 +76,8 @@ vi.mock("../session-manager.js", () => ({
   getSessionAnnouncementMessage: mocks.getSessionAnnouncementMessage,
   setSessionReauthDialogMsgId: mocks.setSessionReauthDialogMsgId,
   clearSessionReauthDialogMsgId: mocks.clearSessionReauthDialogMsgId,
+  isRestoredSession: (sid: number) => mocks.isRestoredSession(sid),
+  markSessionRestored: (sid: number) => mocks.markSessionRestored(sid),
 }));
 
 vi.mock("../routing-mode.js", () => ({
@@ -104,6 +109,10 @@ vi.mock("../auto-approve.js", () => ({
   checkAndConsumeAutoApprove: () => mocks.checkAndConsumeAutoApprove(),
 }));
 
+vi.mock("../bounce-state.js", () => ({
+  isPlannedBounce: () => mocks.isPlannedBounce(),
+}));
+
 import { register, handleSessionReconnect } from "./session_start.js";
 import {
   addReminder,
@@ -126,6 +135,7 @@ describe("session_start tool", () => {
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.listSessions.mockReturnValue([]);
     mocks.isPollerRunning.mockReturnValue(false);
+    mocks.isPlannedBounce.mockReturnValue(false);
     mocks.createSession.mockReturnValue({
       sid: 1,
       pin: 123456,
@@ -1609,6 +1619,7 @@ describe("session_start tool", () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.isPollerRunning.mockReturnValue(false);
+    mocks.isPlannedBounce.mockReturnValue(false);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
 
     await call({});
@@ -1730,6 +1741,7 @@ describe("session_start tool", () => {
       mocks.getSessionQueue.mockReturnValue({ pendingCount: () => 0 });
       mocks.listSessions.mockReturnValue([]);
       mocks.isPollerRunning.mockReturnValue(false);
+    mocks.isPlannedBounce.mockReturnValue(false);
       mocks.deliverReminderEvent.mockReturnValue(true);
 
       await call({ name: "Alpha" });
@@ -1762,6 +1774,7 @@ describe("session_start tool", () => {
       mocks.getSessionQueue.mockReturnValue({ pendingCount: () => 0 });
       mocks.listSessions.mockReturnValue([]);
       mocks.isPollerRunning.mockReturnValue(false);
+    mocks.isPlannedBounce.mockReturnValue(false);
       mocks.deliverReminderEvent.mockReturnValue(true);
 
       // Second session_start — recurring reminder must fire again
@@ -2119,6 +2132,7 @@ describe("reauth dialog auto-dismiss", () => {
     mocks.activeSessionCount.mockReturnValue(0);
     mocks.listSessions.mockReturnValue([]);
     mocks.isPollerRunning.mockReturnValue(false);
+    mocks.isPlannedBounce.mockReturnValue(false);
     mocks.createSession.mockReturnValue({
       sid: 1,
       pin: 123456,
@@ -2194,6 +2208,7 @@ describe("handleSessionReconnect", () => {
     mocks.activeSessionCount.mockReturnValue(1);
     mocks.listSessions.mockReturnValue([]);
     mocks.isPollerRunning.mockReturnValue(false);
+    mocks.isPlannedBounce.mockReturnValue(false);
     mocks.checkAndConsumeAutoApprove.mockReturnValue(false);
   });
 
@@ -2325,5 +2340,76 @@ describe("handleSessionReconnect", () => {
 
     expect(mocks.registerCallbackHook).not.toHaveBeenCalled();
     expect(result.action).toBe("reconnected");
+  });
+
+  it("snapshot restore: isRestoredSession true → skips approval dialog and auto-approves reconnect", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 5, name: "Worker", color: "🟩", createdAt: "2026-04-15" }]);
+    mocks.getSession.mockReturnValue({ sid: 5, pin: 500123, name: "Worker", color: "🟩", healthy: false });
+    mocks.getSessionQueue.mockReturnValue({ pendingCount: () => 2 });
+    mocks.isRestoredSession.mockReturnValue(true);
+
+    const result = parseResult(await handleSessionReconnect({ name: "Worker" }));
+
+    // Must NOT have sent an approval dialog to Telegram
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    // Must NOT have registered a callback hook (no dialog = no buttons)
+    expect(mocks.registerCallbackHook).not.toHaveBeenCalled();
+    // markSessionRestored must be called to remove sid from restored set
+    expect(mocks.markSessionRestored).toHaveBeenCalledWith(5);
+    // Reconnect must succeed
+    expect(result.action).toBe("reconnected");
+    expect(result.sid).toBe(5);
+    expect(result.pending).toBe(2);
+  });
+
+  // =========================================================================
+  // Planned bounce: isPlannedBounce() skips reconnect approval dialog
+  // =========================================================================
+
+  it("planned bounce: isPlannedBounce true → skips approval dialog and returns reconnected", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 2, name: "Governor", color: "🟦", createdAt: "2026-04-15" }]);
+    mocks.getSession.mockReturnValue({ sid: 2, pin: 200123, name: "Governor", color: "🟦", healthy: false });
+    mocks.getSessionQueue.mockReturnValue({ pendingCount: () => 0 });
+    mocks.isPlannedBounce.mockReturnValue(true);
+
+    const result = parseResult(await handleSessionReconnect({ name: "Governor" }));
+
+    // No approval dialog must be shown
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.registerCallbackHook).not.toHaveBeenCalled();
+    // Must return the existing session token
+    expect(result.action).toBe("reconnected");
+    expect(result.sid).toBe(2);
+    expect(result.pin).toBe(200123);
+  });
+
+  it("planned bounce: isPlannedBounce true → returns correct token", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 3, name: "Worker", color: "🟩", createdAt: "2026-04-15" }]);
+    mocks.getSession.mockReturnValue({ sid: 3, pin: 987654, name: "Worker", color: "🟩", healthy: false });
+    mocks.getSessionQueue.mockReturnValue({ pendingCount: () => 4 });
+    mocks.isPlannedBounce.mockReturnValue(true);
+
+    const result = parseResult(await handleSessionReconnect({ name: "Worker" }));
+
+    // Token = sid * 1_000_000 + pin
+    expect(result.token).toBe(3 * 1_000_000 + 987654);
+    expect(result.pending).toBe(4);
+    expect(result.action).toBe("reconnected");
+  });
+
+  it("planned bounce: isPlannedBounce true takes precedence over isRestoredSession check", async () => {
+    mocks.listSessions.mockReturnValue([{ sid: 4, name: "Scout", color: "🟨", createdAt: "2026-04-15" }]);
+    mocks.getSession.mockReturnValue({ sid: 4, pin: 111222, name: "Scout", color: "🟨", healthy: false });
+    mocks.getSessionQueue.mockReturnValue({ pendingCount: () => 0 });
+    mocks.isPlannedBounce.mockReturnValue(true);
+    mocks.isRestoredSession.mockReturnValue(false); // not in restored set
+
+    const result = parseResult(await handleSessionReconnect({ name: "Scout" }));
+
+    // Reconnect still succeeds via planned bounce path
+    expect(result.action).toBe("reconnected");
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    // markSessionRestored should NOT be called (not a restored-session path)
+    expect(mocks.markSessionRestored).not.toHaveBeenCalled();
   });
 });

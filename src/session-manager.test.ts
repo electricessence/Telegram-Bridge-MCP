@@ -17,6 +17,11 @@ import {
   COLOR_PALETTE,
   setDequeueIdle,
   getIdleSessions,
+  restoreSessionsFromSnapshot,
+  isRestoredSession,
+  markSessionRestored,
+  getRestoredSessionBySid,
+  type RestoredSessionSnapshot,
 } from "./session-manager.js";
 
 interface SessionWithoutPin {
@@ -564,3 +569,160 @@ describe("setDequeueIdle / getIdleSessions", () => {
     void b;
   });
 });
+
+// ---------------------------------------------------------------------------
+// restoreSessionsFromSnapshot / isRestoredSession / markSessionRestored /
+// getRestoredSessionBySid
+// ---------------------------------------------------------------------------
+
+const SNAP_A: RestoredSessionSnapshot = {
+  sid: 5,
+  pin: 555555,
+  name: "OldGov",
+  color: "🟦",
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
+
+const SNAP_B: RestoredSessionSnapshot = {
+  sid: 7,
+  pin: 777777,
+  name: "OldWorker",
+  color: "🟩",
+  createdAt: "2026-01-01T00:01:00.000Z",
+  dequeueDefault: 120,
+};
+
+describe("restoreSessionsFromSnapshot", () => {
+  it("populates sessions map with restored entries", () => {
+    restoreSessionsFromSnapshot([SNAP_A, SNAP_B]);
+    expect(activeSessionCount()).toBe(2);
+    expect(getSession(5)).toBeDefined();
+    expect(getSession(7)).toBeDefined();
+  });
+
+  it("restored sessions start with healthy: false", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    expect(getSession(5)?.healthy).toBe(false);
+  });
+
+  it("restored sessions start with lastPollAt: undefined", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    expect(getSession(5)?.lastPollAt).toBeUndefined();
+  });
+
+  it("preserves sid, pin, name, color, createdAt", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    const s = getSession(5);
+    expect(s?.sid).toBe(5);
+    expect(s?.pin).toBe(555555);
+    expect(s?.name).toBe("OldGov");
+    expect(s?.color).toBe("🟦");
+    expect(s?.createdAt).toBe("2026-01-01T00:00:00.000Z");
+  });
+
+  it("preserves dequeueDefault when present", () => {
+    restoreSessionsFromSnapshot([SNAP_B]);
+    expect(getSession(7)?.dequeueDefault).toBe(120);
+  });
+
+  it("seeds nextId above the highest restored SID", () => {
+    restoreSessionsFromSnapshot([SNAP_A, SNAP_B]); // max SID = 7
+    const fresh = createSession("new");
+    expect(fresh.sid).toBeGreaterThan(7);
+  });
+
+  it("does not collide with restored SIDs when creating new sessions", () => {
+    restoreSessionsFromSnapshot([SNAP_A]); // SID 5
+    const newSession = createSession("fresh");
+    expect(newSession.sid).not.toBe(5);
+  });
+
+  it("restores into _restoredSids set", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    expect(isRestoredSession(5)).toBe(true);
+  });
+
+  it("handles an empty snapshot gracefully", () => {
+    restoreSessionsFromSnapshot([]);
+    expect(activeSessionCount()).toBe(0);
+  });
+});
+
+describe("isRestoredSession", () => {
+  it("returns true for a restored-unconfirmed sid", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    expect(isRestoredSession(5)).toBe(true);
+  });
+
+  it("returns false for a normally created session", () => {
+    const s = createSession("normal");
+    expect(isRestoredSession(s.sid)).toBe(false);
+  });
+
+  it("returns false for an unknown sid", () => {
+    expect(isRestoredSession(9999)).toBe(false);
+  });
+});
+
+describe("markSessionRestored", () => {
+  it("removes sid from restored-unconfirmed set", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    expect(isRestoredSession(5)).toBe(true);
+    markSessionRestored(5);
+    expect(isRestoredSession(5)).toBe(false);
+  });
+
+  it("does not affect other restored sessions", () => {
+    restoreSessionsFromSnapshot([SNAP_A, SNAP_B]);
+    markSessionRestored(5);
+    expect(isRestoredSession(7)).toBe(true);
+  });
+
+  it("is safe to call for a non-restored sid", () => {
+    expect(() => markSessionRestored(9999)).not.toThrow();
+  });
+});
+
+describe("getRestoredSessionBySid", () => {
+  it("returns the session when it is in restored-unconfirmed state", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    const s = getRestoredSessionBySid(5);
+    expect(s).toBeDefined();
+    expect(s?.pin).toBe(555555);
+  });
+
+  it("returns undefined after markSessionRestored is called", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    markSessionRestored(5);
+    expect(getRestoredSessionBySid(5)).toBeUndefined();
+  });
+
+  it("returns undefined for a normally created session", () => {
+    const s = createSession("normal");
+    expect(getRestoredSessionBySid(s.sid)).toBeUndefined();
+  });
+
+  it("returns undefined for an unknown sid", () => {
+    expect(getRestoredSessionBySid(9999)).toBeUndefined();
+  });
+});
+
+describe("resetSessions clears restored state", () => {
+  it("clears _restoredSids on resetSessions", () => {
+    restoreSessionsFromSnapshot([SNAP_A]);
+    expect(isRestoredSession(5)).toBe(true);
+    resetSessions();
+    expect(isRestoredSession(5)).toBe(false);
+  });
+
+  it("resets nextId so fresh sessions start at 1 after resetSessions", () => {
+    restoreSessionsFromSnapshot([SNAP_A, SNAP_B]); // nextId = 8
+    resetSessions();
+    const s = createSession("fresh");
+    expect(s.sid).toBe(1);
+  });
+});
+
+// Persistence tests (persistSessions / restoreSessions / markPlannedBounce) are in
+// session-manager.persist.test.ts — they require vi.mock("node:fs") which must be
+// in a separate file to avoid interfering with the direct imports in this test file.

@@ -1,10 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../telegram.js";
+import { isPlannedBounce } from "../bounce-state.js";
 import { markdownToV2 } from "../markdown.js";
 import type { TimelineEvent } from "../message-store.js";
 import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-store.js";
-import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getSession, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage, getSessionAnnouncementMessage, setSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "../session-manager.js";
+import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getSession, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage, getSessionAnnouncementMessage, setSessionReauthDialogMsgId, clearSessionReauthDialogMsgId, isRestoredSession, markSessionRestored } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMessageOwner, getSessionQueue, deliverReminderEvent } from "../session-queue.js";
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { runInSessionContext } from "../session-context.js";
@@ -439,10 +440,21 @@ export async function handleSessionReconnect({ name }: { name: string }) {
     });
   }
 
-  // Reconnect flow: show simple Approve/Deny dialog (not color-picker)
-  const approved = await runInSessionContext(0, () =>
-    requestReconnectApproval(chatId, existing.name, existing.sid),
-  );
+  // Reconnect flow: skip approval if this is a planned bounce or if the session
+  // was restored from a bounce snapshot; otherwise show the simple Approve/Deny dialog.
+  let approved: boolean;
+  if (isPlannedBounce()) {
+    approved = true;
+    process.stderr.write(`[session-start] planned bounce — skipped approval for reconnect sid=${existing.sid}\n`);
+  } else if (isRestoredSession(existing.sid)) {
+    approved = true;
+    markSessionRestored(existing.sid);
+    process.stderr.write(`[session-start] auto-approved reconnect for restored session sid=${existing.sid}\n`);
+  } else {
+    approved = await runInSessionContext(0, () =>
+      requestReconnectApproval(chatId, existing.name, existing.sid),
+    );
+  }
   if (!approved) {
     return toError({
       code: "SESSION_DENIED",

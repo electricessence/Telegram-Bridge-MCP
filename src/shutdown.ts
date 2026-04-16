@@ -1,8 +1,9 @@
 import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
-import { listSessions, getSessionAnnouncementMessage } from "./session-manager.js";
+import { listSessions, getSessionAnnouncementMessage, markPlannedBounce } from "./session-manager.js";
 import { deliverServiceMessage, notifySessionWaiters } from "./session-queue.js";
 import { RESTART_GUIDANCE } from "./restart-guidance.js";
+import { saveSessionState } from "./session-persistence.js";
 
 /**
  * Clears all registered slash-command menus on shutdown.
@@ -40,15 +41,23 @@ export function setShutdownDumpHook(hook: () => Promise<void>): void {
  * 1. Stop the poller (no new updates)
  * 2. Wait for the poll loop to finish (in-flight transcriptions)
  * 3. Drain last-mile pending updates
- * 4. Deliver a shutdown service message to every active session
- * 5. Wake up all blocked dequeue calls so agents receive it
- * 6. Brief delay so MCP responses transmit through stdio
- * 7. Send operator notification
- * 8. Dump session log (if enabled)
- * 9. Clear command menus
- * 10. process.exit(0)
+ * 4. [planned only] Save session state snapshot for fast restart
+ * 5. Deliver a shutdown/bounce service message to every active session
+ * 6. Wake up all blocked dequeue calls so agents receive it
+ * 7. Brief delay so MCP responses transmit through stdio
+ * 8. Send operator notification
+ * 9. Dump session log (if enabled)
+ * 10. Clear command menus
+ * 11. process.exit(0)
+ *
+ * @param planned - When true, saves session state and sends reconnect-aware message.
  */
-export async function elegantShutdown(): Promise<never> {
+export async function elegantShutdown(planned = false): Promise<never> {
+  // Mark planned bounce early so the state file is updated before anything else
+  if (planned) {
+    markPlannedBounce();
+  }
+
   stopPoller();
 
   // Finish in-flight transcriptions and drain last-mile updates
@@ -59,12 +68,26 @@ export async function elegantShutdown(): Promise<never> {
   ]);
   await drainPendingUpdates();
 
+  // For planned restarts: persist session state before notifying agents
+  if (planned) {
+    try {
+      await saveSessionState();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[shutdown] saveSessionState failed: ${msg}\n`);
+    }
+  }
+
   // Notify all active sessions via their DM queues
   const sessions = listSessions();
+  const shutdownMsg = planned
+    ? "⚡ Server bouncing for fast restart. Session state saved. " +
+      RESTART_GUIDANCE
+    : "⛔ Server shutting down. Your session will be invalidated on restart. " + RESTART_GUIDANCE;
   for (const s of sessions) {
     deliverServiceMessage(
       s.sid,
-      "⛔ Server shutting down. Your session will be invalidated on restart. " + RESTART_GUIDANCE,
+      shutdownMsg,
       "shutdown",
     );
   }
