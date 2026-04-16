@@ -21,12 +21,12 @@ export function isTemporaryByDefault(emoji: string): boolean {
 }
 
 // Built-in reaction presets.
-// "acknowledge": eyeballs flash (5s), thinking until next outbound, thumbs-up permanent.
+// "processing": eyeballs flash (10s), thinking until next outbound.
+// Implicit 👌 base at priority -100 is inserted separately by set_reaction.ts.
 export const BUILTIN_REACTION_PRESETS = new Map<string, ReactionPresetEntry[]>([
-  ['acknowledge', [
-    { emoji: '👍', priority: -1, temporary: false },
+  ['processing', [
     { emoji: '🤔', priority: 0, temporary: true }, // clears on next outbound
-    { emoji: '👀', priority: 1, temporary: true, timeout_seconds: 5 },
+    { emoji: '👀', priority: 1, temporary: true, timeout_seconds: 10 },
   ]],
 ]);
 

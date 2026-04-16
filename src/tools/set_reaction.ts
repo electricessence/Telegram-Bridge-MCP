@@ -5,7 +5,7 @@ import { recordBotReaction, hasBaseReaction, markBaseReaction } from "../message
 import { setTempReaction } from "../temp-reaction.js";
 import { requireAuth } from "../session-gate.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
-import { isTemporaryByDefault, getReactionPreset } from "../reaction-presets.js";
+import { isTemporaryByDefault, getReactionPreset, listReactionPresets } from "../reaction-presets.js";
 
 const REACTION_ITEM_SCHEMA = z.object({
   emoji: z.string().describe("Emoji or semantic alias"),
@@ -271,7 +271,7 @@ export async function handleSetReactionPreset(
   if (!entries) {
     return toError({
       code: "UNKNOWN" as const,
-      message: `Unknown reaction preset "${presetName}". Available: ${['acknowledge'].join(', ')}.`,
+      message: `Unknown reaction preset "${presetName}". Available: ${listReactionPresets().join(', ')}.`,
     });
   }
 

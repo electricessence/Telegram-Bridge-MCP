@@ -591,27 +591,27 @@ describe("handleSetReactionPreset — built-in presets", () => {
     mocks.hasBaseReaction.mockReturnValue(false);
   });
 
-  it("preset 'acknowledge' fires 3 reactions: 👍 permanent, 🤔 temp, 👀 temp 5s", async () => {
-    const result = await handleSetReactionPreset(1, 42, 100, "acknowledge");
+  it("preset 'processing' fires 2 reactions: 🤔 temp, 👀 temp 10s (no permanent 👍)", async () => {
+    const result = await handleSetReactionPreset(1, 42, 100, "processing");
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.ok).toBe(true);
-    expect(data.preset).toBe("acknowledge");
-    expect(data.applied).toEqual(["👍", "🤔", "👀"]);
-    // 👍 via setMessageReaction (permanent)
-    expect(mocks.setMessageReaction).toHaveBeenCalledWith(
+    expect(data.preset).toBe("processing");
+    expect(data.applied).toEqual(["🤔", "👀"]);
+    // No permanent reaction via setMessageReaction
+    expect(mocks.setMessageReaction).not.toHaveBeenCalledWith(
       42, 100, [{ type: "emoji", emoji: "👍" }], {},
     );
     // 🤔 and 👀 via setTempReaction
     expect(mocks.setTempReaction).toHaveBeenCalledWith(100, "🤔", undefined, undefined);
-    expect(mocks.setTempReaction).toHaveBeenCalledWith(100, "👀", undefined, 5);
+    expect(mocks.setTempReaction).toHaveBeenCalledWith(100, "👀", undefined, 10);
   });
 
-  it("preset 'acknowledge' — 👀 fires with timeout_seconds=5", async () => {
-    await handleSetReactionPreset(1, 42, 200, "acknowledge");
+  it("preset 'processing' — 👀 fires with timeout_seconds=10", async () => {
+    await handleSetReactionPreset(1, 42, 200, "processing");
     const eyeballCall = mocks.setTempReaction.mock.calls.find(c => c[1] === "👀");
     expect(eyeballCall).toBeDefined();
-    expect(eyeballCall![3]).toBe(5);
+    expect(eyeballCall![3]).toBe(10);
   });
 
   it("unknown preset returns an error", async () => {

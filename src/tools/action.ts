@@ -425,7 +425,7 @@ export function register(server: McpServer): void {
         preset: z
           .string()
           .optional()
-          .describe("react: Named reaction preset (e.g. \"acknowledge\"). animation/default: Named preset key for registration or recall."),
+          .describe("react: Named reaction preset (e.g. \"processing\"). animation/default: Named preset key for registration or recall."),
         reset: z
           .boolean()
           .optional()
