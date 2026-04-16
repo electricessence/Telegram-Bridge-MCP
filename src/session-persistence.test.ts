@@ -1,11 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { existsSync, writeFileSync, renameSync, unlinkSync } from "fs";
-import * as path from "path";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const MOCK_STATE_PATH = "/tmp/test-session-state.json";
-const MOCK_TMP_PATH = MOCK_STATE_PATH + ".tmp";
+const _MOCK_STATE_PATH = "/tmp/test-session-state.json";
 
 // We re-import with adjusted SESSION_STATE_PATH by mocking fs.
 // Since SESSION_STATE_PATH is a computed constant (resolve), we mock the fs
@@ -163,7 +160,9 @@ describe("clearSessionState", () => {
 
   it("does nothing when file does not exist", () => {
     mocks.existsSync.mockReturnValue(false);
-    expect(() => clearSessionState()).not.toThrow();
+    expect(() => {
+      clearSessionState();
+    }).not.toThrow();
     expect(mocks.unlinkSync).not.toHaveBeenCalled();
   });
 
@@ -176,7 +175,9 @@ describe("clearSessionState", () => {
   it("swallows unlink errors without throwing", () => {
     mocks.existsSync.mockReturnValue(true);
     mocks.unlinkSync.mockImplementation(() => { throw new Error("EBUSY"); });
-    expect(() => clearSessionState()).not.toThrow();
+    expect(() => {
+      clearSessionState();
+    }).not.toThrow();
   });
 });
 
@@ -230,7 +231,8 @@ describe("saveSessionState", () => {
     // mkdirSync must be called before writeFileSync
     const mkdirOrder = mocks.mkdirSync.mock.invocationCallOrder[0];
     const writeOrder = mocks.writeFileSync.mock.invocationCallOrder[0];
-    expect(mkdirOrder).toBeLessThan(writeOrder!);
+    expect(writeOrder).toBeDefined();
+    expect(mkdirOrder).toBeLessThan(writeOrder ?? 0);
   });
 
   it("includes dequeueDefault when set on the session", async () => {

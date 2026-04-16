@@ -272,8 +272,9 @@ export function register(server: McpServer) {
               }
               const aliasHint = usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {};
               if (captionOverflow && finalTextForSplit) {
+                const splitText = finalTextForSplit;
                 const textMsg = await callApi(() =>
-                  getApi().sendMessage(chatId, finalTextForSplit!, {
+                  getApi().sendMessage(chatId, splitText, {
                     parse_mode: "MarkdownV2",
                     disable_notification,
                   } as Record<string, unknown>),

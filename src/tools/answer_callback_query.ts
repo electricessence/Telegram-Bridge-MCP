@@ -15,6 +15,11 @@ const DESCRIPTION =
   "in one call (combines answerCallbackQuery + editMessageReplyMarkup). " +
   "message_id is required when remove_keyboard is true.";
 
+function formatUnknownError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return typeof err === "string" ? err : JSON.stringify(err);
+}
+
 export async function handleAnswerCallbackQuery({ callback_query_id, text, show_alert, url, cache_time, remove_keyboard, message_id, token }: {
   callback_query_id: string;
   text?: string;
@@ -51,10 +56,12 @@ export async function handleAnswerCallbackQuery({ callback_query_id, text, show_
             reply_markup: { inline_keyboard: [] },
           });
         } catch (e) {
-          process.stderr.write(`[warn] remove_keyboard failed: ${e}\n`);
+          process.stderr.write(`[warn] remove_keyboard failed: ${formatUnknownError(e)}\n`);
         }
       } else {
-        process.stderr.write(`[warn] remove_keyboard skipped: could not resolve chat (${chatId})\n`);
+        process.stderr.write(
+          `[warn] remove_keyboard skipped: could not resolve chat (${chatId.code}: ${chatId.message})\n`,
+        );
       }
     }
 
@@ -98,8 +105,8 @@ export function register(server: McpServer) {
         .boolean()
         .optional()
         .describe("When true, calls editMessageReplyMarkup to clear the inline keyboard on message_id after answering. Ack still succeeds even if the edit fails. Requires message_id."),
-              token: TOKEN_SCHEMA,
-},
+      token: TOKEN_SCHEMA,
+      },
     },
     handleAnswerCallbackQuery,
   );

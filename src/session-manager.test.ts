@@ -679,7 +679,9 @@ describe("markSessionRestored", () => {
   });
 
   it("is safe to call for a non-restored sid", () => {
-    expect(() => markSessionRestored(9999)).not.toThrow();
+    expect(() => {
+      markSessionRestored(9999);
+    }).not.toThrow();
   });
 });
 
