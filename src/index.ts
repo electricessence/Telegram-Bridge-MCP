@@ -196,7 +196,7 @@ if (mcpPort !== undefined) {
         res.write(":keepalive\n\n");
       }
     }, 30_000);
-    res.on("close", () => clearInterval(keepaliveTimer));
+    res.on("close", () => { clearInterval(keepaliveTimer); });
 
     await transport.handleRequest(req, res);
   });
