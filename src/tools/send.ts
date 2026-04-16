@@ -123,7 +123,7 @@ export function register(server: McpServer) {
           .enum(["info", "success", "warning", "error"])
           .default("info")
           .describe("Severity level for notifications"),
-        message: z.string().optional().describe("Alias for text in notification mode"),
+        message: z.string().optional().describe("Alias for text in all modes. When provided and text is absent, resolves to text. Canonical parameter: 'text'."),
         // ── direct ─────────────────────────────────────────────────────────
         target_sid: z.number().int().optional().describe("Target session ID (for type: \"dm\")"),
         target: z.number().int().optional().describe("Alias for target_sid (for type: \"dm\"). Use either target or target_sid, not both."),
@@ -165,7 +165,10 @@ export function register(server: McpServer) {
       },
     },
     async (args, { signal }) => {
-      const { type, text, audio } = args;
+      // 'message' is a universal alias for 'text' — resolve before any routing
+      const usedMessageAlias = !args.text && !!args.message;
+      const { type, audio } = args;
+      const text = args.text ?? args.message;
 
       const _sid = requireAuth(args.token);
       if (typeof _sid !== "number") return toError(_sid);
@@ -267,6 +270,7 @@ export function register(server: McpServer) {
                 });
                 message_ids.push(msg.message_id);
               }
+              const aliasHint = usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {};
               if (captionOverflow && finalTextForSplit) {
                 const textMsg = await callApi(() =>
                   getApi().sendMessage(chatId, finalTextForSplit!, {
@@ -281,6 +285,7 @@ export function register(server: McpServer) {
                     split: true,
                     audio: true,
                     _hint: `Caption exceeded limit; audio sent as msg ${message_ids[0]}, text sent separately as msg ${textMsg.message_id}.`,
+                    ...aliasHint,
                   });
                 }
                 return toResult({
@@ -289,12 +294,13 @@ export function register(server: McpServer) {
                   split: true,
                   audio: true,
                   _hint: `Caption exceeded limit; audio sent as msgs ${message_ids.join(", ")}, text sent separately as msg ${textMsg.message_id}.`,
+                  ...aliasHint,
                 });
               }
               if (message_ids.length === 1) {
-                return toResult({ message_id: message_ids[0], audio: true });
+                return toResult({ message_id: message_ids[0], audio: true, ...aliasHint });
               }
-              return toResult({ message_ids, split_count: message_ids.length, split: true, audio: true });
+              return toResult({ message_ids, split_count: message_ids.length, split: true, audio: true, ...aliasHint });
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
               if (msg.includes("user restricted receiving of voice note messages")) {
@@ -338,9 +344,9 @@ export function register(server: McpServer) {
             }
             const hasTable = containsMarkdownTable(text ?? "");
             if (message_ids.length === 1) {
-              return toResult(hasTable ? { message_id: message_ids[0], info: TABLE_WARNING } : { message_id: message_ids[0] });
+              return toResult(hasTable ? { message_id: message_ids[0], info: TABLE_WARNING, ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) } : { message_id: message_ids[0], ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) });
             }
-            return toResult(hasTable ? { message_ids, split_count: message_ids.length, split: true, info: TABLE_WARNING } : { message_ids, split_count: message_ids.length, split: true });
+            return toResult(hasTable ? { message_ids, split_count: message_ids.length, split: true, info: TABLE_WARNING, ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) } : { message_ids, split_count: message_ids.length, split: true, ...(usedMessageAlias ? { hint: "'message' is accepted as an alias. Canonical parameter: 'text'." } : {}) });
           } catch (err) {
             return toError(err);
           }
@@ -372,10 +378,10 @@ export function register(server: McpServer) {
           });
 
         case "choice":
-          if (!args.text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "choice" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
+          if (!text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "choice" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
           if (!args.options?.length) return toError({ code: "MISSING_PARAM" as const, message: 'type: "choice" requires an "options" array.', hint: "Call help(topic: 'send') for the required params for this type." });
           return handleSendChoice({
-            text: args.text,
+            text,
             options: args.options,
             columns: args.columns,
             parse_mode: args.parse_mode,
@@ -392,16 +398,16 @@ export function register(server: McpServer) {
             return toError({ code: "CONFLICT" as const, message: 'Both "target_sid" and "target" were provided with different values. Use one or the other.' });
           const resolvedTarget = targetA ?? targetB;
           if (!resolvedTarget) return toError({ code: "MISSING_PARAM" as const, message: 'type: "dm" requires a "target_sid" (or "target") param.', hint: "Call help(topic: 'send') for the required params for this type." });
-          if (!args.text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "dm" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
-          return handleSendDirectMessage({ token: args.token, target_sid: resolvedTarget, text: args.text });
+          if (!text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "dm" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
+          return handleSendDirectMessage({ token: args.token, target_sid: resolvedTarget, text });
         }
 
         case "append":
           if (!args.message_id) return toError({ code: "MISSING_PARAM" as const, message: 'type: "append" requires a "message_id" param.', hint: "Call help(topic: 'send') for the required params for this type." });
-          if (!args.text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "append" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
+          if (!text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "append" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
           return handleAppendText({
             message_id: args.message_id,
-            text: args.text,
+            text,
             separator: args.separator,
             parse_mode: args.parse_mode,
             token: args.token,
@@ -422,7 +428,7 @@ export function register(server: McpServer) {
 
         case "checklist":
           {
-            const checklistTitle = args.title ?? args.text;
+            const checklistTitle = args.title ?? text;
             if (!checklistTitle) return toError({ code: "MISSING_PARAM" as const, message: 'type: "checklist" requires a "title" param.', hint: "type: \"checklist\" requires title (string) and steps (array). Call help(topic: 'send')." });
             if (!args.steps?.length) return toError({ code: "MISSING_PARAM" as const, message: 'type: "checklist" requires a "steps" array.', hint: "type: \"checklist\" requires title (string) and steps (array). Call help(topic: 'send')." });
             return handleSendNewChecklist({ title: checklistTitle, steps: args.steps, token: args.token });
@@ -432,7 +438,7 @@ export function register(server: McpServer) {
           if (args.percent === undefined) return toError({ code: "MISSING_PARAM" as const, message: 'type: "progress" requires a "percent" param (0\u2013100).', hint: "type: \"progress\" requires a percent (0\u2013100). Call help(topic: 'send')." });
           return handleSendNewProgress({
             percent: args.percent,
-            title: args.title ?? args.text,
+            title: args.title ?? text,
             subtext: args.subtext,
             width: args.width,
             token: args.token,
@@ -450,9 +456,9 @@ export function register(server: McpServer) {
           }
           if (args.choose !== undefined || args.options !== undefined) {
             const chooseButtons = (args.choose ?? args.options) as NonNullable<typeof args.choose>;
-            if (!args.text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "question" with choose requires a "text" param (prompt shown above buttons).', hint: "Call help(topic: 'send') for question param requirements." });
+            if (!text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "question" with choose requires a "text" param (prompt shown above buttons).', hint: "Call help(topic: 'send') for question param requirements." });
             return handleChoose({
-              text: args.text,
+              text,
               options: chooseButtons,
               timeout_seconds: args.timeout_seconds,
               columns: args.columns,
