@@ -5,8 +5,9 @@ import { requireAuth } from "../session-gate.js";
 import {
   type TimelineEvent,
 } from "../message-store.js";
-import { setActiveSession, touchSession, getDequeueDefault, setDequeueIdle } from "../session-manager.js";
+import { setActiveSession, touchSession, getDequeueDefault, setDequeueIdle, getSession } from "../session-manager.js";
 import { getTutorialReactionHint } from "../tutorial-hints.js";
+import { recordNonToolEvent } from "../trace-log.js";
 import { getSessionQueue, getMessageOwner } from "../session-queue.js";
 import { TOKEN_SCHEMA, consumeTokenStringHint } from "./identity-schema.js";
 import {
@@ -217,6 +218,10 @@ export function register(server: McpServer) {
           // Fire active reminders after 60 s of idle (no real messages).
           if (idleDuration >= REMINDER_IDLE_THRESHOLD_MS && activeReminders.length > 0) {
             const fired = popActiveReminders(sid);
+            const sessionName = getSession(sid)?.name ?? "";
+            for (const reminder of fired) {
+              recordNonToolEvent("reminder_fire", sid, sessionName, reminder.text);
+            }
             resyncActiveSession();
             const reminderResult: Record<string, unknown> = { updates: fired.map(buildReminderEvent), pending: pendingCountAny() };
             const hint2 = buildHint(tokenHint, firstDequeueHint);

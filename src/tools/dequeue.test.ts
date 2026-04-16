@@ -76,11 +76,17 @@ vi.mock("../session-manager.js", () => ({
   setDequeueIdle: vi.fn(),
   isTutorialEnabled: vi.fn(() => false),
   markTutorialToolSeen: vi.fn(() => false),
+  getSession: vi.fn(() => ({ name: "TestSession" })),
 }));
 
 vi.mock("../session-queue.js", () => ({
   getSessionQueue: (sid: number) => mocks.getSessionQueue(sid),
   getMessageOwner: (msgId: number) => mocks.getMessageOwner(msgId),
+}));
+
+vi.mock("../trace-log.js", () => ({
+  recordNonToolEvent: vi.fn(),
+  recordToolCall: vi.fn(),
 }));
 
 const reminderMocks = vi.hoisted(() => ({

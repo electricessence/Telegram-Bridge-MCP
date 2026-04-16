@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
   handleRollLog: vi.fn(),
   handleDeleteLog: vi.fn(),
   handleGetDebugLog: vi.fn(),
+  handleGetTraceLog: vi.fn(),
   handleDumpSessionRecord: vi.fn(),
   handleCancelAnimation: vi.fn(),
   handleShowTyping: vi.fn(),
@@ -132,7 +133,7 @@ vi.mock("./get_log.js", () => ({ handleGetLog: mocks.handleGetLog, register: vi.
 vi.mock("./list_logs.js", () => ({ handleListLogs: mocks.handleListLogs, register: vi.fn() }));
 vi.mock("./roll_log.js", () => ({ handleRollLog: mocks.handleRollLog, register: vi.fn() }));
 vi.mock("./delete_log.js", () => ({ handleDeleteLog: mocks.handleDeleteLog, register: vi.fn() }));
-vi.mock("./get_debug_log.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, register: vi.fn() }));
+vi.mock("./get_debug_log.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, handleGetTraceLog: mocks.handleGetTraceLog, register: vi.fn() }));
 vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: mocks.handleDumpSessionRecord, register: vi.fn() }));
 // Phase 2 vi.mocks — animation/*
 vi.mock("./cancel_animation.js", () => ({ handleCancelAnimation: mocks.handleCancelAnimation, register: vi.fn() }));
@@ -349,6 +350,8 @@ describe("action tool", () => {
       expect(registeredPaths).toContain("log/roll");
       expect(registeredPaths).toContain("log/delete");
       expect(registeredPaths).toContain("log/debug");
+      expect(registeredPaths).toContain("log/trace");
+      expect(registeredPaths).toContain("log/dump");
     });
 
     it("calls registerAction for all Phase 2 standalone paths", () => {
@@ -382,6 +385,8 @@ describe("action tool", () => {
       expect(governorPaths).toContain("log/roll");
       expect(governorPaths).toContain("log/delete");
       expect(governorPaths).toContain("log/debug");
+      expect(governorPaths).toContain("log/trace");
+      expect(governorPaths).toContain("log/dump");
       expect(governorPaths).toContain("approve");
       expect(governorPaths).toContain("shutdown");
       expect(governorPaths).toContain("shutdown/warn");
@@ -456,6 +461,20 @@ describe("action tool", () => {
       expect(fakeHandler).toHaveBeenCalledOnce();
       const calledArgs = fakeHandler.mock.calls[0][0] as Record<string, unknown>;
       expect(calledArgs.file_id).toBe("AgAC123");
+    });
+
+    it("dispatches log/trace to handleGetTraceLog", async () => {
+      const fakeResult = { content: [{ type: "text", text: JSON.stringify({ source: "trace", returned: 0, entries: [] }) }] };
+      const fakeHandler = vi.fn().mockReturnValue(fakeResult);
+      mocks.resolveAction.mockReturnValue({ handler: fakeHandler, meta: { governor: true } });
+      mocks.requireAuth.mockReturnValue(1);
+      mocks.getGovernorSid.mockReturnValue(1);
+      const result = await call({ type: "log/trace", token: VALID_TOKEN, session_id: 2, count: 10 });
+      expect(fakeHandler).toHaveBeenCalledOnce();
+      const calledArgs = fakeHandler.mock.calls[0][0] as Record<string, unknown>;
+      expect(calledArgs.session_id).toBe(2);
+      expect(calledArgs.count).toBe(10);
+      expect(isError(result)).toBe(false);
     });
 
     // 10-425 regression: log/debug category param accepts any string (no enum rejection)
