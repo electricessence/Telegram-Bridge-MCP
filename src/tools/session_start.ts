@@ -5,7 +5,7 @@ import { markdownToV2 } from "../markdown.js";
 import type { TimelineEvent } from "../message-store.js";
 import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-store.js";
 import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getSession, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage, getSessionAnnouncementMessage, setSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "../session-manager.js";
-import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMessageOwner, deliverReminderEvent } from "../session-queue.js";
+import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMessageOwner, deliverReminderEvent, getSessionQueue } from "../session-queue.js";
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
 import { runInSessionContext } from "../session-context.js";
 import { refreshGovernorCommand } from "../built-in-commands.js";
@@ -215,7 +215,8 @@ const DESCRIPTION =
   "Call once at the start of every session. Creates a fresh session " +
   "with a unique ID and PIN. Fresh sessions auto-drain pending messages. " +
   "If you lost your token (context loss, crash), use action(type: 'session/reconnect', ...) instead. " +
-  "Returns { token, sid, instruction } where instruction is imperative and must be acted on immediately. " +
+  "Returns { token, sid, pin, sessions_active, action, pending } so " +
+  "you have the token and context without extra steps. " +
   "Call help() first to load the API guide, then call action(type: 'session/start', ...) to join.";
 
 export async function handleSessionStart({ name, color }: { name: string; color?: string }) {
@@ -284,13 +285,19 @@ export async function handleSessionStart({ name, color }: { name: string; color?
 
       try {
         // Auto-drain any pending messages (always start fresh)
-        while (dequeue() !== undefined) { /* drain */ }
+        let discarded = 0;
+        while (dequeue() !== undefined) discarded++;
 
         const sessionToken = session.sid * 1_000_000 + session.pin;
         const res: Record<string, unknown> = {
           token: sessionToken,
           sid: session.sid,
-          instruction: "Do this now: save this token, then call help('start') for post-session setup.",
+          pin: session.pin,
+          sessions_active: session.sessionsActive,
+          action: "fresh",
+          pending: 0,
+          discarded,
+          fellow_sessions: [] as unknown[],
         };
         if (isFirstSession) {
           // First session is the governor by default
@@ -324,6 +331,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           deliverServiceMessage(session.sid, "Signal activity. Never go silent between receiving a message and responding. React immediately on receipt: 🫡 = salute/received (permanent), 👀 = reading/processing (5s temp), 🤔 = thinking/working (temp, clears on send), 👍 = on it (permanent). Use show-typing before every text send. Use animations for long operations. The operator judges responsiveness by what they see, not what you do internally.", "onboarding_protocol");
         } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
+          res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
           if (session.sessionsActive === 2) {
             // Fresh joiners use lowest-SID heuristic (original session is the anchor).
             const governorSid = Math.min(...allSessions.map(s => s.sid));
@@ -456,10 +464,12 @@ export async function handleSessionReconnect({ name }: { name: string }) {
   // Reset health markers; preserve queued messages for the reconnecting session
   fullSession.lastPollAt = undefined;
   fullSession.healthy = true;
+  const pending = getSessionQueue(existing.sid)?.pendingCount() ?? 0;
   setActiveSession(existing.sid);
 
   // Deliver service messages
   const allSessions = listSessions();
+  const reconSessActive = activeSessionCount();
   if (allSessions.length === 1) {
     deliverServiceMessage(
       existing.sid,
@@ -520,7 +530,9 @@ export async function handleSessionReconnect({ name }: { name: string }) {
   return toResult({
     token: reconToken,
     sid: fullSession.sid,
-    instruction: "Do this now: save this token, then call help('start') for post-session setup.",
+    sessions_active: reconSessActive,
+    action: "reconnected",
+    pending,
   });
 }
 

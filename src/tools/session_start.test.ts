@@ -163,7 +163,12 @@ describe("session_start tool", () => {
     expect(result).toEqual({
       token: 1123456,
       sid: 1,
-      instruction: "Do this now: save this token, then call help('start') for post-session setup.",
+      pin: 123456,
+      sessions_active: 1,
+      action: "fresh",
+      pending: 0,
+      discarded: 3,
+      fellow_sessions: [],
     });
   });
 
@@ -175,18 +180,23 @@ describe("session_start tool", () => {
     expect(result).toEqual({
       token: 1123456,
       sid: 1,
-      instruction: "Do this now: save this token, then call help('start') for post-session setup.",
+      pin: 123456,
+      sessions_active: 1,
+      action: "fresh",
+      pending: 0,
+      discarded: 0,
+      fellow_sessions: [],
     });
   });
 
-  it("returns token and sid (no discarded field in lean response)", async () => {
+  it("returns token, sid, and discarded in response", async () => {
     mocks.pendingCount.mockReturnValue(0);
 
     const result = parseResult(await call({}));
 
     expect(result.token).toBeDefined();
     expect(result.sid).toBeDefined();
-    expect(result.discarded).toBeUndefined();
+    expect(result.discarded).toBeDefined();
   });
 
   it("calls createSession with provided name", async () => {
@@ -225,7 +235,6 @@ describe("session_start tool", () => {
 
     expect(result.sid).toBe(3);
     expect(result.token).toBeDefined();
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
   });
 
   it("calls setActiveSession with the new session SID", async () => {
@@ -273,14 +282,15 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({ name: "scout" }));
 
-    expect(result.sid).toBe(4);
-    expect(result.token).toBeDefined();
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
-    // fellow_sessions removed from lean response
-    expect(result.fellow_sessions).toBeUndefined();
+    expect(result.action).toBe("fresh");
+    expect(Array.isArray(result.fellow_sessions)).toBe(true);
+    // Only the OTHER session is in fellow_sessions (not self)
+    const fellows = result.fellow_sessions as Array<{ sid: number }>;
+    expect(fellows.every(s => s.sid !== 4)).toBe(true);
+    expect(fellows.some(s => s.sid === 3)).toBe(true);
   });
 
-  it("returns lean response when auto-draining with multiple sessions", async () => {
+  it("includes fellow_sessions when auto-draining with multiple sessions", async () => {
     mocks.pendingCount.mockReturnValue(2);
     mocks.activeSessionCount.mockReturnValue(1);
     mocks.createSession.mockReturnValue({ sid: 6, pin: 666666, name: "gamma", sessionsActive: 2 });
@@ -305,23 +315,20 @@ describe("session_start tool", () => {
 
     const result = parseResult(await call({ name: "gamma" }));
 
-    expect(result.sid).toBe(6);
-    expect(result.token).toBeDefined();
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
-    // fellow_sessions and discarded removed from lean response
-    expect(result.fellow_sessions).toBeUndefined();
-    expect(result.discarded).toBeUndefined();
+    expect(result.action).toBe("fresh");
+    expect(result.discarded).toBe(2);
+    const fellows = result.fellow_sessions as Array<{ sid: number }>;
+    expect(fellows.some(s => s.sid === 5)).toBe(true);
+    expect(fellows.every(s => s.sid !== 6)).toBe(true);
   });
 
-  it("returns lean response { token, sid, instruction } when only one session is active", async () => {
+  it("returns fellow_sessions: [] when only one session is active", async () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.createSession.mockReturnValue({ sid: 1, pin: 100001, name: "solo", sessionsActive: 1 });
 
     const result = parseResult(await call({ name: "solo" }));
 
-    expect(result.token).toBeDefined();
-    expect(result.sid).toBeDefined();
-    expect(result.fellow_sessions).toBeUndefined();
+    expect(result.fellow_sessions).toEqual([]);
   });
 
   it("rolls back session on unexpected error during session setup", async () => {
@@ -1590,7 +1597,7 @@ describe("session_start tool", () => {
     // Returns the existing SID and token
     expect(result.sid).toBe(1);
     expect(result.token).toBe(1123456);
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
+    expect(result.action).toBe("reconnected");
   });
 
   it("reconnect: true + approved → preserves queued messages and resets health state", async () => {
@@ -1616,7 +1623,7 @@ describe("session_start tool", () => {
     expect(fakeSession.healthy).toBe(true);
   });
 
-  it("reconnect: true + approved → returns lean response with token and sid", async () => {
+  it("reconnect: true + approved → returns response with token, sid, and pending count", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 999999, name: "Overseer", color: "🟦",
@@ -1633,10 +1640,10 @@ describe("session_start tool", () => {
 
     expect(result.token).toBeDefined();
     expect(result.sid).toBe(1);
-    expect(result.pending).toBeUndefined();
+    expect(result.pending).toBe(5);
   });
 
-  it("reconnect: true + approved → lean response even when queue is missing", async () => {
+  it("reconnect: true + approved → pending=0 when queue is missing", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 1, pin: 999999, name: "Overseer", color: "🟦",
@@ -1653,7 +1660,7 @@ describe("session_start tool", () => {
 
     expect(result.token).toBeDefined();
     expect(result.sid).toBe(1);
-    expect(result.pending).toBeUndefined();
+    expect(result.pending).toBe(0);
   });
 
   it("reconnect: true + operator denies → SESSION_DENIED, no session created", async () => {
@@ -1796,28 +1803,6 @@ describe("session_start tool", () => {
   // hint field — persistence & recovery hints (task 056)
   // =========================================================================
 
-  it("fresh session response includes instruction field", async () => {
-    mocks.pendingCount.mockReturnValue(0);
-    mocks.activeSessionCount.mockReturnValue(0);
-    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
-
-    const result = parseResult(await call({}));
-
-    expect(typeof result.instruction).toBe("string");
-    expect(result.instruction).toBeTruthy();
-  });
-
-  it("fresh session returns instruction to call dequeue", async () => {
-    mocks.pendingCount.mockReturnValue(0);
-    mocks.activeSessionCount.mockReturnValue(0);
-    mocks.createSession.mockReturnValue({ sid: 1, pin: 111111, name: "Primary", color: "🟦", sessionsActive: 1 });
-
-    const result = parseResult(await call({}));
-
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
-    expect(result.profile_hint).toBeUndefined();
-    expect(result.instructions).toBeUndefined();
-  });
 
   // =========================================================================
   // Startup reminder integration (task 260)
@@ -1937,43 +1922,6 @@ describe("session_start tool", () => {
         expect.objectContaining({ event: "reminder" }),
       );
     });
-  });
-
-  it("reconnect response (name match + approved) includes lean instruction field", async () => {
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
-    mocks.getSession.mockReturnValue({
-      sid: 1, pin: 123456, name: "Overseer", color: "🟦",
-      createdAt: "2026-03-17", lastPollAt: 12345, healthy: false,
-    });
-    mocks.activeSessionCount.mockReturnValue(1);
-    mocks.sendMessage.mockResolvedValueOnce({ message_id: 500 });
-    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
-      void Promise.resolve().then(() => { fn({ content: { data: "reconnect_yes", qid: "rq10" } }); });
-    });
-
-    const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
-
-    expect(typeof result.instruction).toBe("string");
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
-  });
-
-  it("reconnect returns instruction to call dequeue", async () => {
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
-    mocks.getSession.mockReturnValue({
-      sid: 1, pin: 123456, name: "Overseer", color: "🟦",
-      createdAt: "2026-03-17", lastPollAt: 12345, healthy: false,
-    });
-    mocks.activeSessionCount.mockReturnValue(1);
-    mocks.sendMessage.mockResolvedValueOnce({ message_id: 501 });
-    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
-      void Promise.resolve().then(() => { fn({ content: { data: "reconnect_yes", qid: "rq11" } }); });
-    });
-
-    const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
-
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
-    expect(result.profile_hint).toBeUndefined();
-    expect(result.instructions).toBeUndefined();
   });
 
   // =========================================================================
@@ -2406,10 +2354,10 @@ describe("handleSessionReconnect", () => {
     expect(row.some(b => String(b.callback_data).startsWith("approve_"))).toBe(false);
     expect(mocks.createSession).not.toHaveBeenCalled();
     expect(result.sid).toBe(1);
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
+    expect(result.action).toBe("reconnected");
   });
 
-  it("approval flow: returns existing SID+token with lean instruction", async () => {
+  it("approval flow: returns existing SID+token with action=reconnected", async () => {
     mocks.listSessions.mockReturnValue([{ sid: 2, name: "Worker", createdAt: "2026-03-17" }]);
     mocks.getSession.mockReturnValue({
       sid: 2, pin: 654321, name: "Worker", color: "🟩",
@@ -2424,7 +2372,7 @@ describe("handleSessionReconnect", () => {
 
     expect(result.sid).toBe(2);
     expect(result.token).toBe(2654321);
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
+    expect(result.action).toBe("reconnected");
   });
 
   it("denial flow: returns SESSION_DENIED, no session created", async () => {
@@ -2439,22 +2387,6 @@ describe("handleSessionReconnect", () => {
     expect(isError(result)).toBe(true);
     expect(JSON.stringify(result)).toContain("SESSION_DENIED");
     expect(mocks.createSession).not.toHaveBeenCalled();
-  });
-
-  it("instruction is lean 'call dequeue' directive after approval", async () => {
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Overseer", createdAt: "2026-03-17" }]);
-    mocks.getSession.mockReturnValue({
-      sid: 1, pin: 111111, name: "Overseer", color: "🟦",
-      createdAt: "2026-03-17", lastPollAt: 100, healthy: false,
-    });
-    mocks.sendMessage.mockResolvedValueOnce({ message_id: 803 });
-    mocks.registerCallbackHook.mockImplementationOnce((_id: number, fn: (evt: unknown) => void) => {
-      void Promise.resolve().then(() => { fn({ content: { data: "reconnect_yes", qid: "rq-803" } }); });
-    });
-
-    const result = parseResult(await handleSessionReconnect({ name: "Overseer" }));
-
-    expect(result.instruction).toBe("Do this now: save this token, then call help('start') for post-session setup.");
   });
 
   it("operator dialog text is just the name — no explanation text", async () => {
