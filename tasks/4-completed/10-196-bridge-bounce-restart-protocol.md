@@ -1,6 +1,6 @@
 ---
 Created: 2026-04-03
-Status: Draft
+Status: Reverted
 Priority: 10
 Source: Operator directive (voice)
 Repo: electricessence/Telegram-Bridge-MCP
@@ -170,3 +170,35 @@ Implemented Option D (Fast Restart Optimization) with session snapshot persisten
 - [x] Active sessions can reconnect after bounce (auto-approved within 10-min window)
 - [x] No lost updates during a planned bounce (Telegram retains messages; agents re-dequeue)
 - [x] Agent guide documents the bounce protocol (`docs/restart-protocol.md`)
+
+---
+
+## Reverted
+
+**Date:** 2026-04-15
+**Reason:** Operator determined this feature should not exist. The two competing
+session persistence systems (session-state.json via session-manager.ts and
+data/session-snapshot.json via session-persistence.ts) caused phantom sessions
+on restart, broke auto-approve for the first session, and interfered with slash
+command routing. The feature was merged to dev but never shipped to master.
+
+**Root cause of breakage:** Both restore systems ran at startup in index.ts,
+resurrecting stale sessions as zombies. The `persistSessions()` hook in
+`createSession`/`closeSession`/`renameSession` wrote every mutation to disk,
+ensuring the zombie pool was always fresh.
+
+**What was removed:**
+- `src/bounce-state.ts` + tests
+- `src/session-persistence.ts` + tests
+- `src/session-manager.persist.test.ts`
+- `src/restart-guidance.ts`
+- `src/tools/session_bounce.ts` + tests
+- `src/tools/session_restore.ts` + tests
+- `session-state.json` (runtime artifact)
+- All persistence/restore/bounce imports and call sites in index.ts,
+  shutdown.ts, session-manager.ts, session_start.ts, action.ts, telegram.ts
+- Bounce/restore approval bypass in reconnect flow
+
+**Resolution:** Reverted to clean cold-restart behavior. Agents reconnect
+through the normal `session/reconnect` flow with operator approval.
+Shutdown countdown warning retained (separate concern).
