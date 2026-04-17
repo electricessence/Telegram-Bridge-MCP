@@ -10,13 +10,16 @@
  *   2. dequeue-to-send gap: time from last dequeue to first outbound action
  *   3. reaction usage: whether the agent reacted to the first user message
  *   4. animation usage: whether animation/typing fired after receiving messages
+ *   5. button usage: whether the agent uses confirm/choose buttons for questions
  *
  * Nudge rules:
  *   - show-typing rate < 30% after 5+ sends → inject typing nudge
  *   - dequeue-to-send gap > 8s with no activity for 2+ messages → inject gap nudge
  *   - On first user message → inject reaction reminder
+ *   - First actionable ? question without buttons → lightweight hint nudge
+ *   - 10+ actionable ? questions without buttons → escalation nudge
  *
- * Cap: max 3 nudges per session total. After cap, tracker stops injecting.
+ * Cap: max 5 nudges per session total. After cap, tracker stops injecting.
  */
 
 // ---------------------------------------------------------------------------
@@ -62,6 +65,18 @@ export interface SessionBehaviorState {
 
   /** Seconds waited before last first-outbound-action (for nudge message). */
   lastGapSeconds: number;
+
+  /** Number of actionable ? messages sent without buttons. */
+  questionWithoutButtonCount: number;
+
+  /** Once true, suppress all button nudges for this session. */
+  knowsButtons: boolean;
+
+  /** Whether the lightweight first-question hint has fired. */
+  questionHintFired: boolean;
+
+  /** Whether the 10-question escalation nudge has fired. */
+  questionEscalationFired: boolean;
 }
 
 /** Function type for injecting service message nudges into a session. */
@@ -87,7 +102,7 @@ const GAP_THRESHOLD_SECONDS = 8;
 const CONSECUTIVE_SLOW_FOR_NUDGE = 2;
 
 /** Maximum nudges injected per session. */
-const MAX_NUDGES_PER_SESSION = 3;
+const MAX_NUDGES_PER_SESSION = 5;
 
 // ---------------------------------------------------------------------------
 // State
@@ -134,6 +149,10 @@ export function initSession(sid: number): void {
     gapNudgeFired: false,
     nudgeCount: 0,
     lastGapSeconds: 0,
+    questionWithoutButtonCount: 0,
+    knowsButtons: false,
+    questionHintFired: false,
+    questionEscalationFired: false,
   });
 }
 
@@ -296,6 +315,72 @@ export function recordSend(sid: number, now: number = Date.now()): void {
         "behavior_nudge_typing_rate",
       );
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Button / question tracking
+// ---------------------------------------------------------------------------
+
+const BINARY_QUESTION_PREFIXES = /^(would you|should i|do you|can i|is this|are you|shall i|will you|ready to|ok to)/i;
+const OPENENDED_PREFIXES = /^(what if|how does|why does|i wonder|interesting|note that|remember that)/i;
+
+function looksLikeActionableQuestion(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.endsWith("?")) return false;
+  if (trimmed.includes("```")) return false;   // skip code blocks
+  if (trimmed.length > 200) return false;       // skip long rhetorical sentences
+  if (BINARY_QUESTION_PREFIXES.test(trimmed)) return true;
+  if (OPENENDED_PREFIXES.test(trimmed)) return false;
+  return true;  // short ? ending = likely actionable
+}
+
+/**
+ * Record that the agent used a button-style interaction (confirm, choose, etc.).
+ * Once called, all future button nudges for this session are suppressed.
+ * @param sid Session ID
+ */
+export function recordButtonUse(sid: number): void {
+  const state = _sessions.get(sid);
+  if (!state) return;
+  state.knowsButtons = true;
+}
+
+/**
+ * Record an outbound text send. If the text looks like an actionable question
+ * and the agent has not demonstrated button awareness, inject a nudge.
+ * @param sid Session ID
+ * @param text The outbound message text
+ */
+export function recordOutboundText(sid: number, text: string): void {
+  const state = _sessions.get(sid);
+  if (!state) return;
+
+  // If the agent already uses buttons, suppress all button nudges.
+  if (state.knowsButtons) return;
+
+  if (!looksLikeActionableQuestion(text)) return;
+
+  state.questionWithoutButtonCount++;
+
+  if (!state.questionHintFired && state.questionWithoutButtonCount === 1 && canNudge(state)) {
+    state.questionHintFired = true;
+    inject(
+      sid,
+      state,
+      "Tip: for yes/no or finite-choice questions, use action(type: \"confirm/yn\") or choose() — the operator can tap rather than type.",
+      "behavior_nudge_question_hint",
+    );
+  }
+
+  if (!state.questionEscalationFired && state.questionWithoutButtonCount >= 10 && canNudge(state)) {
+    state.questionEscalationFired = true;
+    inject(
+      sid,
+      state,
+      "You've sent 10+ questions without buttons. Use action(type: \"confirm/ok-cancel\"), action(type: \"confirm/yn\"), or choose() for any predictable-answer question.",
+      "behavior_nudge_question_escalation",
+    );
   }
 }
 

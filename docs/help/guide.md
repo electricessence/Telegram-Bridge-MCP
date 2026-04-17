@@ -116,6 +116,15 @@ Only use `send(type: "question", ask: "...")` or `dequeue` for truly open-ended 
 
 For the full keyboard interaction taxonomy — when to use `send` vs `send_choice` vs `choose` vs `confirm`, button types, and implementation notes — see [`docs/keyboard-interactions.md`](keyboard-interactions.md).
 
+**Button presets — default to these before writing custom `choose()`:**
+
+| Preset | Renders as |
+| --- | --- |
+| `action(type: "confirm/ok")` | OK button (single CTA) |
+| `action(type: "confirm/ok-cancel")` | OK + Cancel |
+| `action(type: "confirm/yn")` | 🟢 Yes · 🔴 No |
+| `send(type: "question", choose: [...])` | custom labels |
+
 ---
 
 ## Tool usage: `action(type: "commands/set")` and slash-command handling
@@ -284,6 +293,8 @@ Voice messages are automatically transcribed before they arrive in `dequeue`. Wh
 | `send(type: "file", file_type: "voice")` | Send an existing audio file (OGG/Opus path, HTTPS URL, or Telegram `file_id`). Use when you already have audio to deliver. |
 
 Never call `send_file(type: "voice")` to speak text — it only delivers pre-existing audio.
+
+**Hybrid:** passing both `text` and `audio` together (`send(type: "text", text: "...", audio: "...")`) produces a voice note with a text caption in one message — useful when the operator may be away from their phone.
 
 ### TTS voice resolution
 

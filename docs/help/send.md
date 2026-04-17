@@ -92,6 +92,11 @@ send(type: "append", token: <token>, message_id, text: "…", separator: " ")
 MarkdownV2. Pass `audio` for TTS voice note. Both text+audio → caption + voice.
 Reply threading: pass `reply_to: <message_id>`.
 
+**Hybrid:** `send(type: "text", text: "...", audio: "...")` → voice note + text caption in one msg.
+Use for urgent updates where operator may be away from phone.
+Pattern: voice = full detail, caption = TL;DR.
+Buttons can't be added to the same msg — send a confirm/yn immediately after if response needed.
+
 **notification** — Formatted block with severity emoji header. Required: `title`.
 Optional: `text`, `severity` (info/success/warning/error). Silent by default.
 

@@ -16,6 +16,8 @@ import {
   recordAnimation as btRecordAnimation,
   recordReaction as btRecordReaction,
   recordSend as btRecordSend,
+  recordButtonUse as btRecordButtonUse,
+  recordOutboundText as btRecordOutboundText,
 } from "./behavior-tracker.js";
 import { deliverServiceMessage } from "./session-queue.js";
 
@@ -159,8 +161,20 @@ export function createServer(): McpServer {
             } else if (name === "set_reaction") {
               btRecordReaction(sid);
             } else if (name === "send") {
+              // Check for button-type sends before counting as plain text send.
+              const hasChoose = args.choose !== undefined;
+              const hasConfirm = args.confirm !== undefined;
+              if (hasChoose || hasConfirm) {
+                btRecordButtonUse(sid);
+              } else if (typeof args.text === "string") {
+                btRecordOutboundText(sid, args.text);
+              }
               // Count any outbound send (text, file, notification, etc.)
               btRecordSend(sid);
+            } else if (name === "action" && typeof args.type === "string" && args.type.startsWith("confirm/")) {
+              btRecordButtonUse(sid);
+            } else if (name === "help" && args.topic === "send") {
+              btRecordButtonUse(sid);
             } else if (name === "dequeue") {
               // Detect whether the batch contained user content events.
               // A successful dequeue with `updates` array counts if any

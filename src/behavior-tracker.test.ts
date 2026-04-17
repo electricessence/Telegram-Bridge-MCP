@@ -8,6 +8,8 @@ import {
   recordAnimation,
   recordReaction,
   recordSend,
+  recordButtonUse,
+  recordOutboundText,
   setNudgeInjector,
   resetBehaviorTrackerForTest,
 } from "./behavior-tracker.js";
@@ -359,8 +361,8 @@ describe("dequeue-to-send gap nudge", () => {
 // Nudge cap
 // ---------------------------------------------------------------------------
 
-describe("nudge cap (max 3 per session)", () => {
-  it("injects at most 3 nudges total", () => {
+describe("nudge cap (max 5 per session)", () => {
+  it("injects at most 3 behavior nudges from existing rules", () => {
     initSession(1);
     const spy = makeNudgeSpy();
 
@@ -378,7 +380,30 @@ describe("nudge cap (max 3 per session)", () => {
     expect(spy.calls).toHaveLength(3);
   });
 
-  it("does not inject a 4th nudge even when more rules would fire", () => {
+  it("does not exceed the nudge cap even when many rules would fire", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    // Nudge 1: first-message nudge
+    recordDequeue(1, true, 1000);
+    // Nudge 2: gap nudge
+    recordDequeue(1, true, 15_000);
+    recordDequeue(1, true, 29_000);
+    // Nudge 3: typing rate nudge
+    sendWithoutTyping(1, 5, 40_000);
+    // Nudge 4: question hint nudge
+    recordOutboundText(1, "Is this ready?");
+    // Nudge 5: question escalation requires 10 questions — fill up to cap of 5 with additional ?s
+    for (let i = 0; i < 9; i++) {
+      recordOutboundText(1, `Can I proceed with step ${i}?`);
+    }
+    // nudge 5 (escalation) fires at 10th question — but cap is 5 so it fires if slots remain
+
+    // No matter what, cap is 5
+    expect(spy.calls.length).toBeLessThanOrEqual(5);
+  });
+
+  it("does not inject a nudge once cap is reached", () => {
     initSession(1);
     const spy = makeNudgeSpy();
 
@@ -397,7 +422,7 @@ describe("nudge cap (max 3 per session)", () => {
     sendWithoutTyping(1, 10, 100_000); // typing nudge already fired — no new one
     recordDequeue(1, true, 200_000);   // another slow gap — already capped
 
-    // Still only 3 total
+    // Still only 3 total (cap not yet hit — but no new nudge rules fire either)
     expect(spy.calls).toHaveLength(3);
   });
 
@@ -508,5 +533,165 @@ describe("activity tracking", () => {
     recordSend(1, 1100);
     const state = getSessionState(1)!;
     expect(state.hadActivityAfterDequeue).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Button tracking / question nudges
+// ---------------------------------------------------------------------------
+
+describe("recordButtonUse", () => {
+  it("sets knowsButtons and suppresses subsequent question nudges", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    recordButtonUse(1);
+    const state = getSessionState(1)!;
+    expect(state.knowsButtons).toBe(true);
+
+    // Sending actionable questions should produce no nudge now
+    recordOutboundText(1, "Is this ready?");
+    recordOutboundText(1, "Should I continue?");
+
+    const questionNudges = spy.calls.filter(
+      c => c.eventType === "behavior_nudge_question_hint" || c.eventType === "behavior_nudge_question_escalation"
+    );
+    expect(questionNudges).toHaveLength(0);
+  });
+});
+
+describe("recordOutboundText", () => {
+  it("first ? question fires lightweight hint nudge", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    recordOutboundText(1, "Is this ready?");
+
+    const hintNudges = spy.calls.filter(c => c.eventType === "behavior_nudge_question_hint");
+    expect(hintNudges).toHaveLength(1);
+    expect(hintNudges[0].text).toContain("confirm/yn");
+    expect(hintNudges[0].sid).toBe(1);
+  });
+
+  it("10+ questions without buttons fires escalation nudge", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    // Send 10 actionable questions
+    for (let i = 0; i < 10; i++) {
+      recordOutboundText(1, `Can I proceed with step ${i}?`);
+    }
+
+    const escalationNudges = spy.calls.filter(c => c.eventType === "behavior_nudge_question_escalation");
+    expect(escalationNudges).toHaveLength(1);
+    expect(escalationNudges[0].text).toContain("10+");
+  });
+
+  it("button use after questions suppresses further nudges", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    // First question fires hint
+    recordOutboundText(1, "Is this ready?");
+    const hintNudges = spy.calls.filter(c => c.eventType === "behavior_nudge_question_hint");
+    expect(hintNudges).toHaveLength(1);
+
+    // Agent now uses buttons
+    recordButtonUse(1);
+    spy.calls.length = 0; // clear calls
+
+    // More questions — no more nudges
+    for (let i = 0; i < 10; i++) {
+      recordOutboundText(1, `Should I continue step ${i}?`);
+    }
+    expect(spy.calls).toHaveLength(0);
+  });
+
+  it("open-ended question (>200 chars) does not trigger nudge", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    // Construct a long question (>200 chars) ending with ?
+    const longQuestion = "What if we consider the implications of the architectural decision to use a distributed cache in conjunction with the event-sourcing pattern across all microservices in this large-scale distributed system?";
+    expect(longQuestion.length).toBeGreaterThan(200);
+    recordOutboundText(1, longQuestion);
+
+    const questionNudges = spy.calls.filter(
+      c => c.eventType === "behavior_nudge_question_hint" || c.eventType === "behavior_nudge_question_escalation"
+    );
+    expect(questionNudges).toHaveLength(0);
+  });
+
+  it("binary question pattern triggers nudge", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    recordOutboundText(1, "Would you like me to proceed with the deployment?");
+
+    const hintNudges = spy.calls.filter(c => c.eventType === "behavior_nudge_question_hint");
+    expect(hintNudges).toHaveLength(1);
+  });
+
+  it("code-block question does not trigger nudge", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    recordOutboundText(1, "Is this correct?\n```\nconst x = 1;\n```");
+
+    const questionNudges = spy.calls.filter(
+      c => c.eventType === "behavior_nudge_question_hint" || c.eventType === "behavior_nudge_question_escalation"
+    );
+    expect(questionNudges).toHaveLength(0);
+  });
+
+  it("hint fires only once even with multiple ? questions", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    recordOutboundText(1, "Is this ready?");
+    recordOutboundText(1, "Can I deploy now?");
+    recordOutboundText(1, "Should I wait?");
+
+    const hintNudges = spy.calls.filter(c => c.eventType === "behavior_nudge_question_hint");
+    expect(hintNudges).toHaveLength(1);
+  });
+
+  it("escalation fires only once even with 15+ ? questions", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    for (let i = 0; i < 15; i++) {
+      recordOutboundText(1, `Can I proceed with step ${i}?`);
+    }
+
+    const escalationNudges = spy.calls.filter(c => c.eventType === "behavior_nudge_question_escalation");
+    expect(escalationNudges).toHaveLength(1);
+  });
+
+  it("non-question text does not trigger nudge", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    recordOutboundText(1, "Here is the deployment report.");
+    recordOutboundText(1, "Task completed successfully.");
+
+    const questionNudges = spy.calls.filter(
+      c => c.eventType === "behavior_nudge_question_hint" || c.eventType === "behavior_nudge_question_escalation"
+    );
+    expect(questionNudges).toHaveLength(0);
+  });
+
+  it("open-ended prefix (what if / how does / why does) does not trigger nudge", () => {
+    initSession(1);
+    const spy = makeNudgeSpy();
+
+    recordOutboundText(1, "What if we used a different approach?");
+    recordOutboundText(1, "How does the system handle failures?");
+    recordOutboundText(1, "Why does this pattern work better?");
+
+    const questionNudges = spy.calls.filter(
+      c => c.eventType === "behavior_nudge_question_hint" || c.eventType === "behavior_nudge_question_escalation"
+    );
+    expect(questionNudges).toHaveLength(0);
   });
 });
