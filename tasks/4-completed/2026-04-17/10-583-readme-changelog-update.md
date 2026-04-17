@@ -32,6 +32,15 @@ Less is more — tight, descriptive, accurate. No bloat.
 
 ## Acceptance Criteria
 
-- [ ] README accurately describes v6.1 without bloat
-- [ ] Changelog lists all significant changes
-- [ ] No marketing language — just facts
+- [x] README accurately describes v6.1 without bloat
+- [x] Changelog lists all significant changes
+- [x] No marketing language — just facts
+
+## Completion
+
+Branch: `10-583`
+Worktree: `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-583`
+Commit: `5998198`
+
+- `README.md` — Added 3 rows to Highlights table: Reactions, Guided behavior, Transport reliability
+- `changelog/unreleased.md` — Added all missing v6.1.0 entries: reaction presets + temporality + base reaction, session/start onboarding events (4 event types), per-session behavior tracker, SSE keepalive fixes; new Removed section (tutorial/instruction removal); new Changed section (acknowledge→processing rename, confirmed via git log)
