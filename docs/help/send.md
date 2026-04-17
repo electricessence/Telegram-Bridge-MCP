@@ -24,7 +24,7 @@ Use `send(type: "append", message_id: <id>, text: "chunk")` to append text to an
 existing message. The server reads the current stored text, concatenates the new
 chunk after a separator, and edits the message in-place.
 
-Internally routes to `append_text`. O(1) token cost per call — only the new chunk
+O(1) token cost per call — only the new chunk
 is passed; the bridge builds the full accumulated string.
 
 **Pattern:**
@@ -92,6 +92,15 @@ send(type: "append", token: <token>, message_id, text: "…", separator: " ")
 MarkdownV2. Pass `audio` for TTS voice note. Both text+audio → caption + voice.
 Reply threading: pass `reply_to: <message_id>`.
 
+**Hybrid:** `send(type: "text", text: "...", audio: "...")` → voice note + text caption in one msg.
+Use for urgent updates where operator may be away from phone.
+Pattern: voice = full detail, caption = TL;DR.
+In `type: "text"` mode, buttons can't be added to that same msg — send a
+`send(type: "question", confirm: "...")`/yes-no prompt immediately after if response is needed.
+If you need audio + caption + inline buttons in one message, use interactive
+modes such as `send(type: "question", choose: [...], audio: "...")`,
+`send(type: "choice", options: [...], audio: "...")`, or `send(type: "question", confirm: "...")`.
+
 **notification** — Formatted block with severity emoji header. Required: `title`.
 Optional: `text`, `severity` (info/success/warning/error). Silent by default.
 
@@ -117,4 +126,4 @@ Optional: `title`, `subtext`, `width` (default 10).
 of: `ask` (string, free-text reply), `choose` (options array, button select),
 `confirm` (string, yes/no). Default `timeout_seconds: 60`.
 
-Related: append_text, edit_message, notify, send_file, send_new_checklist, send_new_progress, ask, choose, confirm
+Related: send(type: "append"), action(type: "message/edit"), send(type: "notification"), send(type: "file"), send(type: "checklist"), send(type: "progress")

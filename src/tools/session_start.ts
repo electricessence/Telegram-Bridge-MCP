@@ -17,6 +17,16 @@ import type { ApprovalDecision } from "../agent-approval.js";
 
 const APPROVAL_TIMEOUT_MS = 120_000;
 const APPROVAL_NO = "approve_no";
+
+const ONBOARDING_BUTTONS_TEXT =
+  "Buttons first. Humans on Telegram prefer tapping over typing.\n" +
+  "For yes/no and finite-choice questions, use button presets:\n" +
+  "  action(type: \"confirm/ok\")        — single OK (acknowledgment/CTA)\n" +
+  "  action(type: \"confirm/ok-cancel\") — OK + Cancel (destructive gate)\n" +
+  "  action(type: \"confirm/yn\")        — 🟢 Yes / 🔴 No (binary decision)\n" +
+  "  send(type: \"question\", choose: [...]) — custom labeled options\n" +
+  "Only use send(type: \"question\", ask: \"...\") for truly free-text input.\n" +
+  "Hybrid: send(type: \"text\", text: \"...\", audio: \"...\") — voice note + caption in one message. Use for important updates where the operator may be away from their phone.";
 const APPROVE_PREFIX = "approve_";
 const RECONNECT_YES = "reconnect_yes";
 const RECONNECT_NO = "reconnect_no";
@@ -329,6 +339,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             "onboarding_role",
           );
           deliverServiceMessage(session.sid, "Signal activity. Never go silent between receiving a message and responding. React immediately on receipt: 🫡 = salute/received (permanent), 👀 = reading/processing (5s temp), 🤔 = thinking/working (temp, clears on send), 👍 = on it (permanent). Use show-typing before every text send. Use animations for long operations. The operator judges responsiveness by what they see, not what you do internally.", "onboarding_protocol");
+          deliverServiceMessage(session.sid, ONBOARDING_BUTTONS_TEXT, "onboarding_buttons");
         } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
           res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
@@ -397,6 +408,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           // session_orientation already carries role info (governor vs participant) for multi-session.
           // Skip onboarding_role here to avoid duplication.
           deliverServiceMessage(session.sid, "Signal activity. Never go silent between receiving a message and responding. React immediately on receipt: 🫡 = salute/received (permanent), 👀 = reading/processing (5s temp), 🤔 = thinking/working (temp, clears on send), 👍 = on it (permanent). Use show-typing before every text send. Use animations for long operations. The operator judges responsiveness by what they see, not what you do internally.", "onboarding_protocol");
+          deliverServiceMessage(session.sid, ONBOARDING_BUTTONS_TEXT, "onboarding_buttons");
         }
         void refreshGovernorCommand();
 
