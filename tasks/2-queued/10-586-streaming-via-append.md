@@ -20,17 +20,11 @@ Agent responses appear as complete blocks after a silence period. The operator w
 
 - Double name-tag prepend on append messages — needs investigation
 
-## Testing Requirement
-
-**Strong unit testing is mandatory.** Every component — coalescing queue, rate limiter, append dispatch, markdown handling — must have thorough test coverage before merge.
-
 ## Architecture
 
 ```text
-Claude Code (includePartialMessages) → text_delta events → TMCP bridge → coalescing queue → append_text to Telegram message
+Claude Code (includePartialMessages) → text_delta events → TMCP bridge → append_text to Telegram message
 ```
-
-**Coalescing queue pattern:** Buffer incoming text_deltas, merge while rate-limited (~1/sec for edits). When rate window opens, flush accumulated batch as one edit. Three deltas in 0.9s = one edit call, not three.
 
 **Two approaches:**
 1. **Append mode (available now):** Buffer text_deltas, call `editMessageText` at ~1/sec cadence. Works in all chats. Shows "edited" indicator.

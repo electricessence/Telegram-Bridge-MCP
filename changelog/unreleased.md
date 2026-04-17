@@ -4,10 +4,20 @@
 
 ### Added
 
+- Behavioral nudge system: per-session checklist tracks button awareness (`knowsButtons`) and question-without-button count; fires `behavior_nudge_question_hint` on first actionable `?` question sent without buttons, and `behavior_nudge_question_escalation` after 10+ such questions — nudges are suppressed once the agent uses buttons in any form or consults button help
+- `onboarding_buttons` service message: delivered during session start (both first-session and subsequent-session paths) covering OK / OK-Cancel / Y-N presets and hybrid message guidance (audio + caption + buttons in one message)
+- `MAX_NUDGES_PER_SESSION` raised from 3 to 5 to accommodate the two new question nudge types without crowding other behavioral nudges
+- `src/behavior-tracker.ts`: `recordButtonUse(sid)` — marks session as button-aware and suppresses all subsequent question nudges; `recordOutboundText(sid, text)` — evaluates outbound text against actionable-question heuristics and fires hint/escalation nudges as appropriate
+- `docs/help/send.md`: Hybrid section documenting audio + caption + buttons composition pattern
+- `docs/help/guide.md`: Button presets table covering OK, OK-Cancel, Y-N, and custom choose patterns
+- `docs/communication.md`: Quick-presets callout added under Hard Rule 2
+- `session/rename` action: added optional `color` parameter — applies a session color change atomically with the rename in the same operator-approval flow
+- `session/rename` action: added optional `target_sid` parameter (governor only) — allows the governor to rename another session; returns `PERMISSION_DENIED` for non-governor callers; validates the target session exists before prompting the operator
 - `session/close` action: added `force?: boolean` parameter — when `true`, allows closing the last active session without triggering the last-session guard
 
 ### Fixed
 
+- Recording indicator no longer drops prematurely between TTS synthesis/upload and message render: `gen` is now updated after each `showTyping()` call so `cancelTypingIfSameGeneration` targets the correct generation; voice file sends via `send_file` now include a 3 s post-send delay and explicit `cancelTypingIfSameGeneration` in a `finally` block (task 10-recording-indicator-gap)
 - `session/close`: rejects with `LAST_SESSION` error code (and actionable hint) when called on the last active session without `force: true`; prevents accidental orphaning of the bridge process
 - Fixed governor SID being cleared when governor closes a non-governor session in a 2-session setup (10-493). Governor role is now correctly preserved when a non-governor session closes.
 - `/shutdown` built-in command: with zero active sessions, shutdown now skips poller wait/drain and the extra stdio delay so it exits immediately instead of waiting through timeout windows

@@ -16,6 +16,8 @@ import {
   recordAnimation as btRecordAnimation,
   recordReaction as btRecordReaction,
   recordSend as btRecordSend,
+  recordButtonUse as btRecordButtonUse,
+  recordOutboundText as btRecordOutboundText,
 } from "./behavior-tracker.js";
 import { deliverServiceMessage } from "./session-queue.js";
 
@@ -159,8 +161,37 @@ export function createServer(): McpServer {
             } else if (name === "set_reaction") {
               btRecordReaction(sid);
             } else if (name === "send") {
+              // Skip behavioral tracking for DM sends — DMs are agent-to-agent;
+              // button guidance is irrelevant there.
+              const isDm = args.type === "dm";
+              if (!isDm) {
+                const hasChoose = args.choose !== undefined;
+                const hasConfirm = args.confirm !== undefined;
+                const hasOptions = args.options !== undefined;
+                const isChoiceSend = args.type === "choice";
+                const isQuestionWithOptions =
+                  args.type === "question" && hasOptions;
+                const usesButtons =
+                  hasChoose || hasConfirm || isChoiceSend || isQuestionWithOptions;
+                if (usesButtons) {
+                  btRecordButtonUse(sid);
+                } else {
+                  // Track outbound text via text, message alias, or ask (free-text question).
+                  const outboundText =
+                    (typeof args.text === "string" ? args.text : null) ??
+                    (typeof args.message === "string" ? args.message : null) ??
+                    (typeof args.ask === "string" ? args.ask : null);
+                  if (outboundText !== null) {
+                    btRecordOutboundText(sid, outboundText);
+                  }
+                }
+              }
               // Count any outbound send (text, file, notification, etc.)
               btRecordSend(sid);
+            } else if (name === "action" && typeof args.type === "string" && args.type.startsWith("confirm/")) {
+              btRecordButtonUse(sid);
+            } else if (name === "help" && args.topic === "send") {
+              btRecordButtonUse(sid);
             } else if (name === "dequeue") {
               // Detect whether the batch contained user content events.
               // A successful dequeue with `updates` array counts if any
