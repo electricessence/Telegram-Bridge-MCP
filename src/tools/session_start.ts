@@ -7,6 +7,7 @@ import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-sto
 import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getSession, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage, getSessionAnnouncementMessage, setSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMessageOwner, deliverReminderEvent, getSessionQueue } from "../session-queue.js";
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
+import { SERVICE_EVENT_TYPES, SERVICE_MESSAGES } from "../service-messages.js";
 import { runInSessionContext } from "../session-context.js";
 import { refreshGovernorCommand } from "../built-in-commands.js";
 import { checkAndConsumeAutoApprove } from "../auto-approve.js";
@@ -18,15 +19,6 @@ import type { ApprovalDecision } from "../agent-approval.js";
 const APPROVAL_TIMEOUT_MS = 120_000;
 const APPROVAL_NO = "approve_no";
 
-const ONBOARDING_BUTTONS_TEXT =
-  "Buttons first. Humans on Telegram prefer tapping over typing.\n" +
-  "For yes/no and finite-choice questions, use button presets:\n" +
-  "  action(type: \"confirm/ok\")        — single OK (acknowledgment/CTA)\n" +
-  "  action(type: \"confirm/ok-cancel\") — OK + Cancel (destructive gate)\n" +
-  "  action(type: \"confirm/yn\")        — 🟢 Yes / 🔴 No (binary decision)\n" +
-  "  send(type: \"question\", choose: [...]) — custom labeled options\n" +
-  "Only use send(type: \"question\", ask: \"...\") for truly free-text input.\n" +
-  "Hybrid: send(type: \"text\", text: \"...\", audio: \"...\") — voice note + caption in one message. Use for important updates where the operator may be away from their phone.";
 const APPROVE_PREFIX = "approve_";
 const RECONNECT_YES = "reconnect_yes";
 const RECONNECT_NO = "reconnect_no";
@@ -113,7 +105,7 @@ async function requestApproval(
       deliverServiceMessage(
         governorSid,
         `Session "${name}" is requesting access. Ticket: ${ticket}\nHint: action(type: 'approve', token: <your_token>, ticket: ${ticket})`,
-        "pending_approval",
+        SERVICE_EVENT_TYPES.PENDING_APPROVAL,
         { name, ticket },
       );
     }
@@ -328,18 +320,18 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           deliverServiceMessage(
             session.sid,
             `You are SID ${session.sid}. You are the only active session.`,
-            "session_orientation",
+            SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
             { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
-          deliverServiceMessage(session.sid, "Save your token. Write it to your session memory file now so you can reconnect after compaction or restart. Token = sid * 1_000_000 + pin. You already have it from session/start.", "onboarding_token_save");
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE, SERVICE_EVENT_TYPES.ONBOARDING_TOKEN_SAVE);
           // First session is always governor — no ternary needed.
           deliverServiceMessage(
             session.sid,
             "You are the governor (primary session). The operator is aware of your presence. Announce yourself in chat if you wish — or stay silent until messaged. Use help('send') for communication options. Route ambiguous messages here; participant sessions DM you, not the operator.",
-            "onboarding_role",
+            SERVICE_EVENT_TYPES.ONBOARDING_ROLE,
           );
-          deliverServiceMessage(session.sid, "Signal activity. Never go silent between receiving a message and responding. React immediately on receipt: 🫡 = salute/received (permanent), 👀 = reading/processing (5s temp), 🤔 = thinking/working (temp, clears on send), 👍 = on it (permanent). Use show-typing before every text send. Use animations for long operations. The operator judges responsiveness by what they see, not what you do internally.", "onboarding_protocol");
-          deliverServiceMessage(session.sid, ONBOARDING_BUTTONS_TEXT, "onboarding_buttons");
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL, SERVICE_EVENT_TYPES.ONBOARDING_PROTOCOL);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT, SERVICE_EVENT_TYPES.ONBOARDING_BUTTONS);
         } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
           res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
@@ -388,7 +380,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             deliverServiceMessage(
               fellow.sid,
               `Session '${effectiveName}' (SID ${session.sid}) ${joinVerb}. ${governorNote}`,
-              "session_joined",
+              SERVICE_EVENT_TYPES.SESSION_JOINED,
               { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
             );
           }
@@ -401,14 +393,14 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           deliverServiceMessage(
             session.sid,
             roleNote,
-            "session_orientation",
+            SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
             { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
-          deliverServiceMessage(session.sid, "Save your token. Write it to your session memory file now so you can reconnect after compaction or restart. Token = sid * 1_000_000 + pin. You already have it from session/start.", "onboarding_token_save");
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE, SERVICE_EVENT_TYPES.ONBOARDING_TOKEN_SAVE);
           // session_orientation already carries role info (governor vs participant) for multi-session.
           // Skip onboarding_role here to avoid duplication.
-          deliverServiceMessage(session.sid, "Signal activity. Never go silent between receiving a message and responding. React immediately on receipt: 🫡 = salute/received (permanent), 👀 = reading/processing (5s temp), 🤔 = thinking/working (temp, clears on send), 👍 = on it (permanent). Use show-typing before every text send. Use animations for long operations. The operator judges responsiveness by what they see, not what you do internally.", "onboarding_protocol");
-          deliverServiceMessage(session.sid, ONBOARDING_BUTTONS_TEXT, "onboarding_buttons");
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL, SERVICE_EVENT_TYPES.ONBOARDING_PROTOCOL);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT, SERVICE_EVENT_TYPES.ONBOARDING_BUTTONS);
         }
         void refreshGovernorCommand();
 
@@ -487,7 +479,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
       existing.sid,
       `Reconnect authorized. You are SID ${existing.sid}. ` +
         `You are the only active session.`,
-      "session_orientation",
+      SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
       { sid: existing.sid, name: existing.name },
     );
   } else {
@@ -505,7 +497,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
         fellow.sid,
         `Session '${existing.name}' (SID ${existing.sid}) has reconnected. ` +
           governorNote,
-        "session_joined",
+        SERVICE_EVENT_TYPES.SESSION_JOINED,
         {
           sid: existing.sid,
           name: existing.name,
@@ -525,7 +517,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
     deliverServiceMessage(
       existing.sid,
       `Reconnect authorized. Session state preserved. ${roleNote}`,
-      "session_orientation",
+      SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
       { sid: existing.sid, name: existing.name, governor_sid: governorSid },
     );
   }

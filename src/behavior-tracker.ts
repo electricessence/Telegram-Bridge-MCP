@@ -22,6 +22,8 @@
  * Cap: max 5 nudges per session total. After cap, tracker stops injecting.
  */
 
+import { SERVICE_EVENT_TYPES, SERVICE_MESSAGES } from "./service-messages.js";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -209,8 +211,8 @@ export function recordDequeue(sid: number, hasUserMessage: boolean, now: number 
       inject(
         sid,
         state,
-        "This is your first message from the operator. React to acknowledge (message_id is in the update). 👀 = processing, 👍 = on it.",
-        "behavior_nudge_first_message",
+        SERVICE_MESSAGES.NUDGE_FIRST_MESSAGE,
+        SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_FIRST_MESSAGE,
       );
     }
   }
@@ -241,8 +243,8 @@ export function recordDequeue(sid: number, hasUserMessage: boolean, now: number 
     inject(
       sid,
       state,
-      `The operator waited ${state.lastGapSeconds}s with no feedback. Signal activity sooner.`,
-      "behavior_nudge_slow_gap",
+      SERVICE_MESSAGES.NUDGE_SLOW_GAP(state.lastGapSeconds),
+      SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_SLOW_GAP,
     );
   }
 }
@@ -311,8 +313,8 @@ export function recordSend(sid: number, now: number = Date.now()): void {
       inject(
         sid,
         state,
-        "Use show_typing after receiving messages to signal you're working.",
-        "behavior_nudge_typing_rate",
+        SERVICE_MESSAGES.NUDGE_TYPING_RATE,
+        SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_TYPING_RATE,
       );
     }
   }
@@ -368,8 +370,8 @@ export function recordOutboundText(sid: number, text: string): void {
     inject(
       sid,
       state,
-      "Tip: for yes/no or finite-choice questions, use action(type: \"confirm/yn\") or choose() — the operator can tap rather than type.",
-      "behavior_nudge_question_hint",
+      SERVICE_MESSAGES.NUDGE_QUESTION_HINT,
+      SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_QUESTION_HINT,
     );
   }
 
@@ -378,8 +380,8 @@ export function recordOutboundText(sid: number, text: string): void {
     inject(
       sid,
       state,
-      "You've sent 10+ questions without buttons. Use action(type: \"confirm/ok-cancel\"), action(type: \"confirm/yn\"), or choose() for any predictable-answer question.",
-      "behavior_nudge_question_escalation",
+      SERVICE_MESSAGES.NUDGE_QUESTION_ESCALATION,
+      SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_QUESTION_ESCALATION,
     );
   }
 }
