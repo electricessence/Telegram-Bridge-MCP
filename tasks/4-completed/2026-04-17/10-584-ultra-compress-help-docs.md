@@ -33,7 +33,17 @@ For each file:
 
 ## Acceptance Criteria
 
-- [ ] All help docs compressed
-- [ ] help() still returns useful, accurate content
-- [ ] Tests pass (help tests check for key content)
-- [ ] No information loss — just formatting reduction
+- [x] All help docs compressed
+- [x] help() still returns useful, accurate content
+- [x] Tests pass (help tests check for key content)
+- [x] No information loss — just formatting reduction
+
+## Completion
+
+Branch: `10-584`
+Worktree: `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-584`
+Commit: `dcbe784`
+
+73 files ultra-compressed in docs/help/ (all subdirectories). 73 `.uncompressed.md` backups created alongside each. 7 `.spec.md` files left untouched.
+
+146 files staged and committed. All 2347 tests pass. One test failure during build (abbreviation of "5 minutes" → "5 min") fixed before commit. Code review found and fixed 4 major issues: inline append code fence, checklist status values reference, guide.md session/idle guidance and /session panel reference, start.md guide qualifier.
