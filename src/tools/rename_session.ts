@@ -66,9 +66,17 @@ export async function handleRenameSession({ token, new_name, color, target_sid }
     });
   }
 
-  // Collision guard: reject if another active session already has this name
+  // Resolve and validate the target session before prompting the operator
   const sessions = listSessions();
   const current = sessions.find(s => s.sid === sid);
+  if (!current) {
+    return toError({
+      code: "SESSION_NOT_FOUND",
+      message: `Session ${sid} not found. Call action(type: 'session/list') to see active sessions.`,
+    });
+  }
+
+  // Collision guard: reject if another active session already has this name
   const collision = sessions.find(
     s => s.sid !== sid && s.name.toLowerCase() === trimmed.toLowerCase(),
   );
@@ -81,7 +89,7 @@ export async function handleRenameSession({ token, new_name, color, target_sid }
     });
   }
 
-  const currentName = current?.name ?? `SID ${sid}`;
+  const currentName = current.name;
   const colorNote = color ? ` and color to ${color}` : "";
   const targetNote = target_sid !== undefined ? ` (governor renaming SID ${sid})` : "";
   const decision = await requestOperatorApproval(
