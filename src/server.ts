@@ -161,19 +161,30 @@ export function createServer(): McpServer {
             } else if (name === "set_reaction") {
               btRecordReaction(sid);
             } else if (name === "send") {
-              // Check for button-type sends before counting as plain text send.
-              const hasChoose = args.choose !== undefined;
-              const hasConfirm = args.confirm !== undefined;
-              const hasOptions = args.options !== undefined;
-              const isChoiceSend = args.type === "choice";
-              const isQuestionWithOptions =
-                args.type === "question" && hasOptions;
-              const usesButtons =
-                hasChoose || hasConfirm || isChoiceSend || isQuestionWithOptions;
-              if (usesButtons) {
-                btRecordButtonUse(sid);
-              } else if (typeof args.text === "string") {
-                btRecordOutboundText(sid, args.text);
+              // Skip behavioral tracking for DM sends — DMs are agent-to-agent;
+              // button guidance is irrelevant there.
+              const isDm = args.type === "dm";
+              if (!isDm) {
+                const hasChoose = args.choose !== undefined;
+                const hasConfirm = args.confirm !== undefined;
+                const hasOptions = args.options !== undefined;
+                const isChoiceSend = args.type === "choice";
+                const isQuestionWithOptions =
+                  args.type === "question" && hasOptions;
+                const usesButtons =
+                  hasChoose || hasConfirm || isChoiceSend || isQuestionWithOptions;
+                if (usesButtons) {
+                  btRecordButtonUse(sid);
+                } else {
+                  // Track outbound text via text, message alias, or ask (free-text question).
+                  const outboundText =
+                    (typeof args.text === "string" ? args.text : null) ??
+                    (typeof args.message === "string" ? args.message : null) ??
+                    (typeof args.ask === "string" ? args.ask : null);
+                  if (outboundText !== null) {
+                    btRecordOutboundText(sid, outboundText);
+                  }
+                }
               }
               // Count any outbound send (text, file, notification, etc.)
               btRecordSend(sid);

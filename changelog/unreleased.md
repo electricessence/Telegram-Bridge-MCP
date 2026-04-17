@@ -4,6 +4,14 @@
 
 ### Added
 
+- Behavioral nudge system: per-session checklist tracks button awareness (`knowsButtons`) and question-without-button count; fires `behavior_nudge_question_hint` on first actionable `?` question sent without buttons, and `behavior_nudge_question_escalation` after 10+ such questions — nudges are suppressed once the agent uses buttons in any form or consults button help
+- `onboarding_buttons` service message: delivered during session start (both first-session and subsequent-session paths) covering OK / OK-Cancel / Y-N presets and hybrid message guidance (audio + caption + buttons in one message)
+- `MAX_NUDGES_PER_SESSION` raised from 3 to 5 to accommodate the two new question nudge types without crowding other behavioral nudges
+- `src/behavior-tracker.ts`: `recordButtonUse(sid)` — marks session as button-aware and suppresses all subsequent question nudges; `recordOutboundText(sid, text)` — evaluates outbound text against actionable-question heuristics and fires hint/escalation nudges as appropriate
+- `docs/help/send.md`: Hybrid section documenting audio + caption + buttons composition pattern
+- `docs/help/guide.md`: Button presets table covering OK, OK-Cancel, Y-N, and custom choose patterns
+- `docs/communication.md`: Quick-presets callout added under Hard Rule 2
+
 - `session/close` action: added `force?: boolean` parameter — when `true`, allows closing the last active session without triggering the last-session guard
 
 ### Fixed
