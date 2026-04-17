@@ -45,7 +45,7 @@ import { timelineSize, setOnEvent } from "./message-store.js";
 import { listSessions, getIdleSessions } from "./session-manager.js";
 import { getGovernorSid, setGovernorSid } from "./routing-mode.js";
 import { deliverServiceMessage } from "./session-queue.js";
-import { SERVICE_EVENT_TYPES, SERVICE_MESSAGES } from "./service-messages.js";
+import { SERVICE_MESSAGES } from "./service-messages.js";
 import { getCallerSid, runInSessionContext } from "./session-context.js";
 import { closeSessionById } from "./session-teardown.js";
 
@@ -581,8 +581,8 @@ async function handleGovernorCallback(
     // Notify new governor
     deliverServiceMessage(
       newSid,
-      SERVICE_MESSAGES.GOVERNOR_NOW_YOU,
-      SERVICE_EVENT_TYPES.GOVERNOR_CHANGED,
+      SERVICE_MESSAGES.GOVERNOR_NOW_YOU.text,
+      SERVICE_MESSAGES.GOVERNOR_NOW_YOU.eventType,
       { old_governor_sid: oldSid, new_governor_sid: newSid },
     );
 
@@ -592,8 +592,8 @@ async function handleGovernorCallback(
       if (oldGovernor) {
         deliverServiceMessage(
           oldSid,
-          SERVICE_MESSAGES.GOVERNOR_NO_LONGER_YOU(newLabel),
-          SERVICE_EVENT_TYPES.GOVERNOR_CHANGED,
+          SERVICE_MESSAGES.GOVERNOR_NO_LONGER_YOU.text(newLabel),
+          SERVICE_MESSAGES.GOVERNOR_NO_LONGER_YOU.eventType,
           { old_governor_sid: oldSid, new_governor_sid: newSid },
         );
       }
@@ -604,8 +604,8 @@ async function handleGovernorCallback(
       if (s.sid === newSid || s.sid === oldSid) continue;
       deliverServiceMessage(
         s.sid,
-        SERVICE_MESSAGES.GOVERNOR_CHANGED_MSG(newLabel),
-        SERVICE_EVENT_TYPES.GOVERNOR_CHANGED,
+        SERVICE_MESSAGES.GOVERNOR_CHANGED_MSG.text(newLabel),
+        SERVICE_MESSAGES.GOVERNOR_CHANGED_MSG.eventType,
         { old_governor_sid: oldSid, new_governor_sid: newSid },
       );
     }
@@ -1433,8 +1433,8 @@ async function handleSessionCallback(
 
     deliverServiceMessage(
       sid,
-      SERVICE_MESSAGES.GOVERNOR_NOW_YOU,
-      SERVICE_EVENT_TYPES.GOVERNOR_CHANGED,
+      SERVICE_MESSAGES.GOVERNOR_NOW_YOU.text,
+      SERVICE_MESSAGES.GOVERNOR_NOW_YOU.eventType,
       { old_governor_sid: oldSid, new_governor_sid: sid },
     );
 
@@ -1443,8 +1443,8 @@ async function handleSessionCallback(
       if (oldGovernor) {
         deliverServiceMessage(
           oldSid,
-          SERVICE_MESSAGES.GOVERNOR_NO_LONGER_YOU(newLabel),
-          SERVICE_EVENT_TYPES.GOVERNOR_CHANGED,
+          SERVICE_MESSAGES.GOVERNOR_NO_LONGER_YOU.text(newLabel),
+          SERVICE_MESSAGES.GOVERNOR_NO_LONGER_YOU.eventType,
           { old_governor_sid: oldSid, new_governor_sid: sid },
         );
       }
@@ -1454,8 +1454,8 @@ async function handleSessionCallback(
       if (s.sid === sid || s.sid === oldSid) continue;
       deliverServiceMessage(
         s.sid,
-        SERVICE_MESSAGES.GOVERNOR_CHANGED_MSG(newLabel),
-        SERVICE_EVENT_TYPES.GOVERNOR_CHANGED,
+        SERVICE_MESSAGES.GOVERNOR_CHANGED_MSG.text(newLabel),
+        SERVICE_MESSAGES.GOVERNOR_CHANGED_MSG.eventType,
         { old_governor_sid: oldSid, new_governor_sid: sid },
       );
     }

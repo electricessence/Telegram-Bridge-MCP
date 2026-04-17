@@ -22,7 +22,7 @@
  * Cap: max 5 nudges per session total. After cap, tracker stops injecting.
  */
 
-import { SERVICE_EVENT_TYPES, SERVICE_MESSAGES } from "./service-messages.js";
+import { SERVICE_MESSAGES } from "./service-messages.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -211,8 +211,8 @@ export function recordDequeue(sid: number, hasUserMessage: boolean, now: number 
       inject(
         sid,
         state,
-        SERVICE_MESSAGES.NUDGE_FIRST_MESSAGE,
-        SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_FIRST_MESSAGE,
+        SERVICE_MESSAGES.NUDGE_FIRST_MESSAGE.text,
+        SERVICE_MESSAGES.NUDGE_FIRST_MESSAGE.eventType,
       );
     }
   }
@@ -243,8 +243,8 @@ export function recordDequeue(sid: number, hasUserMessage: boolean, now: number 
     inject(
       sid,
       state,
-      SERVICE_MESSAGES.NUDGE_SLOW_GAP(state.lastGapSeconds),
-      SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_SLOW_GAP,
+      SERVICE_MESSAGES.NUDGE_SLOW_GAP.text(state.lastGapSeconds),
+      SERVICE_MESSAGES.NUDGE_SLOW_GAP.eventType,
     );
   }
 }
@@ -313,8 +313,8 @@ export function recordSend(sid: number, now: number = Date.now()): void {
       inject(
         sid,
         state,
-        SERVICE_MESSAGES.NUDGE_TYPING_RATE,
-        SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_TYPING_RATE,
+        SERVICE_MESSAGES.NUDGE_TYPING_RATE.text,
+        SERVICE_MESSAGES.NUDGE_TYPING_RATE.eventType,
       );
     }
   }
@@ -370,8 +370,8 @@ export function recordOutboundText(sid: number, text: string): void {
     inject(
       sid,
       state,
-      SERVICE_MESSAGES.NUDGE_QUESTION_HINT,
-      SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_QUESTION_HINT,
+      SERVICE_MESSAGES.NUDGE_QUESTION_HINT.text,
+      SERVICE_MESSAGES.NUDGE_QUESTION_HINT.eventType,
     );
   }
 
@@ -380,8 +380,8 @@ export function recordOutboundText(sid: number, text: string): void {
     inject(
       sid,
       state,
-      SERVICE_MESSAGES.NUDGE_QUESTION_ESCALATION,
-      SERVICE_EVENT_TYPES.BEHAVIOR_NUDGE_QUESTION_ESCALATION,
+      SERVICE_MESSAGES.NUDGE_QUESTION_ESCALATION.text,
+      SERVICE_MESSAGES.NUDGE_QUESTION_ESCALATION.eventType,
     );
   }
 }

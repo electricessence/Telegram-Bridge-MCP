@@ -2,7 +2,7 @@ import { getApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
 import { listSessions, getSessionAnnouncementMessage } from "./session-manager.js";
 import { deliverServiceMessage, notifySessionWaiters } from "./session-queue.js";
-import { SERVICE_EVENT_TYPES, SERVICE_MESSAGES } from "./service-messages.js";
+import { SERVICE_MESSAGES } from "./service-messages.js";
 import { getSessionLogMode } from "./config.js";
 import { flushCurrentLog, isLoggingEnabled, rollLog } from "./local-log.js";
 
@@ -92,8 +92,8 @@ export async function elegantShutdown(): Promise<never> {
   for (const s of sessions) {
     deliverServiceMessage(
       s.sid,
-      SERVICE_MESSAGES.SHUTDOWN,
-      SERVICE_EVENT_TYPES.SHUTDOWN,
+      SERVICE_MESSAGES.SHUTDOWN.text,
+      SERVICE_MESSAGES.SHUTDOWN.eventType,
     );
   }
   // Wake up any agents blocked in dequeue

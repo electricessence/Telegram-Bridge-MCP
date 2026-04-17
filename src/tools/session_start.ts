@@ -7,7 +7,7 @@ import { dequeue, registerCallbackHook, clearCallbackHook } from "../message-sto
 import { createSession, closeSession, setActiveSession, listSessions, activeSessionCount, getSession, getAvailableColors, COLOR_PALETTE, setSessionAnnouncementMessage, getSessionAnnouncementMessage, setSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "../session-manager.js";
 import { createSessionQueue, removeSessionQueue, deliverServiceMessage, trackMessageOwner, deliverReminderEvent, getSessionQueue } from "../session-queue.js";
 import { setGovernorSid, getGovernorSid } from "../routing-mode.js";
-import { SERVICE_EVENT_TYPES, SERVICE_MESSAGES } from "../service-messages.js";
+import { SERVICE_MESSAGES } from "../service-messages.js";
 import { runInSessionContext } from "../session-context.js";
 import { refreshGovernorCommand } from "../built-in-commands.js";
 import { checkAndConsumeAutoApprove } from "../auto-approve.js";
@@ -105,7 +105,7 @@ async function requestApproval(
       deliverServiceMessage(
         governorSid,
         `Session "${name}" is requesting access. Ticket: ${ticket}\nHint: action(type: 'approve', token: <your_token>, ticket: ${ticket})`,
-        SERVICE_EVENT_TYPES.PENDING_APPROVAL,
+        "pending_approval",
         { name, ticket },
       );
     }
@@ -320,18 +320,18 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           deliverServiceMessage(
             session.sid,
             `You are SID ${session.sid}. You are the only active session.`,
-            SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
+            "session_orientation",
             { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE, SERVICE_EVENT_TYPES.ONBOARDING_TOKEN_SAVE);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.text, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.eventType);
           // First session is always governor — no ternary needed.
           deliverServiceMessage(
             session.sid,
-            "You are the governor (primary session). The operator is aware of your presence. Announce yourself in chat if you wish — or stay silent until messaged. Use help('send') for communication options. Route ambiguous messages here; participant sessions DM you, not the operator.",
-            SERVICE_EVENT_TYPES.ONBOARDING_ROLE,
+            SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR.text,
+            SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR.eventType,
           );
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL, SERVICE_EVENT_TYPES.ONBOARDING_PROTOCOL);
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT, SERVICE_EVENT_TYPES.ONBOARDING_BUTTONS);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.text, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.eventType);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.text, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.eventType);
         } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
           res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
@@ -380,7 +380,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             deliverServiceMessage(
               fellow.sid,
               `Session '${effectiveName}' (SID ${session.sid}) ${joinVerb}. ${governorNote}`,
-              SERVICE_EVENT_TYPES.SESSION_JOINED,
+              "session_joined",
               { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
             );
           }
@@ -393,14 +393,14 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           deliverServiceMessage(
             session.sid,
             roleNote,
-            SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
+            "session_orientation",
             { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE, SERVICE_EVENT_TYPES.ONBOARDING_TOKEN_SAVE);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.text, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.eventType);
           // session_orientation already carries role info (governor vs participant) for multi-session.
           // Skip onboarding_role here to avoid duplication.
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL, SERVICE_EVENT_TYPES.ONBOARDING_PROTOCOL);
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT, SERVICE_EVENT_TYPES.ONBOARDING_BUTTONS);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.text, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.eventType);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.text, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.eventType);
         }
         void refreshGovernorCommand();
 
@@ -479,7 +479,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
       existing.sid,
       `Reconnect authorized. You are SID ${existing.sid}. ` +
         `You are the only active session.`,
-      SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
+      "session_orientation",
       { sid: existing.sid, name: existing.name },
     );
   } else {
@@ -497,7 +497,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
         fellow.sid,
         `Session '${existing.name}' (SID ${existing.sid}) has reconnected. ` +
           governorNote,
-        SERVICE_EVENT_TYPES.SESSION_JOINED,
+        "session_joined",
         {
           sid: existing.sid,
           name: existing.name,
@@ -517,7 +517,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
     deliverServiceMessage(
       existing.sid,
       `Reconnect authorized. Session state preserved. ${roleNote}`,
-      SERVICE_EVENT_TYPES.SESSION_ORIENTATION,
+      "session_orientation",
       { sid: existing.sid, name: existing.name, governor_sid: governorSid },
     );
   }

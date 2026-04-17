@@ -21,7 +21,7 @@ import {
 } from "./session-manager.js";
 import { getGovernorSid, setGovernorSid } from "./routing-mode.js";
 import { deliverDirectMessage, deliverServiceMessage } from "./session-queue.js";
-import { SERVICE_EVENT_TYPES, SERVICE_MESSAGES } from "./service-messages.js";
+import { SERVICE_MESSAGES } from "./service-messages.js";
 import { getApi, getRawApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { markdownToV2 } from "./markdown.js";
 import { dlog } from "./debug-log.js";
@@ -140,8 +140,8 @@ async function sendGovernorPrompt(
       if (s.sid === targetSid) continue; // already notified via DM above
       deliverServiceMessage(
         s.sid,
-        SERVICE_MESSAGES.GOVERNOR_SWITCHED(targetName, targetSid),
-        SERVICE_EVENT_TYPES.GOVERNOR_CHANGED,
+        SERVICE_MESSAGES.GOVERNOR_SWITCHED.text(targetName, targetSid),
+        SERVICE_MESSAGES.GOVERNOR_SWITCHED.eventType,
         { new_governor_sid: targetSid, new_governor_name: targetName },
       );
     }
