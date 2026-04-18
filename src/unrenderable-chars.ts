@@ -13,7 +13,9 @@ export const UNRENDERABLE_RANGES: Array<[number, number]> = [
   [0x2500, 0x257F], // Box Drawing
   [0x2580, 0x259F], // Block Elements
   [0x2B00, 0x2BFF], // Miscellaneous Symbols and Arrows
-  [0x1F100, 0x1F1FF], // Enclosed Alphanumeric Supplement (non-emoji subset)
+  // Enclosed Alphanumeric Supplement — stop before Regional Indicator Symbols (U+1F1E6–U+1F1FF),
+  // which are used as flag emoji pairs (🇺🇸, 🇬🇧, etc.) and render correctly in Telegram.
+  [0x1F100, 0x1F1E5], // Enclosed Alphanumeric Supplement (non-emoji subset, excludes Regional Indicators)
 ];
 
 // Specific codepoints known to be problematic

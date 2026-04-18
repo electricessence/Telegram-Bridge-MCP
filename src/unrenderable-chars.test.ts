@@ -64,4 +64,12 @@ describe("findUnrenderableChars", () => {
   it("detects DOUBLE ARROW ⇒", () => {
     expect(findUnrenderableChars("A ⇒ B")).toEqual(["⇒"]);
   });
+
+  it("does not flag Regional Indicator / flag emoji (🇺🇸, 🇬🇧)", () => {
+    // U+1F1FA (🇺) + U+1F1F8 (🇸) compose the US flag emoji 🇺🇸
+    // U+1F1EC (🇬) + U+1F1E7 (🇧) compose the GB flag emoji 🇬🇧
+    expect(findUnrenderableChars("🇺🇸")).toEqual([]);
+    expect(findUnrenderableChars("🇬🇧")).toEqual([]);
+    expect(findUnrenderableChars("Flags: 🇺🇸 🇬🇧 🇯🇵")).toEqual([]);
+  });
 });

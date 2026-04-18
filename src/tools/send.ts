@@ -354,7 +354,7 @@ export function register(server: McpServer) {
             const badChars = findUnrenderableChars(text ?? "");
             if (badChars.length > 0) {
               const charList = badChars
-                .map(c => `\`${c}\` (U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")})`)
+                .map(c => `\`${c}\` (U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")})`)
                 .join(", ");
               deliverServiceMessage(
                 _sid,
