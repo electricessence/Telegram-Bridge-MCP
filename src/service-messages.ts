@@ -36,7 +36,7 @@ export const SERVICE_MESSAGES = Object.freeze({
 
   ONBOARDING_BUTTONS_TEXT: {
     eventType: "onboarding_buttons" as const,
-    text: `Buttons over typing. confirm/ok, confirm/ok-cancel, confirm/yn for standard prompts. send(type: "question", choose: [...]) for custom options. Free-text ask only when needed. Hybrid (text + audio) for important updates. help('send') for full reference.`,
+    text: `Buttons over typing. action(type: "confirm/ok"), action(type: "confirm/ok-cancel"), action(type: "confirm/yn") for standard prompts. send(type: "question", choose: [...]) for custom options. Free-text ask only when needed. Hybrid (text + audio) for important updates. help('send') for full reference.`,
   },
 
   // ── Governor change notifications ─────────────────────────────────────────
