@@ -24,7 +24,9 @@ Two issues on PR #141 (service message constants refactor):
 3. Simplify `ONBOARDING_TOKEN_SAVE.text` to:
    `"Save your token to your session memory file now."`
 4. Audit and remove all PIN references from service messages and
-   user-facing text (help topics, onboarding, etc.)
+   user-facing text (help topics, onboarding, etc.). PIN generation
+   formula must NOT appear in any user-facing surface. Code comments
+   are acceptable — the token is opaque to agents.
 
 ## Branch
 
