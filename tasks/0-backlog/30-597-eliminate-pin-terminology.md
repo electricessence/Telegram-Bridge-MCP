@@ -29,11 +29,20 @@ the codebase.
 6. The token formula `sid * 1_000_000 + pin` stays as implementation —
    just rename `pin` to something like `secret` or `suffix`
 
+## Existing Work
+
+W3 (SID 6) completed ~70 file renames in worktree
+`.worktrees/20-597-eliminate-pin-terminology/` (branch
+`20-597-eliminate-pin-terminology`). Changes are staged but NOT
+committed. All tests passed. Resume from that worktree — don't
+redo the work.
+
 ## Constraints
 
 - This is a mechanical rename — no behavioral changes
 - Must not break the token format (still `sid * 1_000_000 + suffix`)
 - Tests must all pass after rename
+- Standalone PR — do AFTER all other PRs merge (merge conflict risk)
 - Consider doing this as a standalone PR for clean review
 
 ## Acceptance Criteria
