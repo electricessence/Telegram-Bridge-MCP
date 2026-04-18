@@ -396,7 +396,7 @@ export async function handleSetReaction(args: {
         await getApi().setMessageReaction(chatId, message_id, [{ type: "emoji" as const, emoji: candidate as ReactionEmoji }], { is_big });
         recordBotReaction(message_id, candidate);
         if (PREMIUM_EMOJI.has(candidate)) _botIsPremium = true;
-        _insertBaseReaction(chatId, message_id, true);
+        _insertBaseReaction(chatId, message_id);
         const result: Record<string, unknown> = { ok: true, message_id, emoji: candidate, temporary: false };
         if (candidate !== originalFirst) {
           result.requested = originalFirst;

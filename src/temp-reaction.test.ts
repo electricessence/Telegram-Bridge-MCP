@@ -12,6 +12,7 @@ vi.mock("./message-store.js", () => ({
   getBotReaction: mocks.getBotReaction,
   hasBaseReaction: mocks.hasBaseReaction,
   clearBaseReaction: mocks.clearBaseReaction,
+  recordBotReaction: vi.fn(),
 }));
 
 vi.mock("./telegram.js", async (importActual) => {

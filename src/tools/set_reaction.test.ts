@@ -587,20 +587,17 @@ describe("set_reaction — implicit 👌 base reaction", () => {
     expect(mocks.setMessageReaction).not.toHaveBeenCalled();
   });
 
-  it("permanent reaction: markBaseReaction is called; 👌 DOES fire via API immediately (applyNow=true)", async () => {
-    // Permanent 👍 — base 👌 fires immediately after the permanent emoji (applyNow=true).
-    // The comment "base is virtual" was wrong for the permanent-only path.
+  it("permanent reaction: markBaseReaction is called; 👌 does NOT fire via API (base is local-only)", async () => {
+    // Permanent 👍 — base 👌 is registered locally but must NOT fire via API
+    // (doing so would overwrite the permanent emoji the user just set — P0 bug fix).
     await call({ message_id: 61, emoji: "👍", token: 1123456 });
     await new Promise(r => setTimeout(r, 0));
 
     expect(mocks.markBaseReaction).toHaveBeenCalledWith(42, 61);
-    // Two API calls: the 👍 permanent reaction, then 👌 base fires immediately
-    expect(mocks.setMessageReaction).toHaveBeenCalledTimes(2);
+    // Only one API call: the 👍 permanent reaction; 👌 must NOT fire immediately
+    expect(mocks.setMessageReaction).toHaveBeenCalledTimes(1);
     expect(mocks.setMessageReaction).toHaveBeenCalledWith(
       42, 61, [{ type: "emoji", emoji: "👍" }], { is_big: undefined },
-    );
-    expect(mocks.setMessageReaction).toHaveBeenCalledWith(
-      42, 61, [{ type: "emoji", emoji: "👌" }], {},
     );
   });
 
