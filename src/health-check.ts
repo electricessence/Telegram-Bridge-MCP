@@ -22,7 +22,7 @@ import {
 import { getGovernorSid, setGovernorSid } from "./routing-mode.js";
 import { deliverDirectMessage, deliverServiceMessage } from "./session-queue.js";
 import { SERVICE_MESSAGES } from "./service-messages.js";
-import { getApi, getRawApi, resolveChat, sendServiceMessage } from "./telegram.js";
+import { getRawApi, resolveChat, sendServiceMessage } from "./telegram.js";
 import { markdownToV2 } from "./markdown.js";
 import { dlog } from "./debug-log.js";
 import { hasActiveAnimation } from "./animation-state.js";
