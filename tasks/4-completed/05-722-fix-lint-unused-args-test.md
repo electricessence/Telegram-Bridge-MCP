@@ -31,3 +31,9 @@ This is the **only blocker** to V7 → master merge. Build is green, all 2441 te
 ## Related
 
 - 20-721 (parent V7 merge readiness audit).
+
+## Completion
+
+- Branch: `05-722` in `Telegram MCP` repo
+- Commit: `e80975f` — renamed `args` → `_args` in three `vi.fn()` callbacks at lines 210, 219, 229
+- Result: `pnpm lint` zero errors, 2441/2441 tests pass
