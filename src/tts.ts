@@ -214,7 +214,7 @@ async function synthesizeHttpToOgg(
     const errorBody = await res.text().catch(() => "(no body)");
     process.stderr.write(`[tts] server error ${res.status}: ${errorBody}\n`);
     if (res.status === 504) {
-      throw new Error("Audio too long. Shorten or fall back to text.");
+      throw new Error("TTS timed out (504). Consider shortening audio or retrying.");
     }
     throw new Error(`TTS server returned ${res.status}. Check server logs for details.`);
   }
