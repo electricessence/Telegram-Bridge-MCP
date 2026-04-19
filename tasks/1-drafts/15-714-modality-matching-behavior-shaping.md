@@ -39,6 +39,30 @@ Worker (TMCP). Curator stages, operator merges.
 
 15 - UX shaping. Same tier as `15-713`. Not blocking; quality-of-interaction.
 
+## Operator refinement (2026-04-19, voice 38209-38211, 38217, 38223-38224)
+
+Decision tree the help topic must encode (operator voice, captured then codified):
+
+### Priority axis (text vs audio vs buttons)
+
+- **Buttons (interactive keyboard)**: highest priority, fastest user response. Binary action; trivial for human regardless of device. Especially on mobile, far less cumbersome than typing. Use whenever the user response is a small set of choices ("yes/no", "this/that/the other", "ack/defer"). Buttons are the most powerful affordance the platform offers; underused.
+- **Text**: immediate priority. User reads on arrival. Use for simple acknowledgements ("got it", "done"), notifications, anything that needs the user's eye now. Also use when the response benefits from being skimmable / searchable / quotable / structured.
+- **Audio**: lesser priority signal. Audio implicitly says "get to this at your leisure" — user may not be in a position to play it (commute, meeting, headphones unavailable). Use when the *intent* is talk-it-through; comfort, alternate brain modality, narrative explanation. Not for instructions or exposition that needs reading.
+
+The priority distinction is itself signal — sending audio when something is urgent miscommunicates the urgency. Sending a wall of text when the message is meant to be ambient noise miscommunicates the same way in reverse.
+
+### Why audio is NOT instructions
+
+Audio is for the listener brain — the part that processes language by sound. Reading aloud silently to "hear" the words is humans approximating what audio gives directly. The benefit is comfort and alternate processing, NOT additional content. If audio is just "the same instructions but spoken," delete it (this echoes the hybrid-anti-pattern in `15-713`). Use audio when the listener brain genuinely benefits — narrative, walkthrough, conversational tone — not when the message is a checklist or a directive.
+
+### Modality-matching emphasis
+
+Operator audio-messages most of the time. Agent reply distribution should track that — if you read this and reply only in text, you've already drifted from the rule. The default is hybrid (audio + brief text label) when the user is voice-messaging.
+
+### Implementation notes for help-topic and service-message text
+
+These should be encoded into the `help('modality')` (or rolled into `help('audio')` per `15-713`) so they're discoverable. Service message at first user-voice arrival should explicitly mention buttons as the fastest channel — not just "consider audio". Buttons being underused is the bigger leverage than voice-vs-text alone.
+
 ## Related
 
 - `15-713` (first-DM compression) - sister behavior-shaping task.
