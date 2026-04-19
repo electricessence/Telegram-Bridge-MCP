@@ -27,6 +27,8 @@
 
 ### Fixed
 
+- `send_new_checklist`/`update_checklist`: completion reply now reflects actual outcome — `✅ Complete`, `🟡 Incomplete N/M done`, or `🔴 Failed — N/M passed, F failed` with step counts; was always `✅ Complete` regardless of failed/skipped steps (task 20-471)
+
 - `set_reaction` with a `reactions` array: permanent base layer no longer makes its own redundant API call when a temporary overlay is active — the base is registered virtually and applied only when the last temporary reaction expires (`_fireRestoreForSlot` / `clearAllTempReactions`). `getBotReaction(messageId)` is now updated after each restore or clear so the bot reaction index remains accurate.
 
 - Recording indicator no longer drops prematurely between TTS synthesis/upload and message render: `gen` is now updated after each `showTyping()` call so `cancelTypingIfSameGeneration` targets the correct generation; voice file sends via `send_file` now include a 3 s post-send delay and explicit `cancelTypingIfSameGeneration` in a `finally` block (task 10-recording-indicator-gap)
