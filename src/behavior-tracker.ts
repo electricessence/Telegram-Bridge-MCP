@@ -180,10 +180,14 @@ function canNudge(state: SessionBehaviorState): boolean {
 }
 
 /** Inject a nudge and increment the session's nudge counter. */
-function inject(sid: number, state: SessionBehaviorState, text: string, eventType: string): void {
+function inject(
+  sid: number,
+  state: SessionBehaviorState,
+  entry: { text: string; eventType: string },
+): void {
   if (!canNudge(state)) return;
   state.nudgeCount++;
-  _nudgeInjector(sid, text, eventType);
+  _nudgeInjector(sid, entry.text, entry.eventType);
 }
 
 // ---------------------------------------------------------------------------
@@ -208,12 +212,7 @@ export function recordDequeue(sid: number, hasUserMessage: boolean, now: number 
     state.firstUserMessageSeen = true;
     if (!state.firstMessageNudgeFired && canNudge(state)) {
       state.firstMessageNudgeFired = true;
-      inject(
-        sid,
-        state,
-        SERVICE_MESSAGES.NUDGE_FIRST_MESSAGE.text,
-        SERVICE_MESSAGES.NUDGE_FIRST_MESSAGE.eventType,
-      );
+      inject(sid, state, SERVICE_MESSAGES.NUDGE_FIRST_MESSAGE);
     }
   }
 
@@ -240,12 +239,7 @@ export function recordDequeue(sid: number, hasUserMessage: boolean, now: number 
   // --- Gap nudge ---
   if (!state.gapNudgeFired && state.slowGapCount >= CONSECUTIVE_SLOW_FOR_NUDGE && canNudge(state)) {
     state.gapNudgeFired = true;
-    inject(
-      sid,
-      state,
-      SERVICE_MESSAGES.NUDGE_SLOW_GAP.text,
-      SERVICE_MESSAGES.NUDGE_SLOW_GAP.eventType,
-    );
+    inject(sid, state, SERVICE_MESSAGES.NUDGE_SLOW_GAP);
   }
 }
 
@@ -310,12 +304,7 @@ export function recordSend(sid: number, now: number = Date.now()): void {
     const rate = state.typingBeforeSendCount / state.sendCount;
     if (rate < TYPING_RATE_THRESHOLD && canNudge(state)) {
       state.typingNudgeFired = true;
-      inject(
-        sid,
-        state,
-        SERVICE_MESSAGES.NUDGE_TYPING_RATE.text,
-        SERVICE_MESSAGES.NUDGE_TYPING_RATE.eventType,
-      );
+      inject(sid, state, SERVICE_MESSAGES.NUDGE_TYPING_RATE);
     }
   }
 }
@@ -367,22 +356,12 @@ export function recordOutboundText(sid: number, text: string): void {
 
   if (!state.questionHintFired && state.questionWithoutButtonCount === 1 && canNudge(state)) {
     state.questionHintFired = true;
-    inject(
-      sid,
-      state,
-      SERVICE_MESSAGES.NUDGE_QUESTION_HINT.text,
-      SERVICE_MESSAGES.NUDGE_QUESTION_HINT.eventType,
-    );
+    inject(sid, state, SERVICE_MESSAGES.NUDGE_QUESTION_HINT);
   }
 
   if (!state.questionEscalationFired && state.questionWithoutButtonCount >= 10 && canNudge(state)) {
     state.questionEscalationFired = true;
-    inject(
-      sid,
-      state,
-      SERVICE_MESSAGES.NUDGE_QUESTION_ESCALATION.text,
-      SERVICE_MESSAGES.NUDGE_QUESTION_ESCALATION.eventType,
-    );
+    inject(sid, state, SERVICE_MESSAGES.NUDGE_QUESTION_ESCALATION);
   }
 }
 

@@ -323,15 +323,11 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             "session_orientation",
             { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.text, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.eventType);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE);
           // First session is always governor — no ternary needed.
-          deliverServiceMessage(
-            session.sid,
-            SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR.text,
-            SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR.eventType,
-          );
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.text, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.eventType);
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.text, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.eventType);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT);
         } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
           res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
@@ -395,11 +391,11 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             "session_orientation",
             { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.text, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.eventType);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE);
           // session_orientation already carries role info (governor vs participant) for multi-session.
           // Skip onboarding_role here to avoid duplication.
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.text, SERVICE_MESSAGES.ONBOARDING_PROTOCOL.eventType);
-          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.text, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT.eventType);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT);
         }
         void refreshGovernorCommand();
 

@@ -91,11 +91,7 @@ export async function elegantShutdown(): Promise<never> {
 
   // Notify all active sessions via their DM queues
   for (const s of sessions) {
-    deliverServiceMessage(
-      s.sid,
-      SERVICE_MESSAGES.SHUTDOWN.text,
-      SERVICE_MESSAGES.SHUTDOWN.eventType,
-    );
+    deliverServiceMessage(s.sid, SERVICE_MESSAGES.SHUTDOWN);
   }
   // Wake up any agents blocked in dequeue
   notifySessionWaiters();

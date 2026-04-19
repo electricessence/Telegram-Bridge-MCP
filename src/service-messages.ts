@@ -10,13 +10,32 @@
  *   import { SERVICE_MESSAGES } from "./service-messages.js";
  *
  * Usage:
- *   // Static:
- *   deliverServiceMessage(sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.text, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE.eventType)
- *   // Dynamic:
- *   deliverServiceMessage(sid, SERVICE_MESSAGES.GOVERNOR_CHANGED.text(newSid, newName), SERVICE_MESSAGES.GOVERNOR_CHANGED.eventType)
+ *   // Static (pass the entry directly):
+ *   deliverServiceMessage(sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE);
+ *   // Dynamic (text is a function — invoke it, pass the resulting string + eventType):
+ *   deliverServiceMessage(
+ *     sid,
+ *     SERVICE_MESSAGES.GOVERNOR_CHANGED.text(newSid, newName),
+ *     SERVICE_MESSAGES.GOVERNOR_CHANGED.eventType,
+ *   );
  */
 
-export const SERVICE_MESSAGES = Object.freeze({
+/**
+ * Recursively freeze an object and all nested object values. Unlike
+ * `Object.freeze`, this walks into object-typed properties so every entry in
+ * `SERVICE_MESSAGES` is immutable, not just the top-level dictionary.
+ */
+function deepFreeze<T>(obj: T): Readonly<T> {
+  for (const key of Object.keys(obj as object) as (keyof T)[]) {
+    const val = obj[key];
+    if (val !== null && typeof val === "object" && !Object.isFrozen(val)) {
+      deepFreeze(val);
+    }
+  }
+  return Object.freeze(obj);
+}
+
+export const SERVICE_MESSAGES = deepFreeze({
   // ── Onboarding ────────────────────────────────────────────────────────────
 
   ONBOARDING_TOKEN_SAVE: {
@@ -128,4 +147,4 @@ export const SERVICE_MESSAGES = Object.freeze({
     eventType: "behavior_nudge_question_escalation" as const,
     text: "You've sent 10+ questions without buttons. Use action(type: \"confirm/ok-cancel\"), action(type: \"confirm/yn\"), or choose() for any predictable-answer question.",
   },
-} as const);
+});
