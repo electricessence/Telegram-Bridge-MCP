@@ -41,3 +41,15 @@ Worker (TMCP). Curator stages, operator merges. Trivial scope — single-file ed
 
 - `10-590-unrenderable-character-warning` (the original task that overshot).
 - Memory `feedback_avoid_arrow_chars.md` (still valid for arrows; the rule was always about arrows, not dashes).
+
+## Completion
+
+Committed on branch `20-716` (commit `a871fcd`) by Worker 4 (2026-04-19).
+
+- `src/unrenderable-chars.ts`: removed `0x2014` (em-dash) and `0x2013` (en-dash) from `UNRENDERABLE_CHARS`
+- `src/unrenderable-chars.test.ts`: inverted two test cases to assert em/en dash return `[]`
+- Build ✅, lint ✅, 14/14 tests ✅
+
+Audit: curly quotes and ellipsis left flagged — no explicit operator confirmation they're safe to remove.
+
+Overseer notified. Ready for Curator review and merge.
