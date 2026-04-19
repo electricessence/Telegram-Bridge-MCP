@@ -4,7 +4,7 @@
 
 ### Added
 
-- Unrenderable character detection: `send` warns when message content contains Unicode characters that do not render in Telegram (e.g. combining marks, certain symbol blocks); the warning lists the offending characters and their code points
+- Unrenderable character detection: `send` warns when message content contains Unicode characters that do not render in Telegram (e.g. certain symbol blocks); the warning lists the offending characters and their code points
 - Behavioral nudge system: per-session checklist tracks button awareness (`knowsButtons`) and question-without-button count; fires `behavior_nudge_question_hint` on first actionable `?` question sent without buttons, and `behavior_nudge_question_escalation` after 10+ such questions — nudges are suppressed once the agent uses buttons in any form or consults button help
 - `onboarding_buttons` service message: delivered during session start (both first-session and subsequent-session paths) covering OK / OK-Cancel / Y-N presets and hybrid message guidance (audio + caption + buttons in one message)
 - `MAX_NUDGES_PER_SESSION` raised from 3 to 5 to accommodate the two new question nudge types without crowding other behavioral nudges
