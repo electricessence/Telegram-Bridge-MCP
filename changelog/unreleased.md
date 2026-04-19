@@ -19,6 +19,7 @@
 
 ### Changed
 
+- Unknown-parameter warning middleware: `registerTool` wrapper now strips unrecognised parameters before passing args to the handler and injects a `warning` field into the response payload listing the dropped keys — tools always execute with the valid subset, the call is never rejected (PR #147)
 - `shutdown` MCP tool: now bypasses the pending-message guard and exits immediately when no sessions are active (pending items cannot be processed without a session to route to); the guard still applies when one or more sessions exist
 
 ### Changed
