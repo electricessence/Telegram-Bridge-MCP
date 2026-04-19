@@ -14,8 +14,8 @@ describe("findUnrenderableChars", () => {
     expect(findUnrenderableChars("use → not ->")).toEqual(["→"]);
   });
 
-  it("detects EM DASH —", () => {
-    expect(findUnrenderableChars("—")).toEqual(["—"]);
+  it("does not flag EM DASH — (renders fine in Telegram)", () => {
+    expect(findUnrenderableChars("—")).toEqual([]);
   });
 
   it("detects both arrows in a sentence", () => {
@@ -29,8 +29,8 @@ describe("findUnrenderableChars", () => {
     expect(findUnrenderableChars("wait…")).toEqual(["…"]);
   });
 
-  it("detects EN DASH –", () => {
-    expect(findUnrenderableChars("2–4")).toEqual(["–"]);
+  it("does not flag EN DASH – (renders fine in Telegram)", () => {
+    expect(findUnrenderableChars("2–4")).toEqual([]);
   });
 
   it("detects curly quotes", () => {

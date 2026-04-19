@@ -27,8 +27,6 @@ export const UNRENDERABLE_CHARS = new Set<number>([
   0x21D0, // ⇐ LEFTWARDS DOUBLE ARROW
   0x21D4, // ⇔ LEFT RIGHT DOUBLE ARROW
   0x2026, // … HORIZONTAL ELLIPSIS (use ... instead)
-  0x2014, // — EM DASH (use - or -- instead)
-  0x2013, // – EN DASH (use - instead)
   0x2018, // ' LEFT SINGLE QUOTATION MARK
   0x2019, // ' RIGHT SINGLE QUOTATION MARK
   0x201C, // " LEFT DOUBLE QUOTATION MARK
