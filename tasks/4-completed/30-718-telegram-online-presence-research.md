@@ -45,3 +45,18 @@ Worker (TMCP) once research scoped. Curator can scope the question; a single res
 
 - TMCP help topic `audio` / `compression` / `send` (other modality discoverability discussions).
 - Telegram Bot API docs (canonical: <https://core.telegram.org/bots/api>).
+
+## Completion
+
+**Date:** 2026-04-19
+**Worker:** Worker 5 (SID 12)
+**Branch:** `30-718`
+**Doc:** `docs/research/online-presence.md`
+
+**Verdict:** Not feasible via Bot API (no presence methods). Partially feasible via MTProto `account.updateStatus` using GramJS (Node.js/TS) — but requires a separate user account, carries ToS risk, and adds always-on sidecar complexity. Recommends deferring; UX value does not justify stack complexity.
+
+**Acceptance criteria met:**
+1. Research doc written to `docs/research/online-presence.md`
+2. Verdict delivered: not feasible via Bot API; partially feasible via MTProto
+3. MTProto path: tradeoff analysis included (GramJS available, user-account required, ToS risk)
+4. No implementation committed
