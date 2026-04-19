@@ -29,3 +29,13 @@ GPT-5.4 audit (2026-04-19) found three places where `help.ts` advertises behavio
 
 - 20-721 (parent V7 merge readiness audit).
 - 15-713 (first-DM compression service message — same theme of help-surface accuracy).
+
+## Completion
+
+Implemented three targeted string fixes in `src/tools/help.ts` on branch `10-723` (commit `cea2180`):
+
+1. `DESCRIPTION` lines 54–55: collapsed `'startup'` and `'quick_start'` into single `'start'` entry with alias note — matches TOPIC_ALIASES routing.
+2. `TOOL_INDEX[list_sessions]`: added unauthenticated SID-probe capability, derived from `list_sessions.ts` DESCRIPTION.
+3. `TOOL_INDEX[approve_agent]`: corrected "by name" → "by ticket" with delivery-mechanism note, matching `approve_agent.ts`.
+
+Build: passed. Lint/test: blocked (pnpm install hook-denied — escalated to Overseer). Code review: no critical/major issues; two minor pre-existing out-of-scope drifts noted for follow-up.
