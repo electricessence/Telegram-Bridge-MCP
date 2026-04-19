@@ -168,8 +168,8 @@ describe("session/close/signal action", () => {
     const [sid, text, eventType] = mocks.deliverServiceMessage.mock.calls[0];
     expect(sid).toBe(TARGET_SID);
     expect(eventType).toBe("session_close_signal");
-    expect(String(text)).toContain("Governor");
-    expect(String(text)).toContain("session/close");
+    expect(text).toContain("Governor");
+    expect(text).toContain("session/close");
     expect(mocks.notifySessionWaiters).toHaveBeenCalledTimes(1);
   });
 
