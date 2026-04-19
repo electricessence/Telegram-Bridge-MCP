@@ -57,6 +57,15 @@ The compression help topic must distinguish modality-by-modality. Operator's spe
 - Ultra-tier compression. Maximum density, minimum prose.
 - This is the channel that warrants the protocol-level service message because it's the easiest to overshoot.
 
+### Hybrid (audio + text)
+
+Two valid patterns. Both produce more value than either modality alone.
+
+1. **Long fluid audio + brief caption.** Audio carries a comfortable, plain-language explanation. Caption is a short topic label so the operator can glance and decide whether to play. *The caption summarizes the topic, not the content.*
+2. **Short audio + long structured text.** Audio carries a quick orientation ("here's what's in the breakdown"). Text carries the detailed checklist, table, or structured payload that needs to be skimmed/searched.
+
+**The anti-pattern, hard rule:** never send the same text as the audio in the caption. Duplication wastes the channel and trains the user to ignore one of the two. (Already in memory `feedback_hybrid_message_caption.md`; this codifies it at the protocol layer.)
+
 ## Related
 
 - Memory: `feedback_compression_as_talent.md`, `feedback_lazy_load_service_msgs.md`, `feedback_telegram_voice.md`, `feedback_hybrid_message_caption.md`.
