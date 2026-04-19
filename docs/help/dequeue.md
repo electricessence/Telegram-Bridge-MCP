@@ -14,7 +14,7 @@ dequeue
 2. Stay responsive. Call dequeue between work chunks.
 3. After subagent returns: review result, DM superior, dequeue — do NOT stop.
 4. After error: notify superior, dequeue — do NOT stop.
-5. Default timeout always. Exception: timeout: 0 when draining pending after reconnect.
+5. Default timeout always. Exception: max_wait: 0 when draining pending after reconnect.
 6. Never assume silence = approval. Wait for explicit response.
 
 ## Reactions

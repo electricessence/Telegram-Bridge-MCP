@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   handleSendDirectMessage: vi.fn(),
   handleConfirm: vi.fn(),
   handleAppendText: vi.fn(),
+  deliverServiceMessage: vi.fn(),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -101,6 +102,10 @@ vi.mock("./append_text.js", () => ({
   handleAppendText: (args: unknown) => mocks.handleAppendText(args),
 }));
 
+vi.mock("../session-queue.js", () => ({
+  deliverServiceMessage: (...args: unknown[]) => mocks.deliverServiceMessage(...args),
+}));
+
 import { register } from "./send.js";
 
 const TOKEN = 1_123_456; // sid=1, suffix=123456
@@ -127,6 +132,7 @@ describe("send tool", () => {
     mocks.sendMessage.mockResolvedValue(SENT_MSG);
     mocks.sendVoiceDirect.mockResolvedValue(SENT_VOICE_MSG);
     mocks.showTyping.mockResolvedValue(undefined);
+    mocks.deliverServiceMessage.mockReturnValue(undefined);
 
     const server = createMockServer();
     register(server);
@@ -679,5 +685,134 @@ describe("hybrid auto-split on caption overflow", () => {
     // Caption present on the voice note
     const voiceCallArgs = mocks.sendVoiceDirect.mock.calls[0] as [unknown, unknown, { caption?: string }];
     expect(voiceCallArgs[2].caption).toBeDefined();
+  });
+});
+
+// =============================================================================
+// 10-621: findUnrenderableChars scans finalText (not raw text)
+// =============================================================================
+describe("unrenderable char warning — scans finalText including topic prefix", () => {
+  let call: (args: Record<string, unknown>) => Promise<unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.resolveChat.mockReturnValue(42);
+    mocks.validateText.mockReturnValue(null);
+    mocks.splitMessage.mockImplementation((t: string) => [t]);
+    // markdownToV2 passes through — we control the injected prefix directly
+    mocks.markdownToV2.mockImplementation((t: string) => t);
+    mocks.sendMessage.mockResolvedValue({ message_id: 42 });
+    mocks.deliverServiceMessage.mockReturnValue(undefined);
+
+    const server = createMockServer();
+    register(server);
+    call = server.getHandler("send");
+  });
+
+  it("triggers warning when topic prefix (injected by applyTopicToText) contains an unrenderable char", async () => {
+    // Simulate applyTopicToText prepending a topic header that contains an em dash (—, U+2014)
+    // This is the bug: scanning `text ?? ""` would miss this prefix; scanning finalText catches it.
+    mocks.applyTopicToText.mockImplementation((t: string) => `\u2014Topic\u2014\n${t}`);
+
+    const result = await call({ text: "hello", token: TOKEN });
+
+    expect(isError(result)).toBe(false);
+    expect(parseResult(result).message_id).toBe(42);
+    // deliverServiceMessage must have been called with the unrenderable-chars warning
+    expect(mocks.deliverServiceMessage).toHaveBeenCalledOnce();
+    const warningMsg = (mocks.deliverServiceMessage.mock.calls[0] as unknown[])[1] as string;
+    expect(warningMsg).toContain("U+2014");
+  });
+
+  it("does NOT trigger warning when topic prefix is clean ASCII and text is clean ASCII", async () => {
+    mocks.applyTopicToText.mockImplementation((t: string) => `[MyTopic]\n${t}`);
+
+    const result = await call({ text: "hello", token: TOKEN });
+
+    expect(isError(result)).toBe(false);
+    expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// 10-622: unrenderable char scan in audio+caption and captionOverflow paths
+// =============================================================================
+describe("unrenderable char warning — audio+caption and captionOverflow paths", () => {
+  let call: (args: Record<string, unknown>) => Promise<unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.resolveChat.mockReturnValue(42);
+    mocks.validateText.mockReturnValue(null);
+    mocks.isTtsEnabled.mockReturnValue(true);
+    mocks.stripForTts.mockImplementation((t: string) => t);
+    mocks.applyTopicToText.mockImplementation((t: string) => t);
+    mocks.markdownToV2.mockImplementation((t: string) => t);
+    mocks.splitMessage.mockImplementation((t: string) => [t]);
+    mocks.synthesizeToOgg.mockResolvedValue(Buffer.from("ogg"));
+    mocks.sendVoiceDirect.mockResolvedValue({ message_id: 43 });
+    mocks.sendMessage.mockResolvedValue({ message_id: 99 });
+    mocks.showTyping.mockResolvedValue(undefined);
+    mocks.deliverServiceMessage.mockReturnValue(undefined);
+
+    const server = createMockServer();
+    register(server);
+    call = server.getHandler("send");
+  });
+
+  // ---------------------------------------------------------------------------
+  // Audio + caption (inline) — unrenderable char in caption text
+  // ---------------------------------------------------------------------------
+  it("audio+caption: fires warning when caption contains an unrenderable char (em dash)", async () => {
+    // markdownToV2 passes through; inject em dash directly in caption text
+    const captionWithBadChar = "Status\u2014done"; // em dash U+2014
+    const result = await call({ text: captionWithBadChar, audio: "spoken content", token: TOKEN });
+
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    expect(data.audio).toBe(true);
+    // Voice was sent with caption inline (text < MAX_CAPTION)
+    expect(mocks.sendVoiceDirect).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    // Warning fired
+    expect(mocks.deliverServiceMessage).toHaveBeenCalledOnce();
+    const warningMsg = (mocks.deliverServiceMessage.mock.calls[0] as unknown[])[1] as string;
+    expect(warningMsg).toContain("U+2014");
+    expect(warningMsg).toContain("unrenderable");
+    const eventType = (mocks.deliverServiceMessage.mock.calls[0] as unknown[])[2] as string;
+    expect(eventType).toBe("unrenderable_chars_warning");
+  });
+
+  it("audio+caption: no warning when caption is clean ASCII", async () => {
+    const result = await call({ text: "clean caption text", audio: "spoken", token: TOKEN });
+
+    expect(isError(result)).toBe(false);
+    expect(mocks.sendVoiceDirect).toHaveBeenCalledOnce();
+    expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+  });
+
+  // ---------------------------------------------------------------------------
+  // captionOverflow path — unrenderable char in overflow text message
+  // ---------------------------------------------------------------------------
+  it("captionOverflow: fires warning when overflow text message contains an unrenderable char", async () => {
+    // Build a string > MAX_CAPTION (1024-60=964) that contains an arrow (→ U+2192)
+    const longTextWithBadChar = "A".repeat(960) + "\u2192end"; // > 964 chars, contains →
+    const result = await call({ text: longTextWithBadChar, audio: "hello", token: TOKEN });
+
+    expect(isError(result)).toBe(false);
+    const data = parseResult(result);
+    // captionOverflow triggered: voice sent + separate text message
+    expect(mocks.sendVoiceDirect).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(data.split).toBe(true);
+    expect(data.audio).toBe(true);
+    // Warning fired for the overflow text
+    expect(mocks.deliverServiceMessage).toHaveBeenCalledOnce();
+    const warningMsg = (mocks.deliverServiceMessage.mock.calls[0] as unknown[])[1] as string;
+    expect(warningMsg).toContain("U+2192");
+    const eventType = (mocks.deliverServiceMessage.mock.calls[0] as unknown[])[2] as string;
+    expect(eventType).toBe("unrenderable_chars_warning");
   });
 });

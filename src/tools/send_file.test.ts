@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMockServer, parseResult, isError, errorCode } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({
@@ -297,4 +297,49 @@ describe("send_file tool", () => {
 
   });
 
+});
+
+describe("send_file — voice non-blocking timing", () => {
+  let call: (args: Record<string, unknown>) => Promise<unknown>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.showTyping.mockResolvedValue(undefined);
+    mocks.resolveMediaSource.mockReturnValue({ source: "/path/to/file" });
+    mocks.sendVoiceDirect.mockResolvedValue({
+      message_id: 99,
+      voice: { file_id: "vce99" },
+    });
+    mocks.typingGeneration.mockReturnValue(42);
+    const server = createMockServer();
+    register(server);
+    call = server.getHandler("send_file");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("voice send resolves without waiting for typing cancel timer", async () => {
+    const start = Date.now();
+    const result = await call({ file: "/audio/note.ogg", token: 1123456 });
+    const elapsed = Date.now() - start;
+    expect(isError(result)).toBe(false);
+    // Must resolve near-instantly — no 3s blocking sleep
+    expect(elapsed).toBeLessThan(500);
+    // cancelTypingIfSameGeneration not yet called (timer still pending)
+    expect(mocks.cancelTypingIfSameGeneration).not.toHaveBeenCalled();
+    // Advance past the 1s timer
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(mocks.cancelTypingIfSameGeneration).toHaveBeenCalledWith(42);
+  });
+
+  it("voice send cancels typing immediately on API failure", async () => {
+    mocks.sendVoiceDirect.mockRejectedValue(new Error("api error"));
+    const result = await call({ file: "/audio/note.ogg", token: 1123456 });
+    expect(isError(result)).toBe(true);
+    expect(mocks.cancelTypingIfSameGeneration).toHaveBeenCalledWith(42);
+  });
 });

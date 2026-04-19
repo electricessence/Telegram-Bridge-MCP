@@ -12,7 +12,7 @@ export const TEMPORARY_BY_DEFAULT = new Set<string>([
   '🤔', // thinking
   '👀', // eyeballs / reading
   '⏳', // hourglass / working
-  '✍️', // writing
+  '\u270D', // writing hand (U+270D, no VS16) — matches ALLOWED_EMOJI in set_reaction.ts
   '👨‍💻', // coding
 ]);
 

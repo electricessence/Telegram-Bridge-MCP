@@ -174,17 +174,18 @@ export async function handleSendFile({
             disable_notification,
             reply_to_message_id: replyTo,
           });
-          // Voice messages take 2-5s to render after API confirmation; keep
-          // the upload indicator alive until the message appears in chat.
-          await new Promise<void>(resolve => setTimeout(resolve, 3000));
+          // Schedule typing cancel after a brief delay so the upload indicator
+          // remains visible while the voice renders in chat — non-blocking.
+          setTimeout(() => cancelTypingIfSameGeneration(gen), 1000);
           return toResult({
             message_id: msg.message_id,
             type: "voice",
             file_id: msg.voice?.file_id,
             warning: CDN_WARNING,
           });
-        } finally {
+        } catch (e) {
           cancelTypingIfSameGeneration(gen);
+          throw e;
         }
       }
 

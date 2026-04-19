@@ -33,6 +33,21 @@ function containsMarkdownTable(text: string): boolean {
   return text.split("\n").some((line) => MARKDOWN_TABLE_RE.test(line.trim()));
 }
 
+/** Scan text for unrenderable chars and deliver a service warning to the session if any are found. */
+function warnUnrenderableChars(sid: number, text: string): void {
+  const badChars = findUnrenderableChars(text);
+  if (badChars.length > 0) {
+    const charList = badChars
+      .map(c => `\`${c}\` (U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")})`)
+      .join(", ");
+    deliverServiceMessage(
+      sid,
+      `Message sent, but some characters may not render in Telegram: ${charList}. Use ASCII alternatives.`,
+      "unrenderable_chars_warning",
+    );
+  }
+}
+
 /** Returns the closest string in `candidates` to `input`, or null if no reasonable match. */
 function findClosestMatch(input: string, candidates: readonly string[]): string | null {
   if (candidates.length === 0 || input.length === 0) return null;
@@ -284,6 +299,8 @@ export function register(server: McpServer) {
                     disable_notification,
                   } as Record<string, unknown>),
                 );
+                // Scan the overflow text for unrenderable characters after it is sent
+                warnUnrenderableChars(_sid, splitText);
                 if (message_ids.length === 1) {
                   return toResult({
                     message_id: message_ids[0],
@@ -300,6 +317,10 @@ export function register(server: McpServer) {
                   audio: true,
                   _hint: `Caption exceeded limit; audio sent as msgs ${message_ids.join(", ")}, text sent separately as msg ${textMsg.message_id}.`,
                 });
+              }
+              // Scan the inline caption for unrenderable characters after voice is sent
+              if (resolvedCaption) {
+                warnUnrenderableChars(_sid, resolvedCaption);
               }
               if (message_ids.length === 1) {
                 return toResult({ message_id: message_ids[0], audio: true });
@@ -351,17 +372,7 @@ export function register(server: McpServer) {
               message_ids.push(msg.message_id);
             }
             const hasTable = containsMarkdownTable(text ?? "");
-            const badChars = findUnrenderableChars(text ?? "");
-            if (badChars.length > 0) {
-              const charList = badChars
-                .map(c => `\`${c}\` (U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")})`)
-                .join(", ");
-              deliverServiceMessage(
-                _sid,
-                `Message sent, but some characters may not render in Telegram: ${charList}. Use ASCII alternatives.`,
-                "unrenderable_chars_warning",
-              );
-            }
+            warnUnrenderableChars(_sid, finalText);
             if (message_ids.length === 1) {
               return toResult(hasTable ? { message_id: message_ids[0], info: TABLE_WARNING } : { message_id: message_ids[0] });
             }
