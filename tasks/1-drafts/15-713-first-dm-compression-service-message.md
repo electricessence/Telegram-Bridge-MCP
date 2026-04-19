@@ -34,6 +34,17 @@ Worker (TMCP). Curator stages, operator merges.
 
 15 - behavior shaping. Not blocking, but fixes a recurring "agent DMs are too long" friction.
 
+## Existing help-topic state (audited 2026-04-19)
+
+`help('compression')` exists and has reasonable surface map but conflicts with the refined operator rules and needs updating. `help('audio')` does NOT exist as a topic. `help('send')`'s "Hybrid" section codifies the OLD pattern ("voice = full detail, caption = TL;DR") which is now the explicit anti-pattern.
+
+**Refinements required:**
+
+1. **`help('compression')`:** keep surface map. Update audio row from "None" → "Audio form" (codified below). Update caption row to specify "topic label or non-overlapping payload only — never restate audio."
+2. **`help('audio')`:** add as new topic. Source content from this task's "Voice / audio" section above.
+3. **`help('send')` Hybrid section:** rewrite. Old "voice = full detail, caption = TL;DR" is wrong; replace with the two-pattern model (long-audio+brief-label, short-audio+long-structured-payload) and the duplication anti-pattern.
+4. **Discoverability at startup:** any new agent instance should encounter the audio/compression rules early enough to apply them. Either via `help('startup')` cross-link or via the per-modality first-use service messages (this task + `15-714`).
+
 ## Source content for `help('compression')` (operator voice 2026-04-19)
 
 The compression help topic must distinguish modality-by-modality. Operator's spec, captured verbatim then codified:
