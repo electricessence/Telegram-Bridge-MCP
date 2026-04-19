@@ -43,6 +43,7 @@
 - `AUTH_FAILED` guidance now explicitly mentions closed/restarted sessions so mid-session token failures direct agents to `action(type: 'session/reconnect', ...)`
 - Graceful shutdown now has a hard-exit watchdog and duplicate-request guard so `/shutdown` cannot hang indefinitely on stalled network cleanup calls
 - Background Telegram poller now starts unconditionally at server startup so built-in commands (`/shutdown`, `/session`, etc.) work even when no agent session is active
+- `src/local-log.ts`: Fixed concurrent flush race — serialized `_actualFlush` calls via promise chaining to prevent dropped or interleaved log entries when `flushCurrentLog()` is called concurrently (PR #148)
 
 ## v6.0.2 — 2026-04-11
 
