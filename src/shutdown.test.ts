@@ -115,7 +115,7 @@ describe("elegantShutdown", () => {
   });
 
   it("stops poller, waits for exit, and drains pending updates", async () => {
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "A" }]);
+    mocks.listSessions.mockReturnValueOnce([{ sid: 1, name: "A" }]);
     await elegantShutdown();
     expect(mocks.stopPoller).toHaveBeenCalledTimes(1);
     expect(mocks.waitForPollerExit).toHaveBeenCalledTimes(1);
@@ -123,7 +123,7 @@ describe("elegantShutdown", () => {
   });
 
   it("delivers shutdown service message to all active sessions", async () => {
-    mocks.listSessions.mockReturnValue([
+    mocks.listSessions.mockReturnValueOnce([
       { sid: 1, name: "Overseer" },
       { sid: 2, name: "Worker" },
     ]);
@@ -133,18 +133,16 @@ describe("elegantShutdown", () => {
     expect(mocks.deliverServiceMessage).toHaveBeenCalledTimes(2);
     expect(mocks.deliverServiceMessage).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("shutting down"),
-      "shutdown",
+      expect.objectContaining({ text: expect.stringContaining("shutting down"), eventType: "shutdown" }),
     );
     expect(mocks.deliverServiceMessage).toHaveBeenCalledWith(
       2,
-      expect.stringContaining("shutting down"),
-      "shutdown",
+      expect.objectContaining({ text: expect.stringContaining("shutting down"), eventType: "shutdown" }),
     );
   });
 
   it("notifies session waiters after delivering shutdown messages", async () => {
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "A" }]);
+    mocks.listSessions.mockReturnValueOnce([{ sid: 1, name: "A" }]);
     await elegantShutdown();
     expect(mocks.notifySessionWaiters).toHaveBeenCalledTimes(1);
   });
@@ -218,7 +216,7 @@ describe("elegantShutdown", () => {
   });
 
   it("unpins announcement messages for all sessions on shutdown", async () => {
-    mocks.listSessions.mockReturnValue([
+    mocks.listSessions.mockReturnValueOnce([
       { sid: 1, name: "Overseer" },
       { sid: 2, name: "Worker" },
     ]);
@@ -231,7 +229,7 @@ describe("elegantShutdown", () => {
   });
 
   it("skips unpin when session has no announcement message", async () => {
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Worker" }]);
+    mocks.listSessions.mockReturnValueOnce([{ sid: 1, name: "Worker" }]);
     mocks.getSessionAnnouncementMessage.mockReturnValue(undefined);
     await elegantShutdown();
     expect(mocks.unpinChatMessage).not.toHaveBeenCalled();
@@ -239,14 +237,14 @@ describe("elegantShutdown", () => {
 
   it("does not unpin when chat is unconfigured", async () => {
     mocks.resolveChat.mockReturnValue("not configured");
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Worker" }]);
+    mocks.listSessions.mockReturnValueOnce([{ sid: 1, name: "Worker" }]);
     mocks.getSessionAnnouncementMessage.mockReturnValue(999);
     await elegantShutdown();
     expect(mocks.unpinChatMessage).not.toHaveBeenCalled();
   });
 
   it("continues shutdown even if unpin fails", async () => {
-    mocks.listSessions.mockReturnValue([{ sid: 1, name: "Worker" }]);
+    mocks.listSessions.mockReturnValueOnce([{ sid: 1, name: "Worker" }]);
     mocks.getSessionAnnouncementMessage.mockReturnValue(888);
     mocks.unpinChatMessage.mockRejectedValue(new Error("unpin failed"));
     await expect(elegantShutdown()).resolves.toBeUndefined();

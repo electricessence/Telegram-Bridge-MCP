@@ -830,10 +830,10 @@ describe("session_start tool", () => {
     await call({});
 
     const calls = mocks.deliverServiceMessage.mock.calls;
-    const role = calls.find((c: unknown[]) => c[0] === 1 && c[2] === "onboarding_role");
+    const role = calls.find((c: unknown[]) => c[0] === 1 && typeof c[1] === "object" && (c[1] as Record<string, unknown>).eventType === "onboarding_role");
     expect(role).toBeDefined();
-    expect(String(role![1])).toContain("governor");
-    expect(String(role![1])).not.toContain("You are a participant session");
+    expect(String((role![1] as Record<string, unknown>).text)).toContain("governor");
+    expect(String((role![1] as Record<string, unknown>).text)).not.toContain("You are a participant session");
   });
 
   it("first session: injects onboarding_protocol after session_orientation", async () => {
@@ -848,7 +848,7 @@ describe("session_start tool", () => {
     // spec-form: deliverServiceMessage(sid, { eventType, text }) — c[1] is the spec object
     const protocol = calls.find((c: unknown[]) => c[0] === 1 && typeof c[1] === "object" && (c[1] as Record<string, unknown>).eventType === "onboarding_protocol");
     expect(protocol).toBeDefined();
-    expect(String((protocol![1] as Record<string, unknown>).text)).toContain("Signal activity");
+    expect(String((protocol![1] as Record<string, unknown>).text)).toContain("Show-typing before every reply");
   });
 
   it("second session (participant): onboarding_role is NOT injected — session_orientation covers role", async () => {
@@ -1037,8 +1037,8 @@ describe("session_start tool", () => {
     const calls = mocks.deliverServiceMessage.mock.calls;
     const toExisting = calls.find((c: unknown[]) => c[0] === 1 && c[2] === "session_joined");
     expect(toExisting).toBeDefined();
-    expect(String(toExisting![1])).toContain("has joined");
-    expect(String(toExisting![1])).not.toContain("has reconnected");
+    expect(String(toExisting![1])).toContain("joined");
+    expect(String(toExisting![1])).not.toContain("reconnected");
     // session/start does not set reconnect flag in details
     const details = toExisting![3] as Record<string, unknown>;
     expect(details.reconnect).toBeUndefined();
