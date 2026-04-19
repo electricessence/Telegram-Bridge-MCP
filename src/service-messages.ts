@@ -135,7 +135,7 @@ export const SERVICE_MESSAGES = deepFreeze({
 
   NUDGE_TYPING_RATE: {
     eventType: "behavior_nudge_typing_rate" as const,
-    text: "Show-typing after receiving messages. help('send')",
+    text: "Show-typing after receiving messages. help('show-typing')",
   },
 
   NUDGE_QUESTION_HINT: {
