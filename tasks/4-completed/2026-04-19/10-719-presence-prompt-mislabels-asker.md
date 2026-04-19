@@ -38,3 +38,10 @@ Worker (TMCP). Curator stages, operator merges. Bug fix; no design needed.
 
 - `15-713`/`15-714` (other behavior-shaping work in TMCP).
 - Operator note: "we've had that issue before" — search git history for prior attempts.
+
+## Completion
+
+- Branch: `10-719` in `Telegram MCP` repo
+- Commit: `75bd03c` — switched `sendGovernorPrompt` to use `getRawApi()` for all message ops; removed `hookOwnerSid` capture; pass `undefined` to `registerCallbackHook`
+- Root cause: `getCallerSid()` falls back to `getActiveSession()` (global `_activeSessionId`) in timer context — outbound proxy injected that session's name tag into the system prompt
+- Pre-existing lint error in `src/tools/session/registration/index.ts:21` (unrelated to this change) — flagged separately
