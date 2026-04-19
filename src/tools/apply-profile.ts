@@ -2,7 +2,6 @@ import type { ProfileData } from "../profile-store.js";
 import { setSessionVoice, setSessionSpeed } from "../voice-state.js";
 import { setSessionDefault, registerPreset } from "../animation-state.js";
 import { addReminder, listReminders, reminderContentHash } from "../reminder-state.js";
-import { setTutorialEnabled } from "../session-manager.js";
 
 export interface ApplyResult {
   applied: Record<string, unknown>;
@@ -93,10 +92,6 @@ export function applyProfile(sid: number, profile: ProfileData): ApplyResult | A
       applied.reminders = reminderSummary;
     }
 
-    if (profile.tutorial !== undefined) {
-      setTutorialEnabled(sid, profile.tutorial);
-      applied.tutorial = profile.tutorial;
-    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const isReminderLimit = message.includes("Max reminders per session");

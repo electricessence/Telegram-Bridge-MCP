@@ -75,7 +75,7 @@ function completionBadge(steps: ChecklistStep[]): string {
   const done = steps.filter(s => s.status === "done").length;
 
   if (failed > 0) {
-    return `🔴 Failed — ${done}/${total} passed${failed > 0 ? `, ${failed} failed` : ""}${skipped > 0 ? `, ${skipped} skipped` : ""}`;
+    return `🔴 Failed — ${done}/${total} done${failed > 0 ? `, ${failed} failed` : ""}${skipped > 0 ? `, ${skipped} skipped` : ""}`;
   }
   if (skipped > 0) {
     return `🟡 Incomplete — ${done}/${total} completed, ${skipped} skipped`;

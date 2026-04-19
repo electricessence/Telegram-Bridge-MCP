@@ -22,7 +22,7 @@ export function handleShutdown({ force }: { force?: boolean }) {
   // With no active sessions, pending items can never be processed — shut down immediately.
   const activeSessions = listSessions();
   if (activeSessions.length === 0) {
-    const result = toResult({ shutting_down: true, pending_flushed: pendingCount() });
+    const result = toResult({ shutting_down: true, pending_at_shutdown: pendingCount() });
     setImmediate(() => { void elegantShutdown(); });
     return result;
   }
@@ -49,10 +49,10 @@ export function handleShutdown({ force }: { force?: boolean }) {
   }
 
   // Send the response first so the caller gets confirmation before we exit.
-  // pending_flushed reports the count at decision time; with force=true these
+  // pending_at_shutdown reports the count at decision time; with force=true these
   // messages are abandoned (not drained), so callers should not treat this as
   // a delivery confirmation.
-  const result = toResult({ shutting_down: true, pending_flushed: pending });
+  const result = toResult({ shutting_down: true, pending_at_shutdown: pending });
   setImmediate(() => { void elegantShutdown(); });
   return result;
 }

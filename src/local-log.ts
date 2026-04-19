@@ -106,10 +106,7 @@ export function logEvent(event: unknown): void {
   if (_flushTimer === null) {
     _flushTimer = setTimeout(() => {
       _flushTimer = null;
-      _flushPromise = _flushPromise.then(_actualFlush).then(() => {
-        // Clear the settled promise so it does not hold a reference chain indefinitely
-        _flushPromise = Promise.resolve();
-      });
+      _flushPromise = _flushPromise.then(_actualFlush);
     }, FLUSH_DELAY_MS);
   }
 }

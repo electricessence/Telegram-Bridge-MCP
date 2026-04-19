@@ -29,7 +29,6 @@ export interface ProfileData {
   animation_default?: string[];
   animation_presets?: Record<string, string[]>;
   reminders?: ReminderDef[];
-  tutorial?: boolean;
 }
 
 // ---------------------------------------------------------------------------
