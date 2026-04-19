@@ -23,7 +23,7 @@
 
 ### Changed
 
-- Service message content rewrite: all `SERVICE_MESSAGES` constant values rewritten to ultra-compressed spec — minimum words, help() breadcrumbs, no pin/formula references; consolidated 6 governor-change variants to single `GOVERNOR_CHANGED`; added `SESSION_JOINED` and `ONBOARDING_ROLE_PARTICIPANT` messages
+- Service message content rewrite: all `SERVICE_MESSAGES` constant values rewritten to ultra-compressed spec — minimum words, help() breadcrumbs, no pin/formula references; consolidated 6 governor-change variants to single `GOVERNOR_CHANGED`; added `SESSION_JOINED`
 
 ### Fixed
 
