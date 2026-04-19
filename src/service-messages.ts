@@ -140,11 +140,11 @@ export const SERVICE_MESSAGES = deepFreeze({
 
   NUDGE_QUESTION_HINT: {
     eventType: "behavior_nudge_question_hint" as const,
-    text: `Use confirm/yn or choose() for finite-choice questions. help('send')`,
+    text: `Use action(type: "confirm/yn", ...) or send(type: "question", choose: [...]) for finite-choice questions. help('send')`,
   },
 
   NUDGE_QUESTION_ESCALATION: {
     eventType: "behavior_nudge_question_escalation" as const,
-    text: "You've sent 10+ questions without buttons. Use action(type: \"confirm/ok-cancel\"), action(type: \"confirm/yn\"), or choose() for any predictable-answer question.",
+    text: `You've sent 10+ questions without buttons. Use action(type: "confirm/ok-cancel", ...), action(type: "confirm/yn", ...), or send(type: "question", choose: [...]) for any predictable-answer question.`,
   },
 });
