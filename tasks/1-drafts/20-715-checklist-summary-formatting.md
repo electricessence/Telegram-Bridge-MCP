@@ -17,10 +17,11 @@ Current rendered checklist summary uses an em-dash separator and inline placemen
 1. **Locate** the checklist summary render code in TMCP (likely `src/services/checklist*` or wherever `send(type: "checklist")` formats the rendered message).
 2. **Remove em-dash** from the summary line. Use plain newlines as separators.
 3. **Place "incomplete" indicator on its own line.** The yellow visual stays; only the placement changes.
-4. **Standardize phrasing — refined twice per operator 2026-04-19:**
-   - **Headline:** the summary is clickable; tapping it jumps to the full checklist message. So the summary should be minimal-but-meaningful, not a complete enumeration.
-   - **Default form:** show only the most-load-bearing status word, on its own line. If anything is incomplete, just say `Incomplete`. If everything is done, just say `Complete`. The user clicks if they want the breakdown.
-   - **Optional counts:** if counts are shown, drop the "of N" framing. Use per-status lines (`6 completed`, `1 skipped`, `1 incomplete`), and skip zero-count lines. But operator's preference leans toward the minimal form -- prove the verbose form is needed before adding it.
+4. **Standardize phrasing — final form per operator 2026-04-19:**
+   - **Header** is the existing yellow "Incomplete" / green "Complete" status line. No change.
+   - **Summary line** (one line, below header): just the done count, in the terse adjective form: `6 complete` (not "6 completed", not "6 of 7"). Drop the trailing -d, drop the fraction.
+   - **Do NOT** add `1 incomplete` / `1 skipped` lines -- the header already carries the incomplete-state signal in color, and tapping the summary jumps to the full breakdown. Counts beyond the done count are noise.
+   - When everything is done, the header shifts to "Complete" and the summary line is redundant -- omit it.
 5. **Verify against a real checklist** before merging — render a 7-item checklist with 6 done, 1 incomplete, and confirm the new layout.
 
 ## Constraints
