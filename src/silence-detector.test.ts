@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   listSessions: vi.fn(() => [] as Array<{ sid: number; name: string; color: string; createdAt: string }>),
   getSessionState: vi.fn(() => undefined as { lastOutboundAt: number | undefined } | undefined),
   hasPendingUserContent: vi.fn(() => false),
+  getPendingUserContentSince: vi.fn(() => undefined as number | undefined),
   hasActiveAnimation: vi.fn(() => false),
 }));
 
@@ -19,6 +20,7 @@ vi.mock("./behavior-tracker.js", () => ({
 
 vi.mock("./session-queue.js", () => ({
   hasPendingUserContent: (sid: number) => mocks.hasPendingUserContent(sid),
+  getPendingUserContentSince: (sid: number) => mocks.getPendingUserContentSince(sid),
 }));
 
 vi.mock("./animation-state.js", () => ({
@@ -59,6 +61,7 @@ describe("silence-detector", () => {
     mocks.listSessions.mockReturnValue([makeSession()]);
     mocks.getSessionState.mockReturnValue({ lastOutboundAt: undefined });
     mocks.hasPendingUserContent.mockReturnValue(true);
+    mocks.getPendingUserContentSince.mockReturnValue(undefined);
     mocks.hasActiveAnimation.mockReturnValue(false);
   });
 
@@ -190,4 +193,28 @@ describe("silence-detector", () => {
     const [, , eventType] = nudge.mock.calls[0] as [number, string, string];
     expect(eventType).toBe("behavior_nudge_presence_rung1");
   });
+
+  // ── Grace window tests (AC#1 and AC#2 from 10-777) ─────────────────────────
+
+  it("new inbound message grants fresh 30s grace window even after long silence", () => {
+    // Last outbound was 45s ago — without the fix, rung-1 would fire immediately.
+    // New operator message arrived just 5s ago → base anchors to pendingSince.
+    mocks.getSessionState.mockReturnValue({ lastOutboundAt: NOW - 45_000 });
+    mocks.getPendingUserContentSince.mockReturnValue(NOW - 5_000); // pending 5s
+    _runSilenceDetectorTickForTest(NOW);
+    // Elapsed from pendingSince = 5s < 30s threshold → no nudge
+    expect(nudge).not.toHaveBeenCalled();
+  });
+
+  it("clock still advances from last outbound when no fresh inbound resets it", () => {
+    // Last outbound 35s ago; pendingSince is older than lastOutboundAt (or undefined).
+    // max(lastOutboundAt, pendingSince) = lastOutboundAt → rung-1 fires normally.
+    mocks.getSessionState.mockReturnValue({ lastOutboundAt: NOW - 35_000 });
+    mocks.getPendingUserContentSince.mockReturnValue(NOW - 60_000); // older than outbound
+    _runSilenceDetectorTickForTest(NOW);
+    expect(nudge).toHaveBeenCalledTimes(1);
+    const [, , eventType] = nudge.mock.calls[0] as [number, string, string];
+    expect(eventType).toBe("behavior_nudge_presence_rung1");
+  });
+
 });

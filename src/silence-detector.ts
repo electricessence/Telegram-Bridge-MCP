@@ -17,7 +17,7 @@
 
 import { listSessions } from "./session-manager.js";
 import { getSessionState } from "./behavior-tracker.js";
-import { hasPendingUserContent } from "./session-queue.js";
+import { hasPendingUserContent, getPendingUserContentSince } from "./session-queue.js";
 import { hasActiveAnimation } from "./animation-state.js";
 import { SERVICE_MESSAGES } from "./service-messages.js";
 
@@ -179,8 +179,15 @@ export function _runSilenceDetectorTickForTest(now = Date.now()): void {
       }
     }
 
-    // Compute elapsed silence since last signal (fall back to session creation time)
-    const base = currentOutboundAt ?? createdAtMs;
+    // Compute elapsed silence. Anchor to the more recent of: last outbound signal
+    // or when the current pending inbound content arrived. This ensures a fresh
+    // 30s grace window starts whenever the operator sends a new message, even if
+    // the last outbound was minutes ago.
+    const pendingSince = getPendingUserContentSince(sid);
+    const base = Math.max(
+      currentOutboundAt ?? createdAtMs,
+      pendingSince ?? createdAtMs,
+    );
     const elapsed = Math.floor((now - base) / 1000);
 
     if (elapsed < RUNG_1_THRESHOLD_S) continue;
