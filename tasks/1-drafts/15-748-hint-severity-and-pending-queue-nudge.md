@@ -6,7 +6,7 @@ Operator made two connected points (voice 2026-04-20):
 
 1. **Severity separation** between two existing nudge surfaces:
    - **Service message** carries heavy weight. Reserve for things that should genuinely interrupt the agent's frame (e.g. "you are in forced-stop recovery", "shutdown warned", behavioral corrections).
-   - **Envelope hint** is a nudge — a suggestion like "this took a while for you to respond to" or "I don't know the right answer here." Lightweight, in-band, non-disruptive.
+   - **Envelope hint** is a nudge — a suggestion like "this took a while for you to respond to." Lightweight, in-band, non-disruptive.
    These are already different surfaces in the bridge; the point is to *formalize* the distinction so future additions land at the right tier instead of defaulting to service-message noise.
 
 2. **Pending-queue nudge** (new hint). When the agent dequeues the first of multiple pending messages, the envelope should include a hint along the lines of:
