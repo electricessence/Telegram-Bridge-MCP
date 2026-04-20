@@ -217,4 +217,30 @@ describe("silence-detector", () => {
     expect(eventType).toBe("behavior_nudge_presence_rung1");
   });
 
+  it("resets grace window when new inbound arrives (AC-a)", () => {
+    // Agent last responded 100s ago (would fire rung-2 without fix).
+    // Operator message arrived 5s ago — fresh 30 s window applies.
+    mocks.getSessionState.mockReturnValue({ lastOutboundAt: NOW - 100_000 });
+    mocks.getPendingUserContentSince.mockReturnValue(NOW - 5_000);
+    _runSilenceDetectorTickForTest(NOW);
+    expect(nudge).not.toHaveBeenCalled();
+  });
+
+  it("rung resets after new inbound allows a fresh episode", () => {
+    // Tick 1: establish baseline pendingSince (old message 100s ago) — rung-1 fires at 35s silence
+    mocks.getSessionState.mockReturnValue({ lastOutboundAt: NOW - 35_000 });
+    mocks.getPendingUserContentSince.mockReturnValue(NOW - 100_000);
+    _runSilenceDetectorTickForTest(NOW);
+    expect(nudge).toHaveBeenCalledTimes(1);
+
+    // Tick 2: operator sends NEW message (pendingSince advances) — rung resets, fresh 0s window
+    mocks.getPendingUserContentSince.mockReturnValue(NOW + 5_000);
+    _runSilenceDetectorTickForTest(NOW + 5_000);
+    expect(nudge).toHaveBeenCalledTimes(1); // still 1 — fresh window
+
+    // Tick 3: 36s after new inbound — rung-1 fires again
+    _runSilenceDetectorTickForTest(NOW + 41_000);
+    expect(nudge).toHaveBeenCalledTimes(2);
+  });
+
 });

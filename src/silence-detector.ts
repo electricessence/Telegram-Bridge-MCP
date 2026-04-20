@@ -51,6 +51,11 @@ interface SilenceState {
    * When this changes, a new episode has started — reset rung flags.
    */
   lastKnownOutboundAt: number | undefined;
+  /**
+   * The pendingSince value observed last tick.
+   * When this advances, the operator sent a new message — reset rung flags.
+   */
+  lastKnownPendingSince: number | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +165,7 @@ export function _runSilenceDetectorTickForTest(now = Date.now()): void {
     // Get or create per-session rung state
     let state = _states.get(sid);
     if (!state) {
-      state = { rung1Fired: false, rung2Fired: false, lastKnownOutboundAt: undefined };
+      state = { rung1Fired: false, rung2Fired: false, lastKnownOutboundAt: undefined, lastKnownPendingSince: undefined };
       _states.set(sid, state);
     }
 
@@ -184,6 +189,21 @@ export function _runSilenceDetectorTickForTest(now = Date.now()): void {
     // 30s grace window starts whenever the operator sends a new message, even if
     // the last outbound was minutes ago.
     const pendingSince = getPendingUserContentSince(sid);
+
+    // Episode reset: when the operator sends a new message (pendingSince advances),
+    // clear rung state so nudges can fire again in the fresh episode.
+    if (pendingSince !== undefined) {
+      const isNewInbound = state.lastKnownPendingSince !== undefined
+        && pendingSince > state.lastKnownPendingSince;
+      if (isNewInbound) {
+        state.rung1Fired = false;
+        state.rung2Fired = false;
+      }
+      if (state.lastKnownPendingSince === undefined || pendingSince > state.lastKnownPendingSince) {
+        state.lastKnownPendingSince = pendingSince;
+      }
+    }
+
     const base = Math.max(
       currentOutboundAt ?? createdAtMs,
       pendingSince ?? createdAtMs,
