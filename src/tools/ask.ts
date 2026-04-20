@@ -70,7 +70,7 @@ export async function handleAsk({
     const sq = pollSid > 0
       ? getSessionQueue(pollSid)
       : undefined;
-    const effectiveTimeout = timeout_seconds ?? 86_400;
+    const effectiveTimeout = timeout_seconds ?? 300;
     const deadline = Date.now() + effectiveTimeout * 1000;
     const abortPromise = new Promise<void>((r) => { if (signal.aborted) r(); else signal.addEventListener("abort", () => { r(); }, { once: true }); });
 
@@ -148,7 +148,7 @@ export function register(server: McpServer) {
         .min(1)
         .max(86400)
         .optional()
-        .describe("Seconds to wait for a reply before returning timed_out: true. Omit to use the server maximum (24 h)."),
+        .describe("Seconds to wait for a reply before returning timed_out: true. Omit to use the default (5 minutes)."),
       reply_to: z
         .number()
         .int()
