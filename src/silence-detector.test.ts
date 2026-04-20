@@ -36,7 +36,7 @@ import {
 // ── Helpers ───────────────────────────────────────────────
 
 const NOW = 1_000_000_000;
-const SESSION_CREATED = new Date(NOW - 60_000).toISOString(); // 60s ago, past grace
+
 
 function makeSession(sid = 1, createdAtMs = NOW - 60_000) {
   return {
