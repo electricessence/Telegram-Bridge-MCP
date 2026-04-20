@@ -185,20 +185,23 @@ export function _runSilenceDetectorTickForTest(now = Date.now()): void {
 
     if (elapsed < RUNG_1_THRESHOLD_S) continue;
 
-    if (!state.rung1Fired && elapsed < RUNG_2_THRESHOLD_S) {
-      _nudgeInjector(
-        sid,
-        SERVICE_MESSAGES.NUDGE_PRESENCE_RUNG1.text(elapsed),
-        SERVICE_MESSAGES.NUDGE_PRESENCE_RUNG1.eventType,
-      );
-      state.rung1Fired = true;
-    } else if (state.rung1Fired && !state.rung2Fired && elapsed >= RUNG_2_THRESHOLD_S) {
+    if (!state.rung2Fired && elapsed >= RUNG_2_THRESHOLD_S) {
+      if (!state.rung1Fired) {
+        state.rung1Fired = true;
+      }
       _nudgeInjector(
         sid,
         SERVICE_MESSAGES.NUDGE_PRESENCE_RUNG2.text(elapsed),
         SERVICE_MESSAGES.NUDGE_PRESENCE_RUNG2.eventType,
       );
       state.rung2Fired = true;
+    } else if (!state.rung1Fired && elapsed >= RUNG_1_THRESHOLD_S) {
+      _nudgeInjector(
+        sid,
+        SERVICE_MESSAGES.NUDGE_PRESENCE_RUNG1.text(elapsed),
+        SERVICE_MESSAGES.NUDGE_PRESENCE_RUNG1.eventType,
+      );
+      state.rung1Fired = true;
     }
   }
 }

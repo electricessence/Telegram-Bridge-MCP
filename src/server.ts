@@ -198,10 +198,10 @@ export function createServer(): McpServer {
                     btRecordOutboundText(sid, outboundText);
                   }
                 }
+                recordPresenceSignal(sid);
               }
               // Count any outbound send (text, file, notification, etc.)
               btRecordSend(sid);
-              recordPresenceSignal(sid);
             } else if (name === "action" && typeof cleanArgs.type === "string" && cleanArgs.type.startsWith("confirm/")) {
               btRecordButtonUse(sid);
             } else if (name === "help" && cleanArgs.topic === "send") {
