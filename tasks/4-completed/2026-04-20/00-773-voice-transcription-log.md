@@ -61,3 +61,17 @@ A log reader scanning the NDJSON needs to reconstruct the arrival and transcript
 ## Delegation
 
 Worker (TMCP).
+
+## Completion
+
+All 5 acceptance criteria verified on `dev` (2026-04-21):
+- AC1: Arrival event logged immediately via `recordInbound()` / `pushEvent()` — includes `file_id` + `id`
+- AC2: Transcription success event logged after `patchVoiceText` — `event:"transcription"`, joined by `id`
+- AC3: Transcription error event on failure — `event:"transcription_error"`, `error_code`, `error`, same `id`
+- AC4: Either/or, exactly once — `patchVoiceText()` callback fires once via if/else
+- AC5: Tests cover both paths — `message-store.test.ts:333-347`
+
+Build: `pnpm build` PASS, `pnpm test` PASS (2478/2478). Lint has 2 pre-existing errors in `local-log.ts` (unrelated to this task).
+
+Fix commits on `dev`: `788fcfd`, `8fc5be9`, `3f77013`. Included in PR #152 (Release v7.0.2, dev -> master).
+PR URL: https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/152
