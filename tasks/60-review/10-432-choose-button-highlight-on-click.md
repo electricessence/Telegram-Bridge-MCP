@@ -42,3 +42,29 @@ The operator prefers: clicked button switches to primary color.
       `choice` (type: "choice")
 - [ ] Add tests for button re-render after callback
 - [ ] No regression in existing choose/choice flow
+
+## Completion
+
+Implemented on branch `10-432`. Commit `2290cd2`.
+
+**Approach:** Added `buildHighlightedRows(options, columns, clickedValue)` to
+`button-helpers.ts` — maps over the original options and sets `style: "primary"`
+on the clicked button while leaving others unchanged, then delegates to the
+existing `buildKeyboardRows`. Modified `appendSuffixAndEdit` to accept an optional
+`replyMarkup` parameter (defaults to `{ inline_keyboard: [] }` — backward-compat).
+Modified `ackAndEditSelection` to accept optional `highlightedRows` and pass them
+as `reply_markup` when present.
+
+Updated callback hooks in `send_choice.ts` and `choose.ts` to call
+`buildHighlightedRows` and pass the result to `ackAndEditSelection`.
+
+**Changed files (6):**
+- `src/tools/button-helpers.ts`: +`buildHighlightedRows`, modified `appendSuffixAndEdit`, modified `ackAndEditSelection`
+- `src/tools/send_choice.ts`: updated one-shot hook to pass highlighted rows
+- `src/tools/choose.ts`: updated callback hook to pass highlighted rows
+- `src/tools/button-helpers.test.ts`: 5 new tests (`buildHighlightedRows`, `ackAndEditSelection` with rows)
+- `src/tools/send_choice.test.ts`: updated existing hook test; added new highlight test
+- `src/tools/choose.test.ts`: updated 3 `ackAndEditSelection` call assertions
+
+Build: clean (tsc + biome). Lint: clean. Tests: 2489/2489 passed (full suite).
+Code review: `minor_only` — no regressions; one additional no-match test added per review finding.

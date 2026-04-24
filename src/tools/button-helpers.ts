@@ -210,20 +210,22 @@ async function appendSuffixAndEdit(
   text: string,
   suffix: string,
   isVoice?: boolean,
+  replyMarkup?: { inline_keyboard: { text: string; callback_data: string; style?: ButtonStyle }[][] },
 ): Promise<void> {
+  const markup = replyMarkup ?? { inline_keyboard: [] };
   if (isVoice) {
     await getApi()
       .editMessageCaption(chatId, messageId, {
         caption: markdownToV2(`${text}\n\n${suffix}`),
         parse_mode: "MarkdownV2",
-        reply_markup: { inline_keyboard: [] },
+        reply_markup: markup,
       })
       .catch((e: unknown) => { console.error("[button-helpers] editMessageCaption failed:", e); });
   } else {
     await getApi()
       .editMessageText(chatId, messageId, markdownToV2(`${text}\n\n${suffix}`), {
         parse_mode: "MarkdownV2",
-        reply_markup: { inline_keyboard: [] },
+        reply_markup: markup,
       })
       .catch((e: unknown) => { console.error("[button-helpers] editMessageText failed:", e); });
   }
@@ -231,7 +233,9 @@ async function appendSuffixAndEdit(
 
 /**
  * Acknowledges a callback_query (removes the Telegram spinner) and edits the
- * host message to show ▸ chosenLabel with all buttons removed.
+ * host message to show ▸ chosenLabel. When highlightedRows is provided the
+ * keyboard is updated to mark the clicked button as primary; otherwise all
+ * buttons are removed.
  */
 export async function ackAndEditSelection(
   chatId: number,
@@ -240,13 +244,15 @@ export async function ackAndEditSelection(
   chosenLabel: string,
   callbackQueryId: string | undefined,
   isVoice?: boolean,
+  highlightedRows?: { text: string; callback_data: string; style?: ButtonStyle }[][],
 ): Promise<void> {
   if (callbackQueryId) {
     await getApi()
       .answerCallbackQuery(callbackQueryId)
       .catch(() => {/* non-fatal */});
   }
-  await appendSuffixAndEdit(chatId, messageId, originalText, `▸ *${chosenLabel}*`, isVoice);
+  const replyMarkup = highlightedRows ? { inline_keyboard: highlightedRows } : undefined;
+  await appendSuffixAndEdit(chatId, messageId, originalText, `▸ *${chosenLabel}*`, isVoice, replyMarkup);
 }
 
 /**
@@ -301,6 +307,24 @@ export function buildKeyboardRows(
     );
   }
   return rows;
+}
+
+/**
+ * Rebuild keyboard rows with the clicked button highlighted in primary style.
+ * Other buttons retain their original styles.
+ */
+export function buildHighlightedRows(
+  options: KeyboardOption[],
+  columns: number,
+  clickedValue: string,
+): { text: string; callback_data: string; style?: ButtonStyle }[][] {
+  return buildKeyboardRows(
+    options.map((o) => ({
+      ...o,
+      style: o.value === clickedValue ? ("primary" as const) : o.style,
+    })),
+    columns,
+  );
 }
 
 export interface SendChoiceMessageOptions {

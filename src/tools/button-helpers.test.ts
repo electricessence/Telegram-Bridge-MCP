@@ -45,6 +45,7 @@ import {
   editWithSkipped,
   pollButtonPress,
   pollButtonOrTextOrVoice,
+  buildHighlightedRows,
 } from "./button-helpers.js";
 
 describe("button-helpers", () => {
@@ -80,6 +81,87 @@ describe("button-helpers", () => {
       mocks.answerCallbackQuery.mockResolvedValue(true);
       mocks.editMessageText.mockRejectedValue(new Error("Message not modified"));
       await expect(ackAndEditSelection(42, 1, "Question?", "Yes", "cq1")).resolves.toBeUndefined();
+    });
+
+    it("passes highlighted keyboard when highlightedRows is provided", async () => {
+      mocks.answerCallbackQuery.mockResolvedValue(true);
+      mocks.editMessageText.mockResolvedValue(true);
+      const rows = [[
+        { text: "Yes", callback_data: "yes", style: "primary" as const },
+        { text: "No", callback_data: "no" },
+      ]];
+      await ackAndEditSelection(42, 1, "Question?", "Yes", "cq1", false, rows);
+      expect(mocks.editMessageText).toHaveBeenCalledWith(
+        42, 1, expect.any(String),
+        expect.objectContaining({ reply_markup: { inline_keyboard: rows } }),
+      );
+    });
+
+    it("removes buttons when highlightedRows is omitted", async () => {
+      mocks.answerCallbackQuery.mockResolvedValue(true);
+      mocks.editMessageText.mockResolvedValue(true);
+      await ackAndEditSelection(42, 1, "Question?", "Yes", "cq1");
+      expect(mocks.editMessageText).toHaveBeenCalledWith(
+        42, 1, expect.any(String),
+        expect.objectContaining({ reply_markup: { inline_keyboard: [] } }),
+      );
+    });
+  });
+
+  describe("buildHighlightedRows", () => {
+    it("sets clicked button to primary style", () => {
+      const opts = [
+        { label: "A", value: "a" },
+        { label: "B", value: "b" },
+      ];
+      const rows = buildHighlightedRows(opts, 2, "a");
+      expect(rows).toEqual([[
+        { text: "A", callback_data: "a", style: "primary" },
+        { text: "B", callback_data: "b" },
+      ]]);
+    });
+
+    it("leaves non-clicked buttons without added style", () => {
+      const opts = [
+        { label: "X", value: "x" },
+        { label: "Y", value: "y" },
+        { label: "Z", value: "z" },
+      ];
+      const rows = buildHighlightedRows(opts, 3, "z");
+      expect(rows[0][0]).not.toHaveProperty("style");
+      expect(rows[0][1]).not.toHaveProperty("style");
+      expect(rows[0][2]).toMatchObject({ style: "primary" });
+    });
+
+    it("preserves existing style on non-clicked buttons", () => {
+      const opts = [
+        { label: "Good", value: "good", style: "success" as const },
+        { label: "Bad", value: "bad", style: "danger" as const },
+      ];
+      const rows = buildHighlightedRows(opts, 2, "bad");
+      expect(rows[0][0]).toMatchObject({ style: "success" });
+      expect(rows[0][1]).toMatchObject({ style: "primary" });
+    });
+
+    it("respects column layout", () => {
+      const opts = [
+        { label: "A", value: "a" },
+        { label: "B", value: "b" },
+        { label: "C", value: "c" },
+      ];
+      const rows = buildHighlightedRows(opts, 1, "b");
+      expect(rows).toHaveLength(3);
+      expect(rows[1][0]).toMatchObject({ style: "primary" });
+    });
+
+    it("applies no highlight when clickedValue does not match any option", () => {
+      const opts = [
+        { label: "A", value: "a" },
+        { label: "B", value: "b" },
+      ];
+      const rows = buildHighlightedRows(opts, 2, "ghost");
+      expect(rows[0][0]).not.toHaveProperty("style");
+      expect(rows[0][1]).not.toHaveProperty("style");
     });
   });
 

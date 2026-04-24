@@ -137,7 +137,7 @@ describe("send_choice tool", () => {
     expect(mocks.editMessageReplyMarkup).not.toHaveBeenCalled();
   });
 
-  it("hook invokes answerCallbackQuery and collapses message with selected label on button press", async () => {
+  it("hook invokes answerCallbackQuery and highlights clicked button on press", async () => {
     await call({ text: "Pick", options: TWO_OPTIONS, token: 1123456});
     const [hookedMessageId, hookFn] = mocks.registerCallbackHook.mock.calls[0] as [number, (evt: { content: { qid?: string; data?: string } }) => void];
     expect(hookedMessageId).toBe(9);
@@ -155,8 +155,32 @@ describe("send_choice tool", () => {
     expect(mocks.editMessageText).toHaveBeenCalledWith(
       42, 9,
       expect.stringContaining("Like it"),
-      expect.objectContaining({ reply_markup: { inline_keyboard: [] } }),
+      expect.objectContaining({
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "Like it", callback_data: "like", style: "primary" },
+            { text: "Dislike it", callback_data: "dislike" },
+          ]],
+        },
+      }),
     );
+  });
+
+  it("hook leaves non-clicked buttons unchanged after selection", async () => {
+    await call({ text: "Pick", options: TWO_OPTIONS, token: 1123456});
+    const [, hookFn] = mocks.registerCallbackHook.mock.calls[0] as [number, (evt: { content: { qid?: string; data?: string } }) => void];
+
+    mocks.answerCallbackQuery.mockResolvedValue(undefined);
+    mocks.editMessageText.mockResolvedValue(undefined);
+
+    // User picked "dislike" — "like" button should remain unstyled
+    hookFn({ content: { qid: "ack456", data: "dislike" } });
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+    const callArgs = mocks.editMessageText.mock.calls[0] as [number, number, string, { reply_markup: { inline_keyboard: { text: string; callback_data: string; style?: string }[][] } }];
+    const keyboard = callArgs[3].reply_markup.inline_keyboard;
+    expect(keyboard[0][0]).not.toHaveProperty("style"); // "like" unchanged
+    expect(keyboard[0][1]).toMatchObject({ style: "primary" }); // "dislike" highlighted
   });
 
   it("hook skips answerCallbackQuery when qid is absent", async () => {

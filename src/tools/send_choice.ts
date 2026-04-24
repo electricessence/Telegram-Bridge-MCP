@@ -6,7 +6,7 @@ import {
 import { registerCallbackHook } from "../message-store.js";
 import { requireAuth } from "../session-gate.js";
 import {
-  sendChoiceMessage, ackAndEditSelection, type KeyboardOption,
+  sendChoiceMessage, ackAndEditSelection, buildHighlightedRows, type KeyboardOption,
 } from "./button-helpers.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
 import { validateButtonSymbolParity } from "../button-validation.js";
@@ -114,9 +114,11 @@ export async function handleSendChoice({
     // ownerSid tracks the session so teardown can replace the hook with a "Session closed" ack.
     registerCallbackHook(messageId, (evt) => {
       const qid = evt.content.qid;
-      const matched = options.find((o) => o.value === evt.content.data);
-      const label = matched?.label ?? evt.content.data ?? "?";
-      void ackAndEditSelection(chatId, messageId, text, label, qid);
+      const clickedValue = evt.content.data ?? "";
+      const matched = options.find((o) => o.value === clickedValue);
+      const label = (matched?.label ?? clickedValue) || "?";
+      const highlighted = buildHighlightedRows(options as KeyboardOption[], columns, clickedValue);
+      void ackAndEditSelection(chatId, messageId, text, label, qid, false, highlighted);
     }, _sid);
 
     return toResult({ message_id: messageId });
