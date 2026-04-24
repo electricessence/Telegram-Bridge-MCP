@@ -32,6 +32,7 @@ vi.mock("./outbound-proxy.js", () => ({
   clearSendInterceptor: mocks.clearSendInterceptor,
   bypassProxy: (fn: () => unknown) => fn(),
   fireTempReactionRestore: vi.fn().mockResolvedValue(undefined),
+  buildHeader: vi.fn().mockReturnValue({ plain: "", formatted: "" }),
 }));
 
 vi.mock("./message-store.js", () => ({
@@ -305,8 +306,8 @@ describe("animation-state", () => {
 
       expect(mocks.editMessageText).toHaveBeenCalledWith(
         123, 42,
-        expect.any(String),
-        expect.objectContaining({ parse_mode: expect.any(String) }),
+        "Done\\!",
+        expect.objectContaining({ parse_mode: "MarkdownV2" }),
       );
       expect(result).toEqual({ cancelled: true, message_id: 42 });
     });
@@ -358,6 +359,20 @@ describe("animation-state", () => {
       // Should not throw
       const result = await cancelAnimation(1);
       expect(result).toEqual({ cancelled: true });
+    });
+
+    it("prepends session name tag when buildHeader returns a header", async () => {
+      const { buildHeader } = await import("./outbound-proxy.js");
+      vi.mocked(buildHeader).mockReturnValueOnce({ plain: "🤖 Bot\n", formatted: "🤖 `Bot`\n" });
+
+      await startAnimation(1);
+      await cancelAnimation(1, "Done", "Markdown");
+
+      expect(mocks.editMessageText).toHaveBeenCalledWith(
+        123, 42,
+        "🤖 `Bot`\nDone",
+        expect.objectContaining({ parse_mode: expect.any(String) }),
+      );
     });
   });
 
