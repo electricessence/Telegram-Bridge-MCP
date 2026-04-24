@@ -165,7 +165,24 @@ async function runHealthCheck(thresholdMs: number): Promise<void> {
       // Session has polled again — it's healthy again.
       _flaggedSids.delete(sid);
       const session = getSession(sid);
-      const name = session?.name ?? `Session ${sid}`;
+
+      // Session was closed (not recovered) — clean up tracking but don't post back-online.
+      if (!session) {
+        const warningMsgId = _unresponsiveMsgIds.get(sid);
+        _unresponsiveMsgIds.delete(sid);
+        if (warningMsgId !== undefined) {
+          const chatId = resolveChat();
+          if (typeof chatId === "number") {
+            void getRawApi().deleteMessage(chatId, warningMsgId).catch(() => {});
+          }
+        }
+        _backOnlineMsgIds.delete(sid);
+        clearOnceOnSend(sid);
+        dlog("health", `session closed (not recovered) sid=${sid} — back-online suppressed`);
+        continue;
+      }
+
+      const name = session.name;
 
       // Delete the "unresponsive" warning if we tracked its message_id
       const warningMsgId = _unresponsiveMsgIds.get(sid);

@@ -385,6 +385,7 @@ describe("health-check", () => {
       mocks.getGovernorSid.mockReturnValue(1);
       await _runHealthCheckNow(); // tick 1 — flags session
 
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]); // session recovered
       await _runHealthCheckNow(); // tick 2 — detects recovery
       expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
@@ -402,6 +403,7 @@ describe("health-check", () => {
       expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(1);
 
       // Tick 2: recover
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       await _runHealthCheckNow();
       expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(2); // recovery msg
@@ -410,6 +412,54 @@ describe("health-check", () => {
       mocks.getUnhealthySessions.mockReturnValue([s]);
       await _runHealthCheckNow();
       expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(3); // re-flagged
+    });
+  });
+
+  describe("recovery detection — session closed before recovery", () => {
+    it("does not post back-online when a flagged session is closed (getSession returns undefined)", async () => {
+      const s = makeSession(2, "Worker");
+      mocks.getGovernorSid.mockReturnValue(1);
+      mocks.sendServiceMessage.mockResolvedValueOnce(42); // unresponsive warning id = 42
+
+      // Tick 1: session goes unhealthy and is flagged
+      mocks.getUnhealthySessions.mockReturnValue([s]);
+      await _runHealthCheckNow();
+      expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(1);
+
+      // Simulate session/close: session is removed from _sessions
+      mocks.getSession.mockReturnValue(undefined);
+
+      // Tick 2: session is no longer in unhealthySids (it's gone), but getSession returns undefined
+      mocks.getUnhealthySessions.mockReturnValue([]);
+      await _runHealthCheckNow();
+
+      // Must NOT post a "back online" message
+      expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(1);
+      expect(mocks.sendServiceMessage).not.toHaveBeenCalledWith(
+        expect.stringContaining("back online"),
+      );
+    });
+
+    it("deletes the unresponsive warning and cleans up tracking when a flagged session is closed", async () => {
+      const s = makeSession(2, "Worker");
+      mocks.getGovernorSid.mockReturnValue(1);
+      mocks.sendServiceMessage.mockResolvedValueOnce(42); // unresponsive warning id = 42
+
+      // Tick 1: flag
+      mocks.getUnhealthySessions.mockReturnValue([s]);
+      await _runHealthCheckNow();
+
+      // Simulate session/close
+      mocks.getSession.mockReturnValue(undefined);
+
+      // Tick 2: closed session detected in recovery loop
+      mocks.getUnhealthySessions.mockReturnValue([]);
+      await _runHealthCheckNow();
+
+      // The unresponsive warning should still be cleaned up
+      expect(mocks.deleteMessage).toHaveBeenCalledWith(12345, 42);
+      // clearOnceOnSend should be called for the closed session's SID
+      expect(mocks.clearOnceOnSend).toHaveBeenCalledWith(2);
     });
   });
 
@@ -424,6 +474,7 @@ describe("health-check", () => {
       await _runHealthCheckNow();
 
       // Tick 2: recover
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(99); // back-online msg_id = 99
       await _runHealthCheckNow();
@@ -440,6 +491,7 @@ describe("health-check", () => {
       mocks.getUnhealthySessions.mockReturnValue([s]);
       await _runHealthCheckNow();
 
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(99); // back-online
       await _runHealthCheckNow();
@@ -457,6 +509,7 @@ describe("health-check", () => {
       mocks.getUnhealthySessions.mockReturnValue([s]);
       await _runHealthCheckNow();
 
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(99); // back-online
       await _runHealthCheckNow();
@@ -473,6 +526,7 @@ describe("health-check", () => {
       mocks.getUnhealthySessions.mockReturnValue([s]);
       await _runHealthCheckNow();
 
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(99); // back-online id = 99
       await _runHealthCheckNow();
@@ -492,6 +546,7 @@ describe("health-check", () => {
       mocks.getUnhealthySessions.mockReturnValue([s]);
       await _runHealthCheckNow();
 
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       await _runHealthCheckNow();
 
@@ -522,6 +577,7 @@ describe("health-check", () => {
       mocks.getUnhealthySessions.mockReturnValue([s]);
       await _runHealthCheckNow();
 
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(99); // back-online id
       await _runHealthCheckNow();
@@ -541,6 +597,7 @@ describe("health-check", () => {
       await _runHealthCheckNow();
 
       // Recovery: should delete 77
+      mocks.getSession.mockReturnValue(makeSession(1, "Primary"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(88); // back-online
       await _runHealthCheckNow();
@@ -560,6 +617,7 @@ describe("health-check", () => {
       await _runHealthCheckNow();
 
       // Tick 2: session recovers — back-online message posted with id 20
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(20); // back-online id = 20
       await _runHealthCheckNow();
@@ -571,6 +629,7 @@ describe("health-check", () => {
       await _runHealthCheckNow();
 
       // Tick 4: session recovers a second time
+      mocks.getSession.mockReturnValue(makeSession(2, "Worker"));
       mocks.getUnhealthySessions.mockReturnValue([]);
       mocks.sendServiceMessage.mockResolvedValueOnce(40); // second back-online id = 40
       await _runHealthCheckNow();
