@@ -1,55 +1,35 @@
 {
-  "voice": "am_onyx",
+  "voice": "bf_isabella",
   "voice_speed": 1.1,
   "reminders": [
     {
-      "text": "HOUSEKEEPING: Run git status --short. Scan tasks/ for files in the wrong column (e.g. completed work still in 3-in-progress). If workers are active, check they're responsive — DM any silent >10 min.",
-      "delay_seconds": 600,
-      "recurring": true
-    },
-    {
-      "text": "OPERATOR CHECK-IN: If no operator message received in the last 10 min, send a brief status update via notify (what you're doing or waiting on).",
-      "delay_seconds": 600,
-      "recurring": true
-    },
-    {
-      "text": "BUILD DRIFT: Compare get_me().mcp_commit with the current git HEAD. If they differ, ask the operator whether they want a rebuild and restart. Do not restart without approval.",
-      "delay_seconds": 1200,
-      "recurring": true
-    },
-    {
-      "text": "IDLE PRESENCE: If idle with no active work, send a temporary message: 'Standing by — ready for input.' Cancel any active animation first.",
-      "delay_seconds": 300,
-      "recurring": true
-    },
-    {
-      "text": "Dispatch subagent: Task Build Lint",
-      "delay_seconds": 1200,
-      "recurring": true
-    },
-    {
-      "text": "Dispatch subagent: Task Test Suite",
+      "text": "Fleet health check: action(type: 'session/list') — verify Workers still active, check for unresponsive sessions (10 min unresponsive = terminate). Scale up if queue non-empty and all Workers busy.",
       "delay_seconds": 1800,
       "recurring": true
     },
     {
-      "text": "Dispatch subagent: Task Changelog Audit",
+      "text": "Completed task verification: scan 60-review/ for tasks ready to seal. Read skills/task-engine/verification and skills/task-engine/finalization before proceeding. git mv approved tasks to 70-done/YYYY/MM/DD/, commit with Sealed-By trailer, DM Curator.",
+      "delay_seconds": 900,
+      "recurring": true
+    },
+    {
+      "text": "Pipeline scan: survey all task stages (40-queued, 50-active, 60-review). Queue empty? DM Curator. Stalled tasks in 50-active? Nudge Workers. Drafts available for promotion? Triage with Curator.",
+      "delay_seconds": 1800,
+      "recurring": true
+    },
+    {
+      "text": "Friction scan: review active Workers for blockers, check for stale worktrees, audit for guidance gaps. File friction items to 10-drafts/ with 'needs Curator review'. DM Curator if blocking fleet velocity.",
       "delay_seconds": 3600,
       "recurring": true
     },
     {
-      "text": "Dispatch subagent: Task Doc Hygiene",
+      "text": "PR exhaustion check: Run gh pr list across workspace repos. For any PR with pending Copilot review comments, read skills/- GitHub/copilot-exhaustion/SKILL.md and follow the exhaustion loop. DM Curator with PR status.",
       "delay_seconds": 1800,
       "recurring": true
     },
     {
-      "text": "Dispatch subagent: Task PR Review",
-      "delay_seconds": 600,
-      "recurring": true
-    },
-    {
-      "text": "Dispatch subagent: Task PR Health",
-      "delay_seconds": 1200,
+      "text": "Worktree cleanup: Scan all workspace repos for stale worktrees belonging to completed tasks. Remove with git worktree remove --force. Delete fully-merged branches with git branch -d. DM Curator with cleanup summary.",
+      "delay_seconds": 7200,
       "recurring": true
     }
   ]
