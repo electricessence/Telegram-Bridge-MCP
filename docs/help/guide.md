@@ -366,8 +366,6 @@ The message store records all inbound and outbound events automatically. The rol
 
 **Key rules:**
 
-- The timeline is **always on** and in-memory only. It does not persist across server restarts.
-- The timeline is a rolling window — oldest events are evicted when the 1000-event limit is reached.
 - `dump_session_record()` contains sensitive user content. Only call when the user explicitly requests session history, context recovery, or an audit.
 - The document caption includes the `file_id` in monospace for crash recovery.
 - Use `action(type: "download")` with the returned `file_id` to retrieve the JSON content.
