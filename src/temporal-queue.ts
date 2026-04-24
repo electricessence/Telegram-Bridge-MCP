@@ -204,6 +204,18 @@ export class TemporalQueue<T> {
     return undefined;
   }
 
+  /**
+   * Non-destructive peek: returns the last item matching the predicate, or undefined.
+   * Iterates all items in queue order; returns the final match (newest in arrival order).
+   */
+  peekLast(predicate: (item: T) => boolean): T | undefined {
+    let found: T | undefined;
+    for (const item of this._queue) {
+      if (predicate(item)) found = item;
+    }
+    return found;
+  }
+
   /** True if the given ID has been dequeued. */
   isConsumed(id: number): boolean {
     return this._consumedIds.has(id);

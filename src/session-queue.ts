@@ -125,15 +125,15 @@ export function hasPendingUserContent(sid: number): boolean {
 }
 
 /**
- * Returns the arrival timestamp (ms since epoch) of the oldest pending text
+ * Returns the arrival timestamp (ms since epoch) of the newest pending text
  * or voice event in the session queue. Used by the silence detector to anchor
- * the elapsed clock to inbound content arrival, not just last outbound.
+ * the elapsed clock to the most recent inbound content arrival.
  * Returns undefined if no queue exists or no matching event is pending.
  */
 export function getPendingUserContentSince(sid: number): number | undefined {
   const queue = _queues.get(sid);
   if (!queue) return undefined;
-  const evt = queue.peekFirst(
+  const evt = queue.peekLast(
     (e) => e.content.type === "text" || e.content.type === "voice",
   );
   return evt ? new Date(evt.timestamp).getTime() : undefined;

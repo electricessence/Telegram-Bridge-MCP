@@ -123,12 +123,16 @@ setOnTranscriptionLog((messageId, text) => {
     const errorCode = errMsg.includes("timed out") ? "service_timeout" : "service_error";
     logLocalEvent({
       id: messageId,
+      timestamp: new Date().toISOString(),
+      from: "system",
       event: "transcription_error",
       content: { type: "voice_transcription_error", error_code: errorCode, error: errMsg },
     });
   } else {
     logLocalEvent({
       id: messageId,
+      timestamp: new Date().toISOString(),
+      from: "system",
       event: "transcription",
       content: { type: "voice_transcription", text },
     });

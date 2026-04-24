@@ -106,10 +106,7 @@ export function logEvent(event: unknown): void {
   if (_flushTimer === null) {
     _flushTimer = setTimeout(() => {
       _flushTimer = null;
-      _flushPromise = _flushPromise.then(_actualFlush, (error) => {
-        console.error("local-log: previous flush failed", error);
-        return _actualFlush();
-      });
+      _flushPromise = _flushPromise.then(_actualFlush);
     }, FLUSH_DELAY_MS);
   }
 }
