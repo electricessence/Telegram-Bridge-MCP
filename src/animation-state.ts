@@ -20,6 +20,7 @@ import {
   registerSendInterceptor,
   clearSendInterceptor,
   bypassProxy,
+  buildHeader,
   fireTempReactionRestore,
 } from "./outbound-proxy.js";
 import { recordOutgoing, getHighestMessageId, trackMessageId } from "./message-store.js";
@@ -628,8 +629,10 @@ export async function cancelAnimation(
     _displayedChatId = null;
     try {
       const resolved = resolveParseMode(text, parseMode ?? "Markdown");
+      const { formatted: header } = buildHeader(resolved.parse_mode);
+      const finalText = header ? header + resolved.text : resolved.text;
       await bypassProxy(() =>
-        getRawApi().editMessageText(chatId, msgId, resolved.text, {
+        getRawApi().editMessageText(chatId, msgId, finalText, {
           parse_mode: resolved.parse_mode,
         }),
       );

@@ -12,7 +12,8 @@ import { requireAuth } from "../session-gate.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
 import { findUnrenderableChars } from "../unrenderable-chars.js";
 import { deliverServiceMessage } from "../session-queue.js";
-import { getFirstUseHint, appendHintToResult } from "../first-use-hints.js";
+import { getFirstUseHint, appendHintToResult, markFirstUseHintSeen } from "../first-use-hints.js";
+import { SERVICE_MESSAGES } from "../service-messages.js";
 // Type-routing handlers (v6 Phase 2)
 import { handleSendFile } from "./send_file.js";
 import { handleNotify } from "./notify.js";
@@ -445,7 +446,13 @@ export function register(server: McpServer) {
           const resolvedTarget = targetA ?? targetB;
           if (!resolvedTarget) return toError({ code: "MISSING_PARAM" as const, message: 'type: "dm" requires a "target_sid" (or "target") param.', hint: "Call help(topic: 'send') for the required params for this type." });
           if (!text) return toError({ code: "MISSING_PARAM" as const, message: 'type: "dm" requires a "text" param.', hint: "Call help(topic: 'send') for the required params for this type." });
-          return handleSendDirectMessage({ token: args.token, target_sid: resolvedTarget, text });
+          const dmResult = handleSendDirectMessage({ token: args.token, target_sid: resolvedTarget, text });
+          // Inject compression reminder on first DM this session (only on success)
+          if (!(dmResult as { isError?: boolean }).isError &&
+              markFirstUseHintSeen(_sid, "compression_hint_dm")) {
+            deliverServiceMessage(_sid, SERVICE_MESSAGES.COMPRESSION_HINT_FIRST_DM);
+          }
+          return dmResult;
         }
 
         case "append":

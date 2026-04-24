@@ -4,7 +4,9 @@ import { toResult, toError } from "../telegram.js";
 import { requireAuth } from "../session-gate.js";
 import { getGovernorSid } from "../routing-mode.js";
 import { getSession } from "../session-manager.js";
-import { routeMessage } from "../session-queue.js";
+import { markFirstUseHintSeen } from "../first-use-hints.js";
+import { routeMessage, deliverServiceMessage } from "../session-queue.js";
+import { SERVICE_MESSAGES } from "../service-messages.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
 import { DIGITS_ONLY } from "../utils/patterns.js";
 
@@ -45,6 +47,11 @@ export function handleRouteMessage({ token, message_id, target_sid }: { token: n
       code: "ROUTE_FAILED",
       message: "Could not route — message not found or target session queue unavailable. Verify message_id and target_sid with action(type: 'session/list').",
     });
+  }
+
+  // Inject compression reminder on first route this session
+  if (markFirstUseHintSeen(_sid, "compression_hint_route")) {
+    deliverServiceMessage(_sid, SERVICE_MESSAGES.COMPRESSION_HINT_FIRST_ROUTE);
   }
 
   return toResult({ routed: true, target_sid });

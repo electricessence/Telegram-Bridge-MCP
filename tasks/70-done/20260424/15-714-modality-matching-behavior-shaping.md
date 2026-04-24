@@ -68,3 +68,10 @@ These should be encoded into the `help('modality')` (or rolled into `help('audio
 - `15-713` (first-DM compression) - sister behavior-shaping task.
 - Memory: `feedback_telegram_voice.md`, `feedback_hybrid_message_caption.md`, `feedback_lazy_load_service_msgs.md`.
 - Meta-principle: shape behavior at the protocol layer, not in per-agent memory (per `feedback_behavioral_advice_root_cause.md`).
+
+## Completion
+
+- **Branch:** `15-714` in `Telegram MCP/.worktrees/15-714`
+- **Commit:** `bd3f5f6` — feat(15-714): voice-receive modality hint + help('modality') topic
+- **Decisions:** Used `markTutorialToolSeen(sid, "modality_hint_voice")` gate in `server.ts dispatchBehaviorTracking` — fires once per session on first user voice event. Service message text explicitly calls out buttons as fastest channel per operator spec. Created new `docs/help/modality.md` (not rolled into `audio.md` — distinct concerns: modality.md = when/priority axis; audio.md = how/format). Added `'modality'` to both `RICH_TOPICS` and `DESCRIPTION` in `help.ts`.
+- **Files changed:** `src/server.ts`, `src/service-messages.ts`, `src/tools/help.ts`, `docs/help/modality.md` (new)

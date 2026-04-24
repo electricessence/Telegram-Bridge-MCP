@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   getGovernorSid: vi.fn(),
   routeMessage: vi.fn(),
+  deliverServiceMessage: vi.fn(),
+  markFirstUseHintSeen: vi.fn(() => false),
 }));
 
 vi.mock("../session-manager.js", () => ({
@@ -19,6 +21,11 @@ vi.mock("../routing-mode.js", () => ({
 
 vi.mock("../session-queue.js", () => ({
   routeMessage: mocks.routeMessage,
+  deliverServiceMessage: (...args: unknown[]) => mocks.deliverServiceMessage(...args),
+}));
+
+vi.mock("../first-use-hints.js", () => ({
+  markFirstUseHintSeen: (...args: unknown[]) => mocks.markFirstUseHintSeen(...args),
 }));
 
 import { register } from "./route_message.js";

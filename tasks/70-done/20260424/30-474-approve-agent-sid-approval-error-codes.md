@@ -35,3 +35,13 @@ PRRT_kwDORVJb9c56SJev, PRRT_kwDORVJb9c56SJe4
 - [ ] Error codes: `NOT_PENDING`, `INVALID_COLOR` replace `UNKNOWN`
 - [ ] Existing tests updated
 - [ ] New test for concurrent same-name pending requests
+
+## Completion
+
+All acceptance criteria already satisfied by prior implementation (pre-dates this task filing):
+
+- Approval is ticket-based (`getPendingApproval(ticket)` keyed on a cryptographic random hex token) — no name-based lookup, no collision risk. `target_name` was never part of the implementation.
+- `NOT_PENDING` and `INVALID_COLOR` are already dedicated error codes (not `UNKNOWN`).
+- Concurrent same-name approval tests already exist in `approve_agent.test.ts` (lines 264–285).
+
+No code changes made. Closing as superseded by prior work.

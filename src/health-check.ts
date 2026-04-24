@@ -78,7 +78,7 @@ async function sendGovernorPrompt(
   if (typeof chatId !== "number") return;
 
   const text =
-    `⚠️ *${markdownToV2(governorName)}* \\(primary\\) appears unresponsive\\.\n` +
+    `🟡 *${markdownToV2(governorName)}* \\(primary\\) appears unresponsive\\.\n` +
     `Next available session: *${markdownToV2(nextName)}*`;
 
   const keyboard = [
@@ -246,13 +246,13 @@ async function runHealthCheck(thresholdMs: number): Promise<void> {
           });
         } else {
           const msgId = await sendServiceMessage(
-            `⚠️ ${session.name} (primary) appears unresponsive and no other session is available.`,
+            `🟡 ${session.name} (primary) appears unresponsive and no other session is available.`,
           ).catch(() => undefined);
           if (msgId !== undefined) _unresponsiveMsgIds.set(session.sid, msgId);
         }
       } else {
         const msgId = await sendServiceMessage(
-          `⚠️ ${session.name} appears unresponsive.`,
+          `🟡 ${session.name} appears unresponsive.`,
         ).catch(() => undefined);
         if (msgId !== undefined) _unresponsiveMsgIds.set(session.sid, msgId);
       }

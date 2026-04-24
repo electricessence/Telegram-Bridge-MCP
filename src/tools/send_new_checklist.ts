@@ -69,18 +69,23 @@ const UPDATE_DESCRIPTION =
 export type ChecklistStep = z.infer<typeof STEP_SCHEMA>;
 
 function completionBadge(steps: ChecklistStep[]): string {
-  const total = steps.length;
   const failed = steps.filter(s => s.status === "failed").length;
   const skipped = steps.filter(s => s.status === "skipped").length;
-  const done = steps.filter(s => s.status === "done").length;
 
+  let header: string;
   if (failed > 0) {
-    return `🔴 Failed — ${done}/${total} passed, ${failed} failed${skipped > 0 ? `, ${skipped} skipped` : ""}`;
+    header = "🔴 Failed";
+  } else if (skipped > 0) {
+    header = "🟡 Incomplete";
+  } else {
+    header = "✅ Complete";
   }
-  if (skipped > 0) {
-    return `🟡 Incomplete — ${done}/${total} completed, ${skipped} skipped`;
-  }
-  return `✅ Complete — ${done}/${total}`;
+
+  const parts: string[] = [];
+  if (skipped > 0) parts.push(`${skipped} skipped`);
+  if (failed > 0) parts.push(`${failed} failed`);
+  if (parts.length === 0) return header;
+  return `${header}\n${parts.join(", ")}`;
 }
 
 export async function handleSendNewChecklist({

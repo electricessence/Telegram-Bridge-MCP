@@ -54,3 +54,18 @@ Worker (TMCP). Curator stages, operator merges.
 
 - Memory `feedback_avoid_arrow_chars.md` (related anti-decoration philosophy).
 - `15-713`/`15-714` (broader behavior shaping series).
+
+## Activity Log
+
+- 2026-04-24: Worker 3 claimed task, dispatched impl subagent.
+- 2026-04-24: Impl subagent rewrote `completionBadge()` in `send_new_checklist.ts` — exceptional-counts-only format, no em-dash, newline separator. Added 5 format tests. Removed duplicate import in `server.ts`.
+- 2026-04-24: Code Reviewer — 0 majors, 1 minor (non-blocking), 1 nit (pre-existing silent catch). Skipped-before-failed order is per spec.
+- 2026-04-24: Committed as `67751ad` on branch `20-715`.
+
+## Completion
+
+- Branch: `20-715`
+- Commit: `67751ad`
+- Subagents: Impl ×1, Code Reviewer ×1
+- Review verdict: 0 majors, 1 minor (non-blocking), 1 nit
+- Ready for Overseer merge.

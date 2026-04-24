@@ -91,7 +91,8 @@ send(type: "append", token: <token>, message_id, text: "…", separator: " ")
 
 **Audio + Text (`"text"` type):** `send(type: "text", text: "...", audio: "...")` → voice note + text caption in one msg.
 Use for urgent updates where operator may be away from phone.
-Pattern: voice = full detail, caption = TL;DR.
+Two valid patterns: (1) long fluid audio + brief caption — audio carries the explanation, caption is a topic label only; (2) short orienting audio + long structured text — audio frames the payload, text carries it.
+**Hard rule:** never restate audio content in the caption, even paraphrased — Telegram may transcribe voice notes automatically — caption restatement adds noise. Caption must add something audio cannot (topic label, structured payload, link). See help('audio') for full guide.
 In `type: "text"` mode, buttons can't be added to that same msg — send a
 `send(type: "question", confirm: "...")`/yes-no prompt immediately after if response is needed.
 If you need audio + caption + inline buttons in one message, use interactive
