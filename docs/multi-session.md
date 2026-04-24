@@ -42,7 +42,7 @@ Since we control the store, we can attach arbitrary metadata (session IDs, owner
 
 ## Design Principles
 
-1. **One API, always a session** — `session_start` is always the first call, period. Every agent, every time, gets a session ID and PIN. No special "single-session mode."
+1. **One API, always a session** — `session_start` is always the first call, period. Every agent, every time, gets a session token. No special "single-session mode."
 2. **Self-describing session count** — the session ID is an incrementing integer. If you're session 1, you're alone. If you're session 3, there are at least 3 sessions active.
 3. **Always-on** — v4 always assigns session IDs. There is no feature flag or opt-in toggle. Single-session is simply "only one agent connected." The routing, auth, and session identity infrastructure is always present.
 4. **Default isolation** — sessions are completely invisible to each other until explicitly authorized. No inter-session communication exists by default. Each session operates as if it's the only one, until the operator grants permissions.
@@ -59,29 +59,29 @@ Since we control the store, we can attach arbitrary metadata (session IDs, owner
 Every session has three identifiers:
 
 - **Session ID (`sid`)** — server-generated, incrementing integer (1, 2, 3...). Public — appears in timeline metadata, visible to other sessions. Self-describing: if your ID is 1, you're the only session.
-- **Session PIN (`pin`)** — server-generated, 6-digit numeric code. Private — returned only to the session that called `session_start`. Never exposed in messages, timeline, or session record dumps. Required alongside `sid` on auth-required tool calls (see below) as proof of ownership.
+- **Session suffix (`suffix`)** — server-generated numeric component. Embedded in the token as proof of session ownership. Never exposed directly to agents; agents receive only the combined token.
 - **Session name** — optional, human-friendly, used as the topic prefix in Telegram messages. Provided by the agent at `session_start`. Cosmetic only. Encouraged when `session_id > 1`.
 
 This two-factor model prevents impersonation:
 
 - Session B can see Session A's ID in the timeline (for cross-session awareness)
-- Session B cannot forge tool calls as Session A because it doesn't know Session A's PIN
-- The PIN is naturally isolated by each agent's context window — one conversation can't see another's context
-- PINs must NEVER leak into Telegram messages, timeline events, or session record dumps
-- On MCP restart, counter resets and new PINs are generated — old credentials are automatically invalidated
+- Session B cannot forge tool calls as Session A because it doesn't know Session A's suffix
+- The suffix is naturally isolated by each agent's context window — one conversation can't see another's context
+- Suffixes must NEVER leak into Telegram messages, timeline events, or session record dumps
+- On MCP restart, counter resets and new suffixes are generated — old credentials are automatically invalidated
 
 ### Tool Call Authentication
 
-**Session-management tools require `sid` and `pin`** — both as integer parameters. These include `close_session`, `send_direct_message`, `pass_message`, and `route_message`. These tools call `checkAuth()` explicitly and will reject with an auth error if the credentials are missing or wrong.
+**Session-management tools require `sid` and `suffix`** — both as integer parameters. These include `close_session`, `send_direct_message`, `pass_message`, and `route_message`. These tools call `checkAuth()` explicitly and will reject with an auth error if the credentials are missing or wrong.
 
-All other tools receive the caller's session identity automatically via server middleware (AsyncLocalStorage context set by `runInSessionContext`). They do not require explicit `sid`/`pin` parameters — the session is identified from the tool-call context, not from parameters the agent types.
+All other tools receive the caller's session identity automatically via server middleware (AsyncLocalStorage context set by `runInSessionContext`). They do not require explicit `sid`/`suffix` parameters — the session is identified from the tool-call context, not from parameters the agent types.
 
 Parameter design for token efficiency:
 
 - **`sid`** — integer (1, 2, 3...). One token.
-- **`pin`** — integer (6-digit code). One token.
+- **`suffix`** — integer (numeric component). One token.
 - Short parameter names minimize token cost. ~2 tokens overhead per authenticated tool call.
-- Invalid or missing `sid`/`pin` on auth-required tools → server rejects with an auth error.
+- Invalid or missing `sid`/`suffix` on auth-required tools → server rejects with an auth error.
 
 `session_start` response example:
 
@@ -121,10 +121,10 @@ This is where multi-session gets powerful:
 ### Session Lifecycle
 
 - `session_start` with no active sessions → becomes session 1. Routing mode selection is skipped (irrelevant with one session).
-- `session_start` with existing sessions → returns explicit session ID, PIN, active session count. Operator is prompted to select a routing mode (if not already set).
+- `session_start` with existing sessions → returns session token, active session count. Operator is prompted to select a routing mode (if not already set).
 - **Session closure** — `close_session(sid)` tool. Drains the session's queue, removes it from the active session list, and cleans up resources. If the closed session was the governor, governor mode is dropped and the operator is prompted to select a new routing mode.
 - **Transport disconnect** — queue stops accumulating after a configurable timeout. Session marked inactive but not closed (can reconnect and reclaim).
-- **Session reconnect** — *(not yet implemented)* reserved for future: reclaim SID within a timeout window if PIN matches.
+- **Session reconnect** — *(not yet implemented)* reserved for future: reclaim SID within a timeout window if suffix matches.
 - **MCP restart** — all sessions are invalidated (ephemeral, in-memory only). Agents must call `session_start` again to get new credentials.
 
 ### The Swarm Model

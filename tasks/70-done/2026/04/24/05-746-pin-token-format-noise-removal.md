@@ -36,3 +36,19 @@ Worker (TMCP) on a dedicated worktree. Prerequisite for 15-747 (broader noise sc
 - PR #151 (TMCP v7.0.1, currently resolving merge)
 - 15-747 (follow-on: docs/help/service-message noise scan — this task's broader cousin)
 - Memory `telegram/token.md` (deprecated — same concern)
+
+## Completion
+
+Implemented on branch `05-746`. Commit `a8efe9d`.
+
+All 8 acceptance criteria met:
+- AC1: Formula removed from `TOKEN_PARAM_DESCRIPTION` in `identity-schema.ts` and `list_sessions.ts` token describe
+- AC2: Formula prefix dropped from `session-gate.ts` error hint; example retained
+- AC3: `docs/help/session/start.md` rewritten to "Returns a session token" without formula
+- AC4: `docs/communication.md` line 284: "SID/PIN" → "session token"
+- AC5: `multi-session.md` PIN→suffix (internal security), PIN→token (user-visible); `multi-session-flow.md` PIN→token; `session-profiles.md` "SID 2, PIN 123456" → "token: 2123456"; `multi-session-test-script.md` "S3's PIN" → "S3's token"
+- AC6: `changelog/`, `docs/multi-session-plan.md` untouched
+- AC7: Code variables (`suffix`, token schema) unchanged; only string literals changed
+- AC8: Test files unchanged; build and lint passed clean
+
+Also updated `docs/help/startup.md` and `docs/help/session.md` (help topics with formula noise, within stated scope).

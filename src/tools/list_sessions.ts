@@ -32,7 +32,7 @@ export function register(server: McpServer) {
       description: DESCRIPTION,
       inputSchema: {
         token: TOKEN_SCHEMA.optional().describe(
-          "Session token (sid * 1_000_000 + suffix). " +
+          "Session token from action(type: 'session/start'). " +
           "Omit for an unauthenticated SID probe (returns { sids: [...] }). " +
           "Provide to get full session details (requires a valid token).",
         ),

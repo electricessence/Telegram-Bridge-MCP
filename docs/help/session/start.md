@@ -1,6 +1,6 @@
 session/start — Create and register new Telegram session.
 
-Generates SID and suffix; returns token (sid*1000000+suffix). Pass token on every subsequent call.
+Returns a session token. Pass token on every subsequent call.
 Second+ sessions require operator approval via Telegram color-picker dialog.
 Name collision → error: use dequeue with saved token instead.
 

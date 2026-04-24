@@ -1,6 +1,6 @@
 Startup — Post-Session-Start
 
-Token: token = sid * 1_000_000 + suffix. Required for all session-bound calls. Save it now.
+Token: opaque integer returned by session/start. Required for all session-bound calls. Save it now.
 Reconnect: action(type: 'session/reconnect', name: '...') if token is lost.
 Missed messages: action(type: 'message/history', count: 20) after reconnect.
 

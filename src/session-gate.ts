@@ -35,7 +35,7 @@ export function requireAuth(
     return {
       code: "SID_REQUIRED",
       message: "token is required. Pass the token returned by action(type: 'session/start', ...). " +
-        "token = sid * 1_000_000 + suffix. Example: token: 1000123456",
+        "Example: token: 1000123456",
     };
   }
   const { sid, suffix } = decodeToken(token);

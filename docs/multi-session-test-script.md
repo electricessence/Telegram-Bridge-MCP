@@ -211,7 +211,7 @@ Step-by-step test plan requiring 2–3 MCP agent sessions and one operator on Te
 
 ### 5.4 Auth Rejection
 
-1. **[S3]** Tries `action(type: "session/close")` with S2's SID but S3's PIN
+1. **[S3]** Tries `action(type: "session/close")` with S2's session but S3's token
 2. **[Verify]** Auth error — wrong credentials
 3. **[Debug]** `auth failed sid=2`
 
@@ -263,7 +263,7 @@ Step-by-step test plan requiring 2–3 MCP agent sessions and one operator on Te
 - [ ] Governor death → promotion to next lowest SID
 - [ ] DM send, bidirectional, revoke on close
 - [ ] 3-session scaling + delegation
-- [ ] Auth rejection (wrong SID/PIN)
+- [ ] Auth rejection (wrong token)
 - [ ] Cross-session outbound forwarding
 - [ ] Rapid messages — no drops, no duplicates
 - [ ] Voice transcription + 🫡 reaction

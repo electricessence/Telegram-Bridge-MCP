@@ -6,7 +6,7 @@ import { DIGITS_ONLY } from "../utils/patterns.js";
  * Human-readable description for the `token` parameter used in all tool schemas.
  */
 export const TOKEN_PARAM_DESCRIPTION =
-  "Session token from action(type: 'session/start') (sid * 1_000_000 + suffix). " +
+  "Session token from action(type: 'session/start'). " +
   "Required for all paths except session/start, session/reconnect, and unauthenticated `session/list` probe — pass your token on every other tool call.";
 
 // ---------------------------------------------------------------------------

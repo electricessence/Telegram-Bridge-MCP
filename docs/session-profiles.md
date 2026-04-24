@@ -81,7 +81,7 @@ All fields are optional. A profile containing only `voice` is valid.
 ### Worker bootstrap (before profiles)
 
 ```text
-action(type: "session/start", name: "Worker")         → SID 2, PIN 123456
+action(type: "session/start", name: "Worker")         → token: 2123456
 action(type: "profile/voice", voice: "nova")
 action(type: "animation/default", preset: "thinking", frames: [...])
 action(type: "animation/default", preset: "working", frames: [...])
@@ -95,7 +95,7 @@ action(type: "reminder/set", text: "...", delay_seconds: 10, recurring: true)
 ### Worker bootstrap (with profiles)
 
 ```text
-action(type: "session/start", name: "Worker")         → SID 2, PIN 123456
+action(type: "session/start", name: "Worker")         → token: 2123456
 action(type: "profile/load", key: "profiles/Worker")  → voice, presets, reminders all restored
 ```
 

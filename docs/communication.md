@@ -281,5 +281,5 @@ Non-governor sessions: handle your targeted messages, forward genuinely mis-addr
 Session memory is advisory, not authoritative. Before acting on stored state:
 
 - Re-check live session, queue, and board state with tools
-- Never trust stored SID/PIN or active-task state without verification
+- Never trust stored session token or active-task state without verification
 - If memory conflicts with live tool state or current operator instruction, memory loses

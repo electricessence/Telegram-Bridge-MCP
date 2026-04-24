@@ -6,7 +6,7 @@ This document describes the out-of-box experience for multi-session Telegram Bri
 
 1. Agent calls `action(type: "session/start", name: "Primary")`
 2. Auto-approved (first session, no gate)
-3. SID 1 returned. PIN returned.
+3. SID 1 returned. Token returned.
 4. No name tags. No routing logic. Everything works like v3.x.
 5. All tools require `token: number` credentials on every call.
 
@@ -15,7 +15,7 @@ This document describes the out-of-box experience for multi-session Telegram Bri
 1. Agent calls `action(type: "session/start", name: "Worker")`
 2. **Approval gate:** Operator receives a Telegram `confirm` prompt:
    `🤖 New session requesting access: Worker — ✅ Approve / ❌ Deny`
-3. On approval: SID 2 + PIN returned
+3. On approval: Token returned
 
 ### Automatic effects (zero config)
 
@@ -66,7 +66,7 @@ On the wire: `{ "token": 1809146, ... }` — one field, one number.
 ## Task Dependency Chain
 
 ```text
-100 SID+PIN required on all tools (in-progress)
+100 Token required on all tools (in-progress)
  └─ 150 Ambiguous message flag in dequeue
  └─ 150 Integration tests
  └─ 200 Governor default routing
