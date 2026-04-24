@@ -274,6 +274,68 @@ describe("update_checklist tool", () => {
     expect(badge).toMatch(/^🔴 Failed/);
   });
 
+  it("completion badge: all done → exact string '✅ Complete' with no summary line", async () => {
+    mocks.editMessageText.mockResolvedValue({ message_id: 60 });
+    mocks.sendMessage.mockResolvedValue({ message_id: 61 });
+    const allDoneSteps = [
+      { label: "Build", status: "done" },
+      { label: "Test", status: "done" },
+    ];
+    await update({ title: "CI", steps: allDoneSteps, message_id: 60, token: 1123456 });
+    const badge = mocks.sendMessage.mock.calls[0][1] as string;
+    expect(badge).toBe("✅ Complete");
+  });
+
+  it("completion badge: only skipped → '🟡 Incomplete\\n1 skipped'", async () => {
+    mocks.editMessageText.mockResolvedValue({ message_id: 70 });
+    mocks.sendMessage.mockResolvedValue({ message_id: 71 });
+    const skippedSteps = [
+      { label: "Build", status: "done" },
+      { label: "Deploy", status: "skipped" },
+    ];
+    await update({ title: "CI", steps: skippedSteps, message_id: 70, token: 1123456 });
+    const badge = mocks.sendMessage.mock.calls[0][1] as string;
+    expect(badge).toBe("🟡 Incomplete\n1 skipped");
+  });
+
+  it("completion badge: only failed → '🔴 Failed\\n1 failed'", async () => {
+    mocks.editMessageText.mockResolvedValue({ message_id: 80 });
+    mocks.sendMessage.mockResolvedValue({ message_id: 81 });
+    const failedSteps = [
+      { label: "Build", status: "done" },
+      { label: "Test", status: "failed" },
+    ];
+    await update({ title: "CI", steps: failedSteps, message_id: 80, token: 1123456 });
+    const badge = mocks.sendMessage.mock.calls[0][1] as string;
+    expect(badge).toBe("🔴 Failed\n1 failed");
+  });
+
+  it("completion badge: skipped and failed → summary lists skipped first, then failed", async () => {
+    mocks.editMessageText.mockResolvedValue({ message_id: 90 });
+    mocks.sendMessage.mockResolvedValue({ message_id: 91 });
+    const mixedSteps = [
+      { label: "Build", status: "done" },
+      { label: "Test", status: "failed" },
+      { label: "Deploy", status: "skipped" },
+    ];
+    await update({ title: "CI", steps: mixedSteps, message_id: 90, token: 1123456 });
+    const badge = mocks.sendMessage.mock.calls[0][1] as string;
+    expect(badge).toBe("🔴 Failed\n1 skipped, 1 failed");
+  });
+
+  it("completion badge: no em-dash anywhere in output", async () => {
+    mocks.editMessageText.mockResolvedValue({ message_id: 100 });
+    mocks.sendMessage.mockResolvedValue({ message_id: 101 });
+    const steps = [
+      { label: "Build", status: "done" },
+      { label: "Test", status: "failed" },
+      { label: "Deploy", status: "skipped" },
+    ];
+    await update({ title: "CI", steps, message_id: 100, token: 1123456 });
+    const badge = mocks.sendMessage.mock.calls[0][1] as string;
+    expect(badge).not.toContain("—");
+  });
+
   it("does not send duplicate completion reply on repeated terminal updates", async () => {
     mocks.editMessageText.mockResolvedValue({ message_id: 10 });
     const terminalSteps = [
