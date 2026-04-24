@@ -1,5 +1,5 @@
 # Set default behavior — Git still auto-detects binary vs text
-* text=auto
+* text=auto eol=lf
 
 # Source files — LF everywhere
 *.ts   text eol=lf
