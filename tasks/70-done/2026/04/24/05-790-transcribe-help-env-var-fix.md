@@ -32,3 +32,12 @@ An agent reading the help topic would incorrectly conclude transcription needs T
 ## Delegation
 
 Worker (TMCP). Trivial scope, sub-10-minute job.
+
+## Completion
+
+Completed by Worker 6 (2026-04-23).
+
+Branch: `05-790` in Telegram MCP repo.
+Commit: `324e14d` — docs(transcribe): fix wrong env var in help topic
+
+Changed `docs/help/transcribe.md` line 23: replaced `TTS_HOST`/`OPENAI_API_KEY` bullet with accurate `STT_HOST` (optional, OpenAI-compatible Whisper) + embedded ONNX fallback (zero-config). Confirmed against `src/transcribe.ts` which reads only `process.env.STT_HOST`. All acceptance criteria met.
