@@ -32,3 +32,19 @@ Worker (TMCP).
 
 - Memory `feedback_session_close_vs_shutdown.md`.
 - 10-720 (token-wipe hint on session/close - adjacent close-path work).
+
+## Activity Log
+
+- **2026-04-24** — Worker 3 (SID 5): Investigated root cause. The health-check recovery loop in `runHealthCheck()` treated a SID disappearing from `getUnhealthySessions()` as proof of recovery, even when the session had been closed. `getSession()` returning `undefined` (closed) vs the session object (alive) is the correct discriminator.
+- **2026-04-24** — Implemented `!session` guard in `src/health-check.ts` recovery block: when `getSession(sid)` returns `undefined`, the session was closed (not recovered). Cleans up `_unresponsiveMsgIds`, `_backOnlineMsgIds`, and calls `clearOnceOnSend(sid)`. Skips back-online notification.
+- **2026-04-24** — Added regression tests in `src/health-check.test.ts` under `describe("recovery detection — session closed before recovery")`: two new tests cover the closed-session guard path. Fixed 9 existing tests that needed `getSession.mockReturnValue(makeSession(...))` before recovery ticks due to the new guard. Resolved `mockResolvedValueOnce` queue bleed root cause (test 1 in "self-cleaning status messages" left unconsumed `99` because guard caused it to skip back-online send).
+- **2026-04-24** — All 2484 tests passing. Committed `4170783` on branch `10-732`.
+
+## Completion
+
+Implementation complete. Committed `4170783` to worktree branch `10-732`.
+
+- `src/health-check.ts`: `!session` guard in recovery loop suppresses false back-online for closed sessions; cleans up all tracking state.
+- `src/health-check.test.ts`: 2 new regression tests + 9 fixed existing tests; 2484/2484 passing.
+
+Ready for Overseer review.
