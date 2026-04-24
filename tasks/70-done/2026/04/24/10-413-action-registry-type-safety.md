@@ -69,17 +69,13 @@ These are tracked separately and left untouched per task scope.
 ## Verification
 
 **Verifier:** Overseer (Sonnet dispatch, 2026-04-24)
-**Verdict:** NEEDS_REVISION
+**Verdict:** APPROVED
 
 - AC1 (ActionHandler args type unknown): PASS
 - AC2 (registration casts eliminated): PASS
 - AC3 (dispatcher return type unknown): PASS
 - AC4 (handler files updated): PASS
 - AC5 (eslint disable comment removed): PASS
-- AC6 (build clean, all tests pass): FAIL — 40 test regressions
+- AC6 (build clean, all tests pass): PASS (after fix)
 
-**Test failures:** `toActionHandler` not added to vi.mock factories:
-- `src/tools/action.test.ts` line 66: 36 tests fail
-- `src/tools/error-guidance.test.ts` line 119: 4 tests fail
-
-**Required fix:** Add `toActionHandler: (fn: unknown) => fn` to the `vi.mock("../action-registry.js", ...)` factory in both files. TypeScript build is clean; only the mock exports are missing.
+**Fix applied (Overseer):** Added `toActionHandler: (fn: unknown) => fn` to vi.mock factories in `action.test.ts` and `error-guidance.test.ts`. 48/48 tests pass. Commit `77af907`.
