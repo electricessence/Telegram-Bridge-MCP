@@ -135,3 +135,14 @@ are wired-in-instances; can ship with Part A or as follow-on drops.
 - Exact registry schema (JSON? TS type?).
 - Whether to integrate existing silent-work detector or rebuild.
 - Auto-cancel-stale-animation safety evaluation.
+
+## Completion
+
+- **Branch:** `15-745` in `Telegram MCP/.worktrees/15-745`
+- **Commit:** `871987a` — feat(15-745): behavioral-shaping registry + reaction semantics + presence tier 4
+- **Decisions:**
+  - Registry schema: TypeScript `BehaviorRuleSpec` interface with `name/description/severity/trigger/eventType/helpTopic` — typed, not JSON
+  - Silent-work detector: integrated by registering existing rung1/rung2 rules as entries (no rebuild; detector code unchanged)
+  - Auto-cancel-stale-animation: deferred per task spec — too much false-kill risk
+  - Forward-doc entries (15-713/15-714 compression/modality rules) removed from registry to avoid inconsistency; tasks 15-713/15-714 will add their own entries on merge
+- **Files:** `src/behavior-registry.ts` (new), `src/service-messages.ts`, `src/server.ts`, `src/tools/help.ts`, `docs/help/behavior.md` (new), `docs/help/reactions.md`, `docs/help/presence.md`

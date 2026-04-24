@@ -86,3 +86,11 @@ Two valid patterns. Both produce more value than either modality alone.
 - Memory: `feedback_compression_as_talent.md`, `feedback_lazy_load_service_msgs.md`, `feedback_telegram_voice.md`, `feedback_hybrid_message_caption.md`.
 - Architectural cousin: any future "first-time-X-do-Y" service messages follow the same lazy-load pattern.
 - `15-714` (modality matching) - sister; both feed the same `help` topic family.
+
+## Completion
+
+- **Branch:** `15-713` in `Telegram MCP/.worktrees/15-713`
+- **Commit:** `40084a1` — feat(15-713): inject first-DM compression hint via service message
+- **Decisions:** Implemented both `send(type:"dm")` and `message/route` triggers (per open question: yes). Used `markTutorialToolSeen(sid, "compression_hint_dm"/"compression_hint_route")` for once-per-session tracking. Hint fires only on successful DM (isError guard added after code review blocker). Route trigger gets separate `COMPRESSION_HINT_FIRST_ROUTE` constant with route-appropriate wording.
+- **Files changed:** `src/service-messages.ts`, `src/tools/send.ts`, `src/tools/route_message.ts`, `src/tools/help.ts`, `docs/help/compression.md`, `docs/help/audio.md` (new), `docs/help/send.md`
+- **Resolved open questions:** message/route also fires; per-session tracking chosen over per-target-pair.
