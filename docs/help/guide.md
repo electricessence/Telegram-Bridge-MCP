@@ -554,12 +554,3 @@ The loop guard hooks intercept the host's Stop event before the agent conversati
 | `.claude/hooks/telegram-loop-guard.sh` | Claude Code | macOS / Linux (Bash) |
 
 See [`docs/agent-setup.md`](agent-setup.md) for step-by-step installation instructions.
-
-### What happens without the hook
-
-- The host IDE may terminate the agent conversation after inactivity, a context limit, or any unhandled stop condition.
-- The Telegram session is silently dropped — the operator receives no notification.
-- Pending messages queue up and are delivered to the next agent that calls `action(type: "session/start")`.
-- If another agent is not started promptly, the operator sees silence with no indication the session ended.
-
-The hook is not strictly required for basic use, but strongly recommended for long-lived or unattended sessions.
