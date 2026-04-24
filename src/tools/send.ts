@@ -110,7 +110,7 @@ export function register(server: McpServer) {
         type: z
           .string()
           .optional()
-          .describe('Emission mode: "text" (default), "file", "notification", "choice", "dm", "append", "animation", "checklist", "progress", "question". Omit all args to list types.'),
+          .describe('Emission mode: "text" (default), "file", "notification", "choice", "dm", "append", "animation", "checklist", "progress", "question". Optional — omit to default to "text". The "text" type handles text-only, audio-only, and audio+text (voice note with caption) automatically.'),
         // ── text / voice ───────────────────────────────────────────────────
         text: z
           .string()
@@ -203,12 +203,22 @@ export function register(server: McpServer) {
       // Validate type against the known enum before entering the switch
       if (type !== undefined && !(SEND_TYPES as readonly string[]).includes(type) && !SEND_ALIASES.includes(type)) {
         const suggestion = findClosestMatch(type, SEND_TYPES);
+        const hasAudio = !!audio;
+        const hasText = !!text;
+        const isAudioTextMix = hasAudio && hasText;
+
+        const hint = isAudioTextMix
+          ? `For audio + text together, omit "type" entirely (or use type: "text") — it routes to hybrid voice-with-caption automatically.`
+          : hasAudio
+          ? `For audio-only voice notes, omit "type" or use type: "text". Call help(topic: 'send') for usage.`
+          : suggestion
+          ? `Did you mean type: "${suggestion}"? Call help(topic: 'send') for usage.`
+          : `Call help(topic: 'send') to see all available types and their required params.`;
+
         return toError({
           code: "UNKNOWN_TYPE" as const,
           message: `Unknown type: "${type}". Available types: ${SEND_TYPES.join(", ")}.`,
-          hint: suggestion
-            ? `Did you mean type: "${suggestion}"? Call help(topic: 'send') for usage.`
-            : `Call help(topic: 'send') to see all available types and their required params.`,
+          hint,
         });
       }
 

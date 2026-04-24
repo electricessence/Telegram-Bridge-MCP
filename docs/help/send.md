@@ -3,6 +3,8 @@ send — Send a message or route to a specialized mode.
 Pass `type` to select a mode. Omit all args to list available types.
 Default mode (no `type` or `type: "text"`) sends a plain text message.
 
+> **`type` is optional** — omitting it defaults to `"text"`. The `"text"` handler supports text-only, audio-only, and audio+text (voice note with caption) automatically. There is no `"hybrid"` type — pass `audio` and/or `text` without specifying `type` and it works.
+
 ## Available Types
 
 | type | Purpose | Key required params |
@@ -92,7 +94,7 @@ send(type: "append", token: <token>, message_id, text: "…", separator: " ")
 MarkdownV2. Pass `audio` for TTS voice note. Both text+audio → caption + voice.
 Reply threading: pass `reply_to: <message_id>`.
 
-**Hybrid:** `send(type: "text", text: "...", audio: "...")` → voice note + text caption in one msg.
+**Audio + Text (`"text"` type):** `send(type: "text", text: "...", audio: "...")` → voice note + text caption in one msg.
 Use for urgent updates where operator may be away from phone.
 Pattern: voice = full detail, caption = TL;DR.
 In `type: "text"` mode, buttons can't be added to that same msg — send a
