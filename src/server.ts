@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runInSessionContext } from "./session-context.js";
 import { getActiveSession, getSession } from "./session-manager.js";
 import { markFirstUseHintSeen } from "./first-use-hints.js";
+import { SERVICE_MESSAGES } from "./service-messages.js";
 import { runInTokenHintContext } from "./tools/identity-schema.js";
 import { invokePreToolHook } from "./tool-hooks.js";
 import { checkUnknownParams, injectWarningIntoResult } from "./unknown-param-warning.js";
@@ -120,6 +121,17 @@ export function dispatchBehaviorTracking(
               (u as Record<string, unknown>).from === "user",
           );
           btRecordDequeue(sid, hasUserContent);
+          // One-time voice modality hint (task 15-714)
+          const hasUserVoice = updates.some(
+            (u: unknown) =>
+              typeof u === "object" && u !== null &&
+              (u as Record<string, unknown>).from === "user" &&
+              typeof (u as Record<string, unknown>).content === "object" &&
+              ((u as Record<string, unknown>).content as Record<string, unknown>).type === "voice",
+          );
+          if (hasUserVoice && markFirstUseHintSeen(sid, "modality_hint_voice")) {
+            deliverServiceMessage(sid, SERVICE_MESSAGES.NUDGE_VOICE_MODALITY);
+          }
         }
       }
     } catch { /* ignore parse errors */ }

@@ -165,6 +165,13 @@ export const SERVICE_MESSAGES = deepFreeze({
     text: `You've sent 10+ questions without buttons. Use action(type: "confirm/ok-cancel", ...), action(type: "confirm/yn", ...), or send(type: "question", choose: [...]) for any predictable-answer question.`,
   },
 
+  // ── Modality hints ────────────────────────────────────────────────────────
+
+  NUDGE_VOICE_MODALITY: {
+    eventType: "modality_hint_voice_received" as const,
+    text: "User sent voice — consider replying with voice or hybrid. Buttons first for yes/no choices. See help('modality').",
+  },
+
   // ── Presence / silent-work nudges ─────────────────────────────────────────
 
   NUDGE_PRESENCE_RUNG1: {

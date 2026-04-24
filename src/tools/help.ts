@@ -66,6 +66,7 @@ const DESCRIPTION =
   "Pass topic: 'reactions' for the full reaction protocol (priority queue, voice auto-salute, temporary vs permanent, DM rules). " +
   "Pass topic: 'presence' for presence signal hierarchy and silent-work detector thresholds. " +
   "Pass topic: 'behavior' for the behavioral-shaping rule registry and severity tier guidance. " +
+  "Pass topic: 'modality' for the priority axis (buttons > text > audio) and modality-matching rules. " +
   "Pass topic: '<tool_name>' for detailed docs on a specific tool.";
 
 /**
@@ -196,7 +197,7 @@ export function register(server: McpServer) {
       }
 
       // Topics with rich file-based content — skip TOOL_INDEX even if present
-      const RICH_TOPICS = new Set(["dequeue", "shutdown", "animation", "checklist", "compression", "startup", "start", "quick_start", "compacted", "dump", "forced-stop", "reminders", "orphaned", "stop-hook", "index", "guide", "send", "append_text", "reactions", "presence", "behavior", "audio"]);
+      const RICH_TOPICS = new Set(["dequeue", "shutdown", "animation", "checklist", "compression", "startup", "start", "quick_start", "compacted", "dump", "forced-stop", "reminders", "orphaned", "stop-hook", "index", "guide", "send", "append_text", "reactions", "presence", "behavior", "audio", "modality"]);
 
       // topic: "<tool_name>" → per-tool description (checked before file lookup)
       // Skip for rich topics that have dedicated file-based content
