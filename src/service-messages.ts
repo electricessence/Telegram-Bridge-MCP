@@ -55,7 +55,7 @@ export const SERVICE_MESSAGES = deepFreeze({
 
   ONBOARDING_BUTTONS_TEXT: {
     eventType: "onboarding_buttons" as const,
-    text: `Buttons over typing. action(type: "confirm/ok"), action(type: "confirm/ok-cancel"), action(type: "confirm/yn") for standard prompts. send(type: "question", choose: [...]) for custom options. Free-text ask only when needed. Hybrid (text + audio) for important updates. help('send') for full reference.`,
+    text: `Buttons over typing. action(type: "confirm/ok"), action(type: "confirm/ok-cancel"), action(type: "confirm/yn") for standard prompts. send(type: "question", choose: [...]) for custom options. Free-text ask only when needed. For voice+caption, use type: "text" with audio: "..." — not a separate type. help('send') for full reference.`,
   },
 
   // ── Governor change notifications ─────────────────────────────────────────
