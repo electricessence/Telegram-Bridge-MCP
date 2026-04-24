@@ -65,3 +65,21 @@ Note: Code review surfaced 3 pre-existing bugs in `action.ts` unrelated to this 
 - `handleProgressUpdate` imported but unused
 - `handleAuthCheck` declared twice
 These are tracked separately and left untouched per task scope.
+
+## Verification
+
+**Verifier:** Overseer (Sonnet dispatch, 2026-04-24)
+**Verdict:** NEEDS_REVISION
+
+- AC1 (ActionHandler args type unknown): PASS
+- AC2 (registration casts eliminated): PASS
+- AC3 (dispatcher return type unknown): PASS
+- AC4 (handler files updated): PASS
+- AC5 (eslint disable comment removed): PASS
+- AC6 (build clean, all tests pass): FAIL — 40 test regressions
+
+**Test failures:** `toActionHandler` not added to vi.mock factories:
+- `src/tools/action.test.ts` line 66: 36 tests fail
+- `src/tools/error-guidance.test.ts` line 119: 4 tests fail
+
+**Required fix:** Add `toActionHandler: (fn: unknown) => fn` to the `vi.mock("../action-registry.js", ...)` factory in both files. TypeScript build is clean; only the mock exports are missing.
