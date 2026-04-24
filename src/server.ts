@@ -24,7 +24,6 @@ import {
   recordPresenceSignal,
 } from "./behavior-tracker.js";
 import { deliverServiceMessage } from "./session-queue.js";
-import { SERVICE_MESSAGES } from "./service-messages.js";
 import { setPresenceNudgeInjector } from "./silence-detector.js";
 
 import { register as registerDequeueUpdate } from "./tools/dequeue.js";
