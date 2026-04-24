@@ -121,6 +121,18 @@ export const SERVICE_MESSAGES = deepFreeze({
     text: "⛔ Server shutting down. Your session will be invalidated on restart.",
   },
 
+  // ── Inter-agent hints ─────────────────────────────────────────────────────
+
+  COMPRESSION_HINT_FIRST_DM: {
+    eventType: "compression_hint_first_dm" as const,
+    text: "Inter-agent DMs use ultra-compression. Max density, drop articles/filler. See help('compression').",
+  },
+
+  COMPRESSION_HINT_FIRST_ROUTE: {
+    eventType: "compression_hint_first_route" as const,
+    text: "When routing messages, write any DM cover notes in ultra-compression — max density, drop filler. See help('compression').",
+  },
+
   // ── Behavior nudges ───────────────────────────────────────────────────────
 
   NUDGE_REACTION_SEMANTICS: {

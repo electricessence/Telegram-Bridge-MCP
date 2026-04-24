@@ -16,8 +16,8 @@ Surface Map:
 | Skills (SKILL.md), instructions | Ultra |
 | Reminder text | Ultra |
 | Text to operator (Telegram) | Lite |
-| Audio captions | Lite |
-| Audio messages | None |
+| Audio captions | Lite — topic label or non-overlapping payload only; never restate audio |
+| Audio messages | Audio form — conversational, fluid, not terse |
 | Spec files, code blocks | None |
 
 Ultra Rules:
