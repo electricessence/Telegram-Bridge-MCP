@@ -16,6 +16,9 @@
 - `session/rename` action: added optional `target_sid` parameter (governor only) — allows the governor to rename another session; returns `PERMISSION_DENIED` for non-governor callers; validates the target session exists before prompting the operator
 - `session/close` action: added `force?: boolean` parameter — when `true`, allows closing the last active session without triggering the last-session guard
 - `session/close/signal` action (governor only): accepts `target_sid` and optional `timeout_seconds` — delivers a `session_close_signal` service message to the target, waits up to the timeout for self-close, force-closes via `closeSessionById` on expiry; re-checks governor status before force-closing (returns `PERMISSION_DENIED` if governor changed during the wait), detects self-close mid-wait, and rejects callers that are non-governor, target themselves, or name an unknown SID
+- `src/silence-detector.ts`: two-rung silence nudge system — fires a presence reminder after 35 s of agent inactivity when operator content is pending (rung-1) and a stronger nudge after 65 s (rung-2); outbound signals (send, typing, animation, reaction, confirm) reset the clock per episode; each new inbound message grants a 30 s grace window before rung-1 can fire
+- `src/behavior-tracker.ts`: `recordPresenceSignal(sid)` — resets the per-session silence clock on any outbound action; now also called in the `confirm/` action branch (alongside `btRecordButtonUse`) so confirm interactions count as agent presence
+- Transcription log events: voice note processing now emits `event: "transcription"` (`type: "voice_transcription"`, includes transcribed text) on success and `event: "transcription_error"` (`type: "voice_transcription_error"`, includes `error_code` and `error`) on failure — surfacing transcription outcomes in the session event log
 
 ### Changed
 
@@ -23,6 +26,7 @@
 - `shutdown` MCP tool: now bypasses the pending-message guard and exits immediately when no sessions are active (pending items cannot be processed without a session to route to); the guard still applies when one or more sessions exist
 - Button callback `timeout_seconds` now has no default — omitting it holds buttons open for up to 24 hours (server-side ceiling). Explicit values are still honored. Max raised from 300 s to 86400 s (24 h).
 - Service message content rewrite: all `SERVICE_MESSAGES` constant values rewritten to ultra-compressed spec — minimum words, help() breadcrumbs, no pin/formula references; consolidated 6 governor-change variants to single `GOVERNOR_CHANGED`; added `SESSION_JOINED`
+- `ask` timeout default: omitting `timeout_seconds` now uses the caller session's dequeue default (300 s if unset) instead of 24 h — agents that relied on the implicit 24 h hold must set an explicit `timeout_seconds` or raise their dequeue default via `action(type: 'profile/dequeue-default')`
 
 ### Fixed
 
