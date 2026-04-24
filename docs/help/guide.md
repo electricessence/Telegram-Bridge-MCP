@@ -60,8 +60,6 @@ When you receive a message with `reply_to_message_id`, the user is responding to
 - Acknowledge which message they're replying to if relevant.
 - Use `reply_to_message_id` when sending your response — this creates a visible quote block.
 
-When sending a follow-up about a specific earlier message, reply to that message rather than sending standalone.
-
 ---
 
 ## Questions and pending answers
