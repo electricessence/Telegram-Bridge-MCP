@@ -113,6 +113,7 @@ vi.mock("../session-queue.js", () => ({
 
 vi.mock("../first-use-hints.js", () => ({
   getFirstUseHint: (...args: unknown[]) => mocks.getFirstUseHint(...args),
+  markFirstUseHintSeen: vi.fn(() => false),
   appendHintToResult: <T extends { content: { type: string; text: string }[]; isError?: true }>(result: T, hint: string | null): T => {
     if (!hint || result.isError) return result;
     try {
@@ -982,6 +983,8 @@ describe("send — first-use hint injection and happy-path routing", () => {
 
   it("when getFirstUseHint returns null, _first_use_hint is absent from result", async () => {
     mocks.getFirstUseHint.mockReturnValue(null);
+    // Use a fresh result object to avoid cross-test mutation from appendHintToResult
+    mocks.handleSendChoice.mockResolvedValue({ content: [{ type: "text", text: JSON.stringify({ ok: true }) }] });
     const result = await call({
       type: "choice",
       text: "Pick one",

@@ -42,7 +42,7 @@ export function getVersionString(): string {
 }
 import type { TimelineEvent } from "./message-store.js";
 import { timelineSize, setOnEvent } from "./message-store.js";
-import { listSessions, getIdleSessions } from "./session-manager.js";
+import { listSessions, getSession } from "./session-manager.js";
 import { getGovernorSid, setGovernorSid } from "./routing-mode.js";
 import { deliverServiceMessage } from "./session-queue.js";
 import { SERVICE_MESSAGES } from "./service-messages.js";
@@ -1458,11 +1458,17 @@ async function renderSessionDetail(
 
   const govSid = getGovernorSid();
   const isGov = target.sid === govSid;
-  const idleSessions = getIdleSessions();
-  const idleInfo = idleSessions.find(s => s.sid === sid);
-  const statusLine = idleInfo
-    ? `Status: 🟢 Idle (${Math.round(idleInfo.idle_since_ms / 1000)}s)`
-    : "Status: 🔴 Active";
+  const sessionData = getSession(sid);
+  const lastPoll = sessionData?.lastPollAt;
+  const elapsedMs = lastPoll !== undefined ? Date.now() - lastPoll : 0;
+  const UNRESPONSIVE_MS = 5 * 60 * 1000;
+  const INACTIVE_MS = 10 * 60 * 1000; // panel threshold; health-check alert fires at 15 min (HEALTH_THRESHOLD_MS)
+  const idleS = Math.round(elapsedMs / 1000);
+  const statusLine = lastPoll === undefined || elapsedMs < UNRESPONSIVE_MS
+    ? "Status: 🟢 Active"
+    : elapsedMs < INACTIVE_MS
+      ? `Status: 🟡 Unresponsive (${idleS}s idle)`
+      : `Status: 🔴 Inactive (${idleS}s idle)`;
   const lines = [
     `${target.color} *${target.name}*`,
     `SID: ${target.sid}`,

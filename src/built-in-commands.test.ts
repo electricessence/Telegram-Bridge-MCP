@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
   // session-manager
   listSessions: vi.fn((): unknown[] => []),
   activeSessionCount: vi.fn((): number => 0),
-  getIdleSessions: vi.fn((): unknown[] => []),
+  getSession: vi.fn((): unknown => undefined),
   // routing-mode
   getGovernorSid: vi.fn((): number => 0),
   setGovernorSid: vi.fn(),
@@ -115,7 +115,7 @@ vi.mock("./message-store.js", () => ({
 vi.mock("./session-manager.js", () => ({
   listSessions: mocks.listSessions,
   activeSessionCount: mocks.activeSessionCount,
-  getIdleSessions: mocks.getIdleSessions,
+  getSession: (...args: unknown[]) => mocks.getSession(...args),
 }));
 
 vi.mock("./routing-mode.js", () => ({
@@ -218,6 +218,7 @@ describe("built-in-commands", () => {
     mocks.answerCallbackQuery.mockResolvedValue(true);
     mocks.getSessionLogMode.mockReturnValue("manual");
     mocks.sessionLogLabel.mockReturnValue("manual");
+    mocks.getSession.mockReturnValue({ sid: 2, name: "Worker", color: "🟩", createdAt: "", lastPollAt: undefined });
   });
 
   // -- BUILT_IN_COMMANDS constant ------------------------------------------
@@ -1434,18 +1435,84 @@ describe("built-in-commands", () => {
         expect(data).toContain("session:back");
       });
 
-      it("session:select:{sid} — shows idle status when session is in dequeue loop", async () => {
-        mocks.getIdleSessions.mockReturnValueOnce([
-          { sid: 2, name: "Worker", color: "🟩", createdAt: "", idle_since_ms: 42000 },
-        ]);
+      it("session:select:{sid} — shows active status when session polled recently", async () => {
+        const now = Date.now();
+        mocks.getSession.mockReturnValue({
+          sid: 2, name: "Worker", color: "🟩", createdAt: "",
+          lastPollAt: now - 10_000,   // 10 seconds ago → Active
+        });
         const panelId = await createSessionPanel();
         mocks.editMessageText.mockResolvedValue(true);
         await handleIfBuiltIn(callbackUpdate(panelId, "session:select:2"));
         expect(mocks.editMessageText).toHaveBeenCalled();
-        const call = mocks.editMessageText.mock.calls[0];
-        const text: string = call[2];
-        expect(text).toContain("🟢 Idle");
-        expect(text).toContain("42s");
+        const text: string = mocks.editMessageText.mock.calls[0][2];
+        expect(text).toContain("🟢 Active");
+      });
+
+      it("session:select:{sid} — shows unresponsive status after 5+ minutes idle", async () => {
+        const now = Date.now();
+        mocks.getSession.mockReturnValue({
+          sid: 2, name: "Worker", color: "🟩", createdAt: "",
+          lastPollAt: now - 6 * 60 * 1000,   // 6 minutes ago → Unresponsive
+        });
+        const panelId = await createSessionPanel();
+        mocks.editMessageText.mockResolvedValue(true);
+        await handleIfBuiltIn(callbackUpdate(panelId, "session:select:2"));
+        expect(mocks.editMessageText).toHaveBeenCalled();
+        const text: string = mocks.editMessageText.mock.calls[0][2];
+        expect(text).toContain("🟡 Unresponsive");
+        expect(text).toContain("idle");
+      });
+
+      it("session:select:{sid} — shows inactive status after 10+ minutes idle", async () => {
+        const now = Date.now();
+        mocks.getSession.mockReturnValue({
+          sid: 2, name: "Worker", color: "🟩", createdAt: "",
+          lastPollAt: now - 12 * 60 * 1000,  // 12 minutes ago → Inactive
+        });
+        const panelId = await createSessionPanel();
+        mocks.editMessageText.mockResolvedValue(true);
+        await handleIfBuiltIn(callbackUpdate(panelId, "session:select:2"));
+        expect(mocks.editMessageText).toHaveBeenCalled();
+        const text: string = mocks.editMessageText.mock.calls[0][2];
+        expect(text).toContain("🔴 Inactive");
+        expect(text).toContain("idle");
+      });
+
+      it("session:select:{sid} — shows unresponsive at exactly the 5-minute boundary", async () => {
+        mocks.getSession.mockReturnValue({
+          sid: 2, name: "Worker", color: "🟩", createdAt: "",
+          lastPollAt: Date.now() - 5 * 60 * 1000,  // exactly 5 min
+        });
+        const panelId = await createSessionPanel();
+        mocks.editMessageText.mockResolvedValue(true);
+        await handleIfBuiltIn(callbackUpdate(panelId, "session:select:2"));
+        const text: string = mocks.editMessageText.mock.calls[0][2];
+        expect(text).toContain("🟡 Unresponsive");
+      });
+
+      it("session:select:{sid} — shows inactive at exactly the 10-minute boundary", async () => {
+        mocks.getSession.mockReturnValue({
+          sid: 2, name: "Worker", color: "🟩", createdAt: "",
+          lastPollAt: Date.now() - 10 * 60 * 1000,  // exactly 10 min
+        });
+        const panelId = await createSessionPanel();
+        mocks.editMessageText.mockResolvedValue(true);
+        await handleIfBuiltIn(callbackUpdate(panelId, "session:select:2"));
+        const text: string = mocks.editMessageText.mock.calls[0][2];
+        expect(text).toContain("🔴 Inactive");
+      });
+
+      it("session:select:{sid} — shows active status when session has never polled", async () => {
+        mocks.getSession.mockReturnValue({
+          sid: 2, name: "Worker", color: "🟩", createdAt: "",
+          lastPollAt: undefined,
+        });
+        const panelId = await createSessionPanel();
+        mocks.editMessageText.mockResolvedValue(true);
+        await handleIfBuiltIn(callbackUpdate(panelId, "session:select:2"));
+        const text: string = mocks.editMessageText.mock.calls[0][2];
+        expect(text).toContain("🟢 Active");
       });
 
       it("session:primary:{sid} — calls setGovernorSid and edits to success message", async () => {

@@ -39,3 +39,17 @@ the unresponsive state color.
 - [ ] After 10 minutes idle, transitions to `🔴 Inactive (Xs idle)`
 - [ ] Idle seconds displayed in unresponsive and inactive states
 - [ ] "appears unresponsive" messages use 🟡 not ⚠️
+
+## Completion
+
+Branch: `20-469` in `.worktrees/20-469/` — commit `3ec23b8`
+
+Changes:
+- `src/built-in-commands.ts`: replaced `getIdleSessions` 2-state logic with `getSession` + `lastPollAt` 3-state display (🟢/🟡/🔴 at 5/10 min thresholds)
+- `src/health-check.ts`: ⚠️ → 🟡 in all three "appears unresponsive" messages
+- `src/server.ts`: removed duplicate `SERVICE_MESSAGES` import
+- `src/first-use-hints.ts`: type-cast fix for `no-unnecessary-condition` lint error (pre-existing from 10-753, authorized by Overseer)
+- `src/built-in-commands.test.ts`: updated mock + 6 new status-state tests (boundary cases included)
+- `src/tools/send.test.ts`, `src/tools/route_message.test.ts`: added missing `markFirstUseHintSeen` mocks (pre-existing gap from 15-713)
+
+All 2563 tests pass. Build + lint clean.

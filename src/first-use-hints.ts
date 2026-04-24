@@ -106,7 +106,7 @@ export function appendHintToResult<T extends { content: { type: string; text: st
 ): T {
   if (!hint || result.isError) return result;
   try {
-    const entry = result.content[0];
+    const entry = result.content[0] as typeof result.content[0] | undefined;
     if (!entry || entry.type !== "text") return result;
     const parsed = JSON.parse(entry.text) as Record<string, unknown>;
     parsed._first_use_hint = hint;
