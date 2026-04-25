@@ -44,7 +44,7 @@
     "pair": "node dist/setup.js",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
-    "test": "vitest run",
+    "test": "tsc --noEmit -p tsconfig.eslint.json && vitest run",
     "test:watch": "vitest",
     "lint": "eslint src",
     "coverage": "vitest run --coverage"
