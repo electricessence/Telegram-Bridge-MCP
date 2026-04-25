@@ -2,8 +2,7 @@
 id: 10-800
 title: Update telegram-mcp-post-compaction-recovery SKILL.md for new agent layout
 priority: 10
-status: idea
-marker: needs refinement
+status: queued
 origin: operator directive 2026-04-24
 ---
 
