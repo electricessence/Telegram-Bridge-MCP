@@ -7,9 +7,9 @@ import { createMockServer, parseResult, isError, errorCode, type ToolHandler } f
 const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(() => true),
   isDelegationEnabled: vi.fn(() => false),
-  getPendingApproval: vi.fn(() => undefined as { resolve: ReturnType<typeof vi.fn>; name: string; registeredAt: number } | undefined),
+  getPendingApproval: vi.fn((..._args: unknown[]) => undefined as { resolve: ReturnType<typeof vi.fn>; name: string; registeredAt: number; colorHint?: string } | undefined),
   clearPendingApproval: vi.fn(),
-  getAvailableColors: vi.fn(() => ["🟦", "🟩", "🟨", "🟧", "🟥", "🟪"] as string[]),
+  getAvailableColors: vi.fn((..._args: unknown[]) => ["🟦", "🟩", "🟨", "🟧", "🟥", "🟪"] as string[]),
   getGovernorSid: vi.fn(() => 0),
   stderrWrite: vi.fn(),
 }));

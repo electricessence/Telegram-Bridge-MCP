@@ -31,14 +31,14 @@ const mocks = vi.hoisted(() => ({
   isTtsEnabled: vi.fn((): boolean => true),
   stripForTts: vi.fn((t: string) => t),
   synthesizeToOgg: vi.fn(),
-  applyTopicToText: vi.fn((t: string) => t),
+  applyTopicToText: vi.fn((t: string, _mode?: string) => t),
   showTyping: vi.fn(),
   cancelTyping: vi.fn(),
   typingGeneration: vi.fn(() => 0),
   cancelTypingIfSameGeneration: vi.fn(),
   getSessionVoice: vi.fn((): string | null => null),
   getSessionSpeed: vi.fn((): number | null => null),
-  validateButtonSymbolParity: vi.fn(() => ({ ok: true, withEmoji: [], withoutEmoji: [] })),
+  validateButtonSymbolParity: vi.fn((_labels?: string[]) => ({ ok: true, withEmoji: [] as string[], withoutEmoji: [] as string[] })),
 }));
 
 vi.mock("../../telegram.js", async (importActual) => {

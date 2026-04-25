@@ -4,10 +4,10 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   listSessions: vi.fn(() => [] as Array<{ sid: number; name: string; color: string; createdAt: string }>),
-  getSessionState: vi.fn(() => undefined as { lastDequeueAt: number | undefined; lastOutboundAt: number | undefined } | undefined),
-  hasActiveAnimation: vi.fn(() => false),
+  getSessionState: vi.fn((_sid: number) => undefined as { lastDequeueAt: number | undefined; lastOutboundAt: number | undefined } | undefined),
+  hasActiveAnimation: vi.fn((_sid: number) => false),
   setSilenceHint: vi.fn(),
-  getSilenceThreshold: vi.fn(() => 30),
+  getSilenceThreshold: vi.fn((_sid: number) => 30),
 }));
 
 vi.mock("./session-manager.js", () => ({

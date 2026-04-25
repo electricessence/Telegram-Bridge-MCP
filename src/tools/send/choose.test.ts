@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => ({
   isTtsEnabled: vi.fn((): boolean => true),
   stripForTts: vi.fn((t: string) => t),
   synthesizeToOgg: vi.fn(),
-  applyTopicToText: vi.fn((t: string) => t),
+  applyTopicToText: vi.fn((t: string, _mode?: string) => t),
   showTyping: vi.fn(),
   cancelTyping: vi.fn(),
   typingGeneration: vi.fn(() => 0),
@@ -40,7 +40,7 @@ const mocks = vi.hoisted(() => ({
   getSessionSpeed: vi.fn((): number | null => null),
   buildKeyboardRows: vi.fn(() => [[{ text: "A", callback_data: "a" }, { text: "B", callback_data: "b" }]]),
   sendChoiceMessage: vi.fn(),
-  validateButtonSymbolParity: vi.fn(() => ({ ok: true, withEmoji: [], withoutEmoji: [] })),
+  validateButtonSymbolParity: vi.fn((_labels?: string[]) => ({ ok: true, withEmoji: [] as string[], withoutEmoji: [] as string[] })),
 }));
 
 vi.mock("../../telegram.js", async (importActual) => {

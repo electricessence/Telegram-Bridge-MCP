@@ -424,7 +424,7 @@ describe("session-queue", () => {
           text: "Check CI",
           reminder_id: "abc123",
           recurring: false,
-          trigger: "startup",
+          trigger: "startup" as const,
         },
       };
 
@@ -452,7 +452,7 @@ describe("session-queue", () => {
           text: "Deploy check",
           reminder_id: "xyz",
           recurring: false,
-          trigger: "startup",
+          trigger: "startup" as const,
         },
       };
 

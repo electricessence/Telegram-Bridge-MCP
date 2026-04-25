@@ -586,7 +586,7 @@ describe("set_reaction tool — array reactions form", () => {
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(Array.isArray(data.layers)).toBe(true);
-    expect(data.layers.length).toBe(2);
+    expect((data.layers as unknown[]).length).toBe(2);
     for (const layer of data.layers as { emoji: unknown; priority: unknown; temporary: unknown }[]) {
       expect(typeof layer.emoji).toBe("string");
       expect(typeof layer.priority).toBe("number");
@@ -603,7 +603,7 @@ describe("set_reaction tool — array reactions form", () => {
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(Array.isArray(data.layers)).toBe(true);
-    expect(data.layers.length).toBe(1);
+    expect((data.layers as unknown[]).length).toBe(1);
     const [layer] = data.layers as { emoji: string; priority: number; temporary: boolean }[];
     expect(layer.emoji).toBe("👍");
     expect(layer.priority).toBe(-1);

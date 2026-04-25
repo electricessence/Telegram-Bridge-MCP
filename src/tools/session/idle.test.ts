@@ -2,7 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { parseResult, isError } from "../test-utils.js";
 
 const mocks = vi.hoisted(() => ({
-  requireAuth: vi.fn((_token: number): number | string => 1),
+  requireAuth: vi.fn((_token: number): number | string | { code: string; message: string } => 1),
   getIdleSessions: vi.fn(() => [] as Array<{ sid: number; name: string; color: string; createdAt: string; idle_since_ms: number }>),
   listSessions: vi.fn(() => [] as Array<{ sid: number; name: string; color: string; createdAt: string }>),
   getGovernorSid: vi.fn((): number => 0),

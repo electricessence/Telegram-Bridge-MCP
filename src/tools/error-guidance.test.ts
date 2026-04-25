@@ -13,11 +13,11 @@ import { createMockServer, parseResult, isError, errorCode, type ToolHandler } f
 const mocks = vi.hoisted(() => ({
   // send.ts dependencies
   resolveChat: vi.fn((): number => 42),
-  validateText: vi.fn((): null => null),
+  validateText: vi.fn((_t?: string): null => null),
   isTtsEnabled: vi.fn((): boolean => true),
   stripForTts: vi.fn((t: string) => t),
   synthesizeToOgg: vi.fn(),
-  applyTopicToText: vi.fn((t: string) => t),
+  applyTopicToText: vi.fn((t: string, _mode?: string) => t),
   getTopic: vi.fn((): string | null => null),
   showTyping: vi.fn(),
   cancelTyping: vi.fn(),
@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   sendVoiceDirect: vi.fn(),
   // shared auth
-  requireAuth: vi.fn<() => number | { code: string; message: string }>(),
+  requireAuth: vi.fn<(_token?: number) => number | { code: string; message: string }>(),
   getGovernorSid: vi.fn<() => number>(),
   // action-registry
   registerAction: vi.fn(),
@@ -56,6 +56,9 @@ const mocks = vi.hoisted(() => ({
   handleSetReminder: vi.fn(),
   handleCancelReminder: vi.fn(),
   handleListReminders: vi.fn(),
+  handleDisableReminder: vi.fn(),
+  handleEnableReminder: vi.fn(),
+  handleSleepReminder: vi.fn(),
   handleSetDequeueDefault: vi.fn(),
   handleSetDefaultAnimation: vi.fn(),
   handleToggleLogging: vi.fn(),
@@ -157,7 +160,7 @@ vi.mock("./log/list.js", () => ({ handleListLogs: mocks.handleListLogs, register
 vi.mock("./log/roll.js", () => ({ handleRollLog: mocks.handleRollLog, register: vi.fn() }));
 vi.mock("./log/delete.js", () => ({ handleDeleteLog: mocks.handleDeleteLog, register: vi.fn() }));
 vi.mock("./log/debug.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, handleGetTraceLog: mocks.handleGetTraceLog, register: vi.fn() }));
-vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: mocks.handleDumpSessionRecord, register: vi.fn() }));
+vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: vi.fn(), register: vi.fn() }));
 vi.mock("./animation/cancel.js", () => ({ handleCancelAnimation: mocks.handleCancelAnimation, register: vi.fn() }));
 vi.mock("./show-typing/show-typing.js", () => ({ handleShowTyping: mocks.handleShowTyping, register: vi.fn() }));
 vi.mock("./approve/agent.js", () => ({ handleApproveAgent: mocks.handleApproveAgent, register: vi.fn() }));

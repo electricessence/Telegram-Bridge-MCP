@@ -73,7 +73,7 @@ describe("POST /hook/animation — integration", () => {
     attachHookRoutes(app);
 
     // Start the HTTP server on an ephemeral port
-    ({ server, port } = await startServer(app));
+    ({ server, port } = await startServer(app as unknown as Parameters<typeof http.createServer>[0]));
   });
 
   afterEach(async () => {

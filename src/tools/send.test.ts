@@ -4,15 +4,15 @@ import { createMockServer, parseResult, isError, errorCode } from "./test-utils.
 const mocks = vi.hoisted(() => ({
   activeSessionCount: vi.fn(() => 0),
   getActiveSession: vi.fn(() => 0),
-  validateSession: vi.fn(() => true),
+  validateSession: vi.fn((_sid?: number, _suffix?: number) => true),
   sendMessage: vi.fn(),
   sendVoiceDirect: vi.fn(),
   resolveChat: vi.fn((): number => 42),
-  validateText: vi.fn((): null => null),
+  validateText: vi.fn((_t?: string): null | { code: string; message: string } => null),
   isTtsEnabled: vi.fn((): boolean => true),
   stripForTts: vi.fn((t: string) => t),
   synthesizeToOgg: vi.fn(),
-  applyTopicToText: vi.fn((t: string) => t),
+  applyTopicToText: vi.fn((t: string, _mode?: string) => t),
   getTopic: vi.fn((): string | null => null),
   showTyping: vi.fn(),
   cancelTyping: vi.fn(),
@@ -32,9 +32,9 @@ const mocks = vi.hoisted(() => ({
   handleAsk: vi.fn(),
   handleChoose: vi.fn(),
   deliverServiceMessage: vi.fn(),
-  getFirstUseHint: vi.fn((): string | null => null),
-  markFirstUseHintSeen: vi.fn((): boolean => false),
-  enqueueAsyncSend: vi.fn(() => -1_000_000_001),
+  getFirstUseHint: vi.fn((..._args: unknown[]): string | null => null),
+  markFirstUseHintSeen: vi.fn((..._args: unknown[]): boolean => false),
+  enqueueAsyncSend: vi.fn((..._args: unknown[]) => -1_000_000_001),
   resetAsyncSendQueueForTest: vi.fn(),
   acquireRecordingIndicator: vi.fn(),
   releaseRecordingIndicator: vi.fn(),
@@ -250,7 +250,7 @@ describe("send tool", () => {
   it("discovery mode: no args returns available types list", async () => {
     const result = await call({ token: TOKEN });
     expect(isError(result)).toBe(false);
-    const content = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const content = ((result as { content: Array<{ type: string; text: string }> }).content)[0].text;
     const data = JSON.parse(content) as { available_types: string[] };
     expect(data.available_types).toContain("text");
     expect(data.available_types).toContain("file");

@@ -1015,9 +1015,9 @@ describe("dequeue tool", () => {
       const originalSetTimeout = globalThis.setTimeout;
       const capturedDelays: number[] = [];
       const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(
-        (fn: TimerHandler, delay?: number, ...args: unknown[]) => {
+        (fn: Parameters<typeof globalThis.setTimeout>[0], delay?: number) => {
           if (typeof delay === "number") capturedDelays.push(delay);
-          return originalSetTimeout(fn as () => void, 0, ...args);
+          return originalSetTimeout(fn as () => void, 0);
         },
       );
 

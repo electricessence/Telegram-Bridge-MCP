@@ -53,6 +53,7 @@ interface DequeueResult {
   timed_out?: boolean;
   empty?: boolean;
   error?: string;
+  code?: string;
   message?: string;
   hint?: string;
 }

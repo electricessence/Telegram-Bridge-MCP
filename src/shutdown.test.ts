@@ -118,7 +118,7 @@ describe("shutdown announcement helpers", () => {
   it("postShutdownAnnouncement sends operator cause with session count", async () => {
     await postShutdownAnnouncement("operator", 3);
     expect(mocks.sendServiceMessage).toHaveBeenCalledTimes(1);
-    const text = mocks.sendServiceMessage.mock.calls[0]?.[0] as string;
+    const text = (mocks.sendServiceMessage.mock.calls[0] as unknown as [string])[0];
     expect(text).toContain("operator /shutdown");
     expect(text).toContain("closing 3 active sessions");
     expect(text).toContain("pnpm start");
@@ -126,7 +126,7 @@ describe("shutdown announcement helpers", () => {
 
   it("postShutdownAnnouncement uses singular for 1 session", async () => {
     await postShutdownAnnouncement("agent", 1);
-    const text = mocks.sendServiceMessage.mock.calls[0]?.[0] as string;
+    const text = (mocks.sendServiceMessage.mock.calls[0] as unknown as [string])[0];
     expect(text).toContain("closing 1 active session");
     // Guard against plural regression: must say "1 active session" not "1 active sessions"
     expect(text).not.toContain("active sessions,");
@@ -134,7 +134,7 @@ describe("shutdown announcement helpers", () => {
 
   it("postShutdownAnnouncement mentions no active sessions when count is 0", async () => {
     await postShutdownAnnouncement("operator", 0);
-    const text = mocks.sendServiceMessage.mock.calls[0]?.[0] as string;
+    const text = (mocks.sendServiceMessage.mock.calls[0] as unknown as [string])[0];
     expect(text).toContain("no active sessions");
   });
 
@@ -145,7 +145,7 @@ describe("shutdown announcement helpers", () => {
 
   it("postSessionClosedLine sends the session name and SID", async () => {
     await postSessionClosedLine("Worker 1", 5);
-    const text = mocks.sendServiceMessage.mock.calls[0]?.[0] as string;
+    const text = (mocks.sendServiceMessage.mock.calls[0] as unknown as [string])[0];
     expect(text).toContain("Worker 1");
     expect(text).toContain("SID 5");
   });
@@ -157,14 +157,14 @@ describe("shutdown announcement helpers", () => {
 
   it("postSessionSummaryLine includes the count", async () => {
     await postSessionSummaryLine(12);
-    const text = mocks.sendServiceMessage.mock.calls[0]?.[0] as string;
+    const text = (mocks.sendServiceMessage.mock.calls[0] as unknown as [string])[0];
     expect(text).toContain("12");
     expect(text).toContain("sessions closed");
   });
 
   it("postGravestone sends the offline marker", async () => {
     await postGravestone();
-    const text = mocks.sendServiceMessage.mock.calls[0]?.[0] as string;
+    const text = (mocks.sendServiceMessage.mock.calls[0] as unknown as [string])[0];
     expect(text).toContain("Bridge offline");
   });
 
@@ -333,7 +333,7 @@ describe("elegantShutdown", () => {
     // stopPoller is called after announcement — verify announcement fires
     mocks.listSessions.mockReturnValue([]);
     await elegantShutdown("operator");
-    const calls = mocks.sendServiceMessage.mock.calls as Array<[string]>;
+    const calls = mocks.sendServiceMessage.mock.calls as unknown as Array<[string]>;
     const announcement = calls.find(([text]) => text.includes("Bridge shutting down"));
     expect(announcement).toBeDefined();
     expect(announcement![0]).toContain("operator /shutdown");
@@ -342,7 +342,7 @@ describe("elegantShutdown", () => {
   it("sends gravestone after all sessions closed", async () => {
     mocks.listSessions.mockReturnValue([]);
     await elegantShutdown();
-    const calls = mocks.sendServiceMessage.mock.calls as Array<[string]>;
+    const calls = mocks.sendServiceMessage.mock.calls as unknown as Array<[string]>;
     const gravestone = calls.find(([text]) => text.includes("Bridge offline"));
     expect(gravestone).toBeDefined();
   });
@@ -402,7 +402,7 @@ describe("elegantShutdown — chat announcement sequence (AC5)", () => {
     await elegantShutdown("operator");
 
     // Collect only the chat-visible sendServiceMessage calls (not the "⛔️ Shutting down…" one)
-    const chatCalls = (mocks.sendServiceMessage.mock.calls as Array<[string]>).map(([t]) => t);
+    const chatCalls = (mocks.sendServiceMessage.mock.calls as unknown as Array<[string]>).map(([t]) => t);
 
     // The 4 expected chat-visible messages (in order):
     // 1. Pre-shutdown announcement

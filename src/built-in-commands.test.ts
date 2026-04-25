@@ -38,25 +38,25 @@ const mocks = vi.hoisted(() => ({
   // session-manager
   listSessions: vi.fn((): unknown[] => []),
   activeSessionCount: vi.fn((): number => 0),
-  getSession: vi.fn((): unknown => undefined),
+  getSession: vi.fn((..._args: unknown[]): unknown => undefined),
   // routing-mode
   getGovernorSid: vi.fn((): number => 0),
   setGovernorSid: vi.fn(),
   // session-teardown
-  closeSessionById: vi.fn((): { closed: boolean; sid: number } => ({ closed: true, sid: 0 })),
+  closeSessionById: vi.fn((..._args: unknown[]): { closed: boolean; sid: number } => ({ closed: true, sid: 0 })),
   // session-queue
   deliverServiceMessage: vi.fn((): boolean => true),
   // session-context
   runInSessionContext: vi.fn(<T>(sid: number, fn: () => T): T => fn()),
   getCallerSid: vi.fn((): number => 0),
   // local-log
-  rollLog: vi.fn((): string | null => null),
-  isLoggingEnabled: vi.fn((): boolean => true),
-  enableLogging: vi.fn(),
-  disableLogging: vi.fn(),
-  listLogs: vi.fn((): string[] => []),
-  getCurrentLogFilename: vi.fn((): string | null => null),
-  deleteLog: vi.fn(),
+  rollLog: vi.fn((..._args: unknown[]): string | null => null),
+  isLoggingEnabled: vi.fn((..._args: unknown[]): boolean => true),
+  enableLogging: vi.fn((..._args: unknown[]) => {}),
+  disableLogging: vi.fn((..._args: unknown[]) => {}),
+  listLogs: vi.fn((..._args: unknown[]): string[] => []),
+  getCurrentLogFilename: vi.fn((..._args: unknown[]): string | null => null),
+  deleteLog: vi.fn((..._args: unknown[]) => {}),
 }));
 
 vi.mock("./telegram.js", () => ({
@@ -462,9 +462,9 @@ describe("built-in-commands", () => {
     const evt = {
       id: 1,
       event: "callback" as const,
-      from: "user",
+      from: "user" as const,
       timestamp: "",
-      content: { data: "logging:on" },
+      content: { type: "callback", data: "logging:on" },
     };
     expect(isInternalTimelineEvent(evt)).toBe(true);
   });
@@ -1124,9 +1124,9 @@ describe("built-in-commands", () => {
       const evt = {
         id: 1,
         event: "callback" as const,
-        from: "user",
+        from: "user" as const,
         timestamp: "",
-        content: { data: "approve:one" },
+        content: { type: "callback", data: "approve:one" },
       };
       expect(isInternalTimelineEvent(evt)).toBe(true);
     });
@@ -1136,9 +1136,9 @@ describe("built-in-commands", () => {
         const evt = {
           id: 1,
           event: "callback" as const,
-          from: "user",
+          from: "user" as const,
           timestamp: "",
-          content: { data },
+          content: { type: "callback", data },
         };
         expect(isInternalTimelineEvent(evt)).toBe(true);
       }

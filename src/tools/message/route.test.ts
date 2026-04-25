@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   getGovernorSid: vi.fn(),
   routeMessage: vi.fn(),
   deliverServiceMessage: vi.fn(),
-  markFirstUseHintSeen: vi.fn(() => false),
+  markFirstUseHintSeen: vi.fn((..._args: unknown[]) => false),
 }));
 
 vi.mock("../../session-manager.js", () => ({

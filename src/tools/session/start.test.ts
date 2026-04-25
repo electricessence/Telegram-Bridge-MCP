@@ -2240,7 +2240,7 @@ describe("session_start tool", () => {
       keyboard.reduce((acc, row) => acc + row.length, 0);
 
     // Count initial buttons
-    const initialOpts = (mocks.sendMessage.mock.calls[0] as unknown[])[2];
+    const initialOpts = (mocks.sendMessage.mock.calls[0] as unknown as unknown[])[2] as Record<string, unknown>;
     const initialKeyboard = (initialOpts.reply_markup as Record<string, unknown>).inline_keyboard as unknown[][];
     const initialCount = countButtons(initialKeyboard);
 
@@ -2248,7 +2248,7 @@ describe("session_start tool", () => {
     hookFn!({ content: { data: "approve_toggle_delegation", qid: "t1" } });
     await new Promise(r => setTimeout(r, 0));
 
-    const editedOpts = (mocks.editMessageReplyMarkup.mock.calls[0] as unknown[])[2];
+    const editedOpts = (mocks.editMessageReplyMarkup.mock.calls[0] as unknown as unknown[])[2] as Record<string, unknown>;
     const editedKeyboard = (editedOpts.reply_markup as Record<string, unknown>).inline_keyboard as unknown[][];
     const editedCount = countButtons(editedKeyboard);
 

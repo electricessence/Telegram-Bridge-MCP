@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   sendChatAction: vi.fn().mockResolvedValue(undefined),
   splitMessage: vi.fn((t: string) => [t]),
-  deliverAsyncSendCallback: vi.fn(() => true),
+  deliverAsyncSendCallback: vi.fn((..._args: unknown[]) => true),
   createSessionQueue: vi.fn(),
   removeSessionQueue: vi.fn(),
   pauseTypingEmission: vi.fn(),
@@ -177,7 +177,7 @@ describe("async-send-queue", () => {
       await flushJobs();
 
       expect(mocks.deliverAsyncSendCallback).toHaveBeenCalledOnce();
-      const [calledSid, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [number, { status: string; messageId: number }];
+      const [calledSid, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [number, { status: string; messageId: number }];
       expect(calledSid).toBe(1);
       expect(payload.status).toBe("ok");
       expect(payload.messageId).toBe(555);
@@ -192,7 +192,7 @@ describe("async-send-queue", () => {
       enqueueAsyncSend(1, makeJobParams({ sid: 1, audioText: "long text" }));
       await flushJobs();
 
-      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [number, { messageIds: number[] }];
+      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [number, { messageIds: number[] }];
       expect(payload.messageIds).toEqual([10, 11]);
     });
   });
@@ -225,7 +225,7 @@ describe("async-send-queue", () => {
 
       // Callback payload must include textMessageId from the follow-up sendMessage
       expect(mocks.deliverAsyncSendCallback).toHaveBeenCalledOnce();
-      const [, cbPayload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [
+      const [, cbPayload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [
         number,
         { pendingId: number; status: string; messageId: number; textMessageId: number },
       ];
@@ -247,7 +247,7 @@ describe("async-send-queue", () => {
       await flushJobs();
 
       expect(mocks.deliverAsyncSendCallback).toHaveBeenCalledOnce();
-      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [number, { status: string; error: string }];
+      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [number, { status: string; error: string }];
       expect(payload.status).toBe("failed");
       expect(payload.error).toBe("TTS upstream error");
     });
@@ -280,7 +280,7 @@ describe("async-send-queue", () => {
         await flushJobs();
 
         expect(mocks.deliverAsyncSendCallback).toHaveBeenCalledOnce();
-        const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [number, { status: string }];
+        const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [number, { status: string }];
         expect(payload.status).toBe("timeout");
       } finally {
         vi.useRealTimers();
@@ -345,7 +345,7 @@ describe("async-send-queue", () => {
       enqueueAsyncSend(1, makeJobParams({ sid: 1, captionText: "the caption" }));
       await flushJobs();
 
-      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [number, {
+      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [number, {
         status: string;
         textFallback?: boolean;
         textMessageId?: number;
@@ -374,7 +374,7 @@ describe("async-send-queue", () => {
       enqueueAsyncSend(1, makeJobParams({ sid: 1, captionText: undefined }));
       await flushJobs();
 
-      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [number, {
+      const [, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [number, {
         textFallback?: boolean;
       }];
       expect(payload.textFallback).toBeUndefined();
@@ -439,7 +439,7 @@ describe("async-send-queue", () => {
       // The in-flight job was not cancelled (only removed from future accounting),
       // so deliverAsyncSendCallback must have been called exactly once with status ok.
       expect(mocks.deliverAsyncSendCallback).toHaveBeenCalledOnce();
-      const [calledSid, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as [
+      const [calledSid, payload] = mocks.deliverAsyncSendCallback.mock.calls[0] as unknown as [
         number,
         { pendingId: number; status: string; messageId: number },
       ];

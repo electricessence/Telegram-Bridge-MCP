@@ -10,7 +10,7 @@ const fsMocks = vi.hoisted(() => ({
   readFileSync: vi.fn((): string => ""),
   unlinkSync: vi.fn(),
   readdirSync: vi.fn((): string[] => []),
-  appendFile: vi.fn(async (): Promise<void> => {}),
+  appendFile: vi.fn(async (..._args: unknown[]): Promise<void> => {}),
 }));
 
 vi.mock("fs", () => ({
@@ -48,7 +48,7 @@ async function allAppendedEvents(): Promise<Array<{ ts: string; event: unknown }
   await flushCurrentLog();
   const calls = fsMocks.appendFile.mock.calls;
   if (calls.length === 0) return [];
-  return calls.flatMap(([, content]: [string, string]) =>
+  return (calls as unknown as Array<[string, string]>).flatMap(([, content]) =>
     content.split('\n').filter(Boolean).map(line => JSON.parse(line))
   );
 }
@@ -114,7 +114,7 @@ describe("logEvent", () => {
       // advance past FLUSH_DELAY_MS
       await vi.runAllTimersAsync();
       expect(fsMocks.appendFile).toHaveBeenCalledTimes(1);
-      const [, content] = fsMocks.appendFile.mock.calls[0] as [string, string, string];
+      const [, content] = fsMocks.appendFile.mock.calls[0] as unknown as [string, string, string];
       expect(JSON.parse(content.trim()).event).toEqual({ type: "batched" });
     } finally {
       vi.useRealTimers();
@@ -126,8 +126,8 @@ describe("logEvent", () => {
     vi.useFakeTimers();
     try {
       const writeOrder: string[] = [];
-      fsMocks.appendFile.mockImplementation((_path: string, content: string) => {
-        content.split('\n').filter(Boolean).forEach(line => writeOrder.push(line));
+      fsMocks.appendFile.mockImplementation((_path: unknown, content: unknown) => {
+        (content as string).split('\n').filter(Boolean).forEach(line => writeOrder.push(line));
         return Promise.resolve();
       });
 
@@ -153,12 +153,12 @@ describe("logEvent", () => {
     // Async mock: resolves on the next tick so overlapping calls are structurally
     // possible if serialization is broken. inFlight guard throws on any overlap.
     let inFlight = 0;
-    fsMocks.appendFile.mockImplementation((_path: string, content: string) => {
+    fsMocks.appendFile.mockImplementation((_path: unknown, content: unknown) => {
       return new Promise<void>((resolve, reject) => {
         if (inFlight > 0) { reject(new Error("concurrent appendFile call detected")); return; }
         inFlight++;
         setImmediate(() => {
-          content.split('\n').filter(Boolean).forEach(line => writeOrder.push(line));
+          (content as string).split('\n').filter(Boolean).forEach(line => writeOrder.push(line));
           inFlight--;
           resolve();
         });
@@ -264,7 +264,7 @@ describe("rollLog", () => {
     const archived = rollLog();
     await flushCurrentLog();
     expect(archived).not.toBeNull();
-    const writtenPath = (fsMocks.appendFile.mock.calls[0] as [string, string, string])[0];
+    const writtenPath = (fsMocks.appendFile.mock.calls[0] as unknown as [string, string, string])[0];
     expect(writtenPath).toContain(archived!);
   });
 

@@ -143,7 +143,7 @@ vi.mock("./log/list.js", () => ({ handleListLogs: mocks.handleListLogs, register
 vi.mock("./log/roll.js", () => ({ handleRollLog: mocks.handleRollLog, register: vi.fn() }));
 vi.mock("./log/delete.js", () => ({ handleDeleteLog: mocks.handleDeleteLog, register: vi.fn() }));
 vi.mock("./log/debug.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, handleGetTraceLog: mocks.handleGetTraceLog, register: vi.fn() }));
-vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: mocks.handleDumpSessionRecord, register: vi.fn() }));
+vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: vi.fn(), register: vi.fn() }));
 // Phase 2 vi.mocks — animation/*
 vi.mock("./animation/cancel.js", () => ({ handleCancelAnimation: mocks.handleCancelAnimation, register: vi.fn() }));
 // Phase 2 vi.mocks — standalone

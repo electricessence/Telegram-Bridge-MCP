@@ -5,7 +5,7 @@ import type { Reminder } from "../../reminder-state.js";
 const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(() => false),
   listReminders: vi.fn((): Reminder[] => []),
-  computeReminderDisplayState: vi.fn((r: Reminder, _now: number) => ({ state: r.state })),
+  computeReminderDisplayState: vi.fn((r: Reminder, _now: number): { state: string; until?: number } => ({ state: r.state })),
 }));
 
 vi.mock("../../session-manager.js", () => ({

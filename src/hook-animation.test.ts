@@ -11,7 +11,7 @@ import * as http from "node:http";
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
-  validateSession: vi.fn(() => true),
+  validateSession: vi.fn((..._args: unknown[]): boolean => true),
   handleShowAnimation: vi.fn(),
   startAnimation: vi.fn(),
   resolveChat: vi.fn((): number => 42),

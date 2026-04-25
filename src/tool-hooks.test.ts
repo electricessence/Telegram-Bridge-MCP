@@ -49,7 +49,7 @@ describe("default (no hook registered)", () => {
 
   it("does not include a reason when allowed", async () => {
     const result = await invokePreToolHook("any_tool", {});
-    expect(result.reason).toBeUndefined();
+    expect((result as { reason?: string }).reason).toBeUndefined();
   });
 });
 
@@ -105,7 +105,7 @@ describe("hook blocks call", () => {
   it("reason is propagated from hook", async () => {
     setPreToolHook(() => ({ allowed: false, reason: "audit policy" }));
     const result = await invokePreToolHook("download_file", {});
-    expect(result.reason).toBe("audit policy");
+    expect((result as { reason?: string }).reason).toBe("audit policy");
   });
 
   it("async hook is awaited correctly", async () => {
@@ -115,7 +115,7 @@ describe("hook blocks call", () => {
     });
     const result = await invokePreToolHook("send_file", {});
     expect(result.allowed).toBe(false);
-    expect(result.reason).toBe("async block");
+    expect((result as { reason?: string }).reason).toBe("async block");
   });
 });
 
@@ -130,7 +130,7 @@ describe("hook throws or rejects", () => {
     });
     const result = await invokePreToolHook("any_tool", {});
     expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("Hook error — see server logs for details.");
+    expect((result as { reason?: string }).reason).toContain("Hook error — see server logs for details.");
   });
 
   it("returns allowed:false when hook rejects asynchronously", async () => {
@@ -139,7 +139,7 @@ describe("hook throws or rejects", () => {
     });
     const result = await invokePreToolHook("any_tool", {});
     expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("Hook error — see server logs for details.");
+    expect((result as { reason?: string }).reason).toContain("Hook error — see server logs for details.");
   });
 
   it("sets hookError: true on the result when hook throws", async () => {
@@ -226,14 +226,14 @@ describe("buildDenyPatternHook", () => {
       const hook = buildDenyPatternHook(["shutdown"]);
       const result = await hook("shutdown", {});
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("shutdown");
+      expect((result as { reason?: string }).reason).toContain("shutdown");
     });
 
     it("includes the wildcard pattern in reason", async () => {
       const hook = buildDenyPatternHook(["download_*"]);
       const result = await hook("download_file", {});
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("download_*");
+      expect((result as { reason?: string }).reason).toContain("download_*");
     });
   });
 

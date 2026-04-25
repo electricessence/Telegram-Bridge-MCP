@@ -145,7 +145,7 @@ describe("applyProfile — reminder guard behavior", () => {
     expect("applied" in result).toBe(true);
     // Only valid time + startup should be added (2 calls)
     expect(mocks.addReminder).toHaveBeenCalledTimes(2);
-    const calls = mocks.addReminder.mock.calls.map((c: [{ trigger?: string }]) => c[0].trigger);
+    const calls = (mocks.addReminder.mock.calls as unknown as Array<[{ trigger?: string }]>).map((c) => c[0].trigger);
     expect(calls).toContain("time");
     expect(calls).toContain("startup");
   });

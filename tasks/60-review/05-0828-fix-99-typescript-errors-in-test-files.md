@@ -84,3 +84,12 @@ While this is open, **`pnpm test` will fail** in any worker checking out fresh c
 
 - `package.json` change committed alongside this draft.
 - `tsconfig.eslint.json` is the project source of truth for what tsc checks.
+
+## Completion
+
+Branch: `05-0828`
+Commit: `69131ec`
+
+Fixes staged by Worker 2, verified and committed by Worker 1. 24 files changed (23 test files + tsconfig.eslint.json). Type-only fixes: literal-union narrowing, spread tuple types, unknown assertions, arity corrections, server shape cast.
+
+`pnpm typecheck` exits 0. All 2762 tests pass.
