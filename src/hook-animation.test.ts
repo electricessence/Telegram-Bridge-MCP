@@ -21,7 +21,7 @@ vi.mock("./session-manager.js", () => ({
   validateSession: (...args: unknown[]) => (mocks.validateSession as (...a: unknown[]) => boolean)(...args),
 }));
 
-vi.mock("./tools/show_animation.js", () => ({
+vi.mock("./tools/animation/show.js", () => ({
   handleShowAnimation: (...args: unknown[]) => mocks.handleShowAnimation(...args),
 }));
 
@@ -243,7 +243,7 @@ describe("integration: real Express app + real session", () => {
     // Import the real show_animation module and forward through the mock.
     // startAnimation is already shim-mocked (via vi.mock animation-state.js) so
     // no real Telegram API call will be made.
-    const realSA = await vi.importActual<typeof import("./tools/show_animation.js")>("./tools/show_animation.js");
+    const realSA = await vi.importActual<typeof import("./tools/animation/show.js")>("./tools/animation/show.js");
     mocks.handleShowAnimation.mockImplementation(
       (...args: unknown[]) => (realSA.handleShowAnimation as (...a: unknown[]) => unknown)(...args),
     );
@@ -271,7 +271,7 @@ describe("integration: real Express app + real session", () => {
 
   afterEach(async () => {
     await new Promise<void>((resolve, reject) =>
-      server.close((err) => (err ? reject(err) : resolve())),
+      server.close((err) => { if (err) reject(err); else resolve(); }),
     );
     // Clean up sessions created during this test.
     const realSM = await vi.importActual<typeof import("./session-manager.js")>("./session-manager.js");

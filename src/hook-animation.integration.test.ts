@@ -46,7 +46,7 @@ function startServer(app: Parameters<typeof http.createServer>[0]): Promise<{ se
 
 function closeServer(server: http.Server): Promise<void> {
   return new Promise((resolve, reject) =>
-    server.close((err) => (err ? reject(err) : resolve())),
+    server.close((err) => { if (err) reject(err); else resolve(); }),
   );
 }
 

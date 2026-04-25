@@ -16,7 +16,7 @@
  */
 
 import type { Request, Response, Express } from "express";
-import { handleShowAnimation } from "./tools/show_animation.js";
+import { handleShowAnimation } from "./tools/animation/show.js";
 import { decodeToken } from "./tools/identity-schema.js";
 import { validateSession } from "./session-manager.js";
 import { DIGITS_ONLY } from "./utils/patterns.js";

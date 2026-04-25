@@ -34,6 +34,10 @@
 ### Fixed
 
 - `send_new_checklist`/`update_checklist`: completion reply now reflects actual outcome — `✅ Complete`, `🟡 Incomplete N/M done`, or `🔴 Failed — N/M passed, F failed` with step counts; was always `✅ Complete` regardless of failed/skipped steps (task 20-471)
+- `hook-animation.ts`: updated import path for `handleShowAnimation` from removed `tools/show_animation.ts` to `tools/animation/show.ts`
+- `hook-animation.test.ts` / `hook-animation.integration.test.ts`: updated mock and `importActual` paths to match the new module location; fixed `no-confusing-void-expression` lint errors in `server.close` callbacks
+- `tools/acknowledge/query.test.ts`, `tools/message/delete.test.ts`: removed unused `parseResult` imports
+- `tools/send.test.ts`: added `async: false` to four audio-path response_format tests that were routing to the async/queued path instead of the synchronous path
 
 - `set_reaction` with a `reactions` array: permanent base layer no longer makes its own redundant API call when a temporary overlay is active — the base is registered virtually and applied only when the last temporary reaction expires (`_fireRestoreForSlot` / `clearAllTempReactions`). `getBotReaction(messageId)` is now updated after each restore or clear so the bot reaction index remains accurate.
 

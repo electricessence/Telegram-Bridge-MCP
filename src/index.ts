@@ -14,19 +14,17 @@ import { clearCommandsOnShutdown } from "./shutdown.js";
 import { BUILT_IN_COMMANDS, applySessionLogConfig, doTimelineDump } from "./built-in-commands.js";
 import { startPoller, stopPoller, drainPendingUpdates, waitForPollerExit } from "./poller.js";
 import { startHealthCheck } from "./health-check.js";
-import { startSilenceDetector } from "./silence-detector.js";
 import { setAuthHook } from "./session-gate.js";
 import { touchSession, getSessionReauthDialogMsgId, clearSessionReauthDialogMsgId } from "./session-manager.js";
 import { createOutboundProxy } from "./outbound-proxy.js";
 import { loadConfig, getSessionLogMode, isDebugConfig, getPreToolDenyPatterns, getSessionApproval } from "./config.js";
 import { setDelegationEnabled } from "./agent-approval.js";
 import { setPreToolHook, buildDenyPatternHook } from "./tool-hooks.js";
-import { timelineSize, setOnLocalLog, setOnTranscriptionLog } from "./message-store.js";
+import { timelineSize, setOnLocalLog } from "./message-store.js";
 import { initDebugLog } from "./debug-log.js";
 import { cleanupStalePins } from "./startup-token-cleanup.js";
 import { resolveHttpPort } from "./cli-args.js";
 import { enableLogging, isLoggingEnabled, rollLog, logEvent as logLocalEvent, flushCurrentLog } from "./local-log.js";
-import { attachHookRoutes } from "./hook-animation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as { name: string; version: string };
@@ -115,29 +113,6 @@ setOnLocalLog((event) => {
   // Strip raw Telegram update before logging — it's verbose and contains PII
   const { _update: _discarded, ...loggableEvent } = event;
   logLocalEvent(loggableEvent);
-});
-const TRANSCRIPTION_FAILED_PREFIX = "[transcription failed:";
-setOnTranscriptionLog((messageId, text) => {
-  if (text.startsWith(TRANSCRIPTION_FAILED_PREFIX)) {
-    const raw = text.slice(TRANSCRIPTION_FAILED_PREFIX.length);
-    const errMsg = (raw.endsWith("]") ? raw.slice(0, -1) : raw).trim();
-    const errorCode = errMsg.includes("timed out") ? "service_timeout" : "service_error";
-    logLocalEvent({
-      id: messageId,
-      timestamp: new Date().toISOString(),
-      from: "system",
-      event: "transcription_error",
-      content: { type: "voice_transcription_error", error_code: errorCode, error: errMsg },
-    });
-  } else {
-    logLocalEvent({
-      id: messageId,
-      timestamp: new Date().toISOString(),
-      from: "system",
-      event: "transcription",
-      content: { type: "voice_transcription", text },
-    });
-  }
 });
 
 // Parse --http [port] from argv (takes precedence over MCP_PORT env var)
@@ -248,9 +223,6 @@ if (mcpPort !== undefined) {
     await transport.handleRequest(req, res);
   });
 
-  // ── REST hooks ────────────────────────────────────────────────────────────
-  attachHookRoutes(app);
-
   app.listen(mcpPort, "127.0.0.1", () => {
     process.stderr.write(`[info] MCP Streamable HTTP server listening on http://127.0.0.1:${mcpPort}/mcp\n`);
   });
@@ -279,7 +251,6 @@ void (async () => {
 startPoller();
 
 startHealthCheck();
-startSilenceDetector();
 setAuthHook((sid: number) => {
   touchSession(sid);
   const reauthMsgId = getSessionReauthDialogMsgId(sid);

@@ -64,5 +64,9 @@ Commit: `1867d00` — feat(http): add POST /hook/animation REST endpoint
 8 files changed, 351 insertions. 2705 tests pass.
 Build: PASS. Lint: PASS. Code review: 3 passes, clean.
 
-All acceptance criteria met. New files: `src/hook-animation.ts`, `src/hook-animation.test.ts` (17 tests).
+All acceptance criteria met. New files: `src/hook-animation.ts`, `src/hook-animation.test.ts` (17 unit + 2 integration tests).
 Also added `"UNKNOWN_PRESET"` to `TelegramErrorCode` union for typed error routing (400 vs 500 distinction).
+
+**Revision 1** (NEEDS_REVISION → re-review): Added integration test (commit `2b3d61d`) — uses real Express app via `createMcpExpressApp`, real in-memory session, real token, real `validateSession` and `handleShowAnimation`. Only Telegram API calls (`startAnimation`, `resolveChat`) are mocked to avoid network. Verifies full chain fires for `compacting` preset and returns 200. 2707 tests pass.
+
+**Revision 2** (Curator ruling — forwarding shims insufficient): Created separate file `src/hook-animation.integration.test.ts` (commit `587f148`) — zero `vi.mock` on `validateSession` or `handleShowAnimation`; real `session-manager.js` and `tools/show_animation.js` imported through actual module resolution. Only `startAnimation` and `resolveChat` mocked (network isolation). 2709 tests pass.

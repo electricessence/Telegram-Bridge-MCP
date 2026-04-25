@@ -1097,7 +1097,7 @@ describe("send — response_format: compact (split/split_count omitted)", () => 
     mocks.sendVoiceDirect
       .mockResolvedValueOnce({ message_id: 43 })
       .mockResolvedValueOnce({ message_id: 44 });
-    const result = await call({ audio: "hello", response_format: "compact", token: TOKEN });
+    const result = await call({ audio: "hello", async: false, response_format: "compact", token: TOKEN });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.message_ids).toBeDefined();
@@ -1111,7 +1111,7 @@ describe("send — response_format: compact (split/split_count omitted)", () => 
     mocks.sendVoiceDirect
       .mockResolvedValueOnce({ message_id: 43 })
       .mockResolvedValueOnce({ message_id: 44 });
-    const result = await call({ audio: "hello", response_format: "default", token: TOKEN });
+    const result = await call({ audio: "hello", async: false, response_format: "default", token: TOKEN });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.split).toBe(true);
@@ -1122,7 +1122,7 @@ describe("send — response_format: compact (split/split_count omitted)", () => 
   it("compact: caption-overflow path omits split:true (single audio chunk)", async () => {
     const longText = "X".repeat(970); // > MAX_CAPTION (964)
     mocks.sendMessage.mockResolvedValue({ message_id: 99 });
-    const result = await call({ text: longText, audio: "hello", response_format: "compact", token: TOKEN });
+    const result = await call({ text: longText, audio: "hello", async: false, response_format: "compact", token: TOKEN });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.audio).toBe(true);
@@ -1134,7 +1134,7 @@ describe("send — response_format: compact (split/split_count omitted)", () => 
   it("default: caption-overflow path includes split:true (single audio chunk)", async () => {
     const longText = "X".repeat(970);
     mocks.sendMessage.mockResolvedValue({ message_id: 99 });
-    const result = await call({ text: longText, audio: "hello", response_format: "default", token: TOKEN });
+    const result = await call({ text: longText, audio: "hello", async: false, response_format: "default", token: TOKEN });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.split).toBe(true);
