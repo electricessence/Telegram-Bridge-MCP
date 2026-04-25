@@ -16,7 +16,9 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type PreToolHookResult = { allowed: boolean; reason?: string };
+export type PreToolHookResult =
+  | { allowed: true; hookError?: never }
+  | { allowed: false; reason?: string; hookError?: true };
 
 export type PreToolHook = (
   toolName: string,
@@ -69,7 +71,7 @@ export async function invokePreToolHook(
   } catch (err) {
     const errorMessage = formatHookError(err);
     console.error(`Pre-tool hook failed for "${toolName}": ${errorMessage}`);
-    return { allowed: false, reason: "Hook error — see server logs for details." };
+    return { allowed: false, reason: "Hook error — see server logs for details.", hookError: true };
   }
 }
 
@@ -99,7 +101,7 @@ export function buildDenyPatternHook(patterns: string[]): PreToolHook {
 
   return (toolName) => {
     for (let i = 0; i < compiled.length; i++) {
-      if (compiled[i]?.(toolName)) {
+      if (compiled[i]!(toolName)) {
         return { allowed: false, reason: `Tool "${toolName}" is blocked by deny pattern "${patterns[i]}"` };
       }
     }
@@ -111,3 +113,19 @@ export function buildDenyPatternHook(patterns: string[]): PreToolHook {
 export function resetToolHooksForTest(): void {
   _hook = undefined;
 }
+
+/**
+ * Tools that remain fail-closed on hook errors.
+ * A hook error on these tools blocks the call (existing behaviour).
+ * All other tools fail-open: hook errors are logged but the call proceeds.
+ *
+ * Criteria: tools that affect session lifecycle, operator delegation, or
+ * bridge termination — where a silent pass-through on hook failure would
+ * create a security gap or irreversible side effect.
+ */
+export const FAIL_CLOSED_TOOLS = new Set<string>([
+  "session_start",   // establishes authenticated sessions
+  "approve_agent",   // grants operator-delegated session access
+  "shutdown",        // terminates the bridge process (irreversible)
+  "close_session",   // governor-only: terminates another agent's session
+]);

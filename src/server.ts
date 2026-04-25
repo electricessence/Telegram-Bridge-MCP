@@ -7,7 +7,7 @@ import { getActiveSession, getSession } from "./session-manager.js";
 import { markFirstUseHintSeen } from "./first-use-hints.js";
 import { SERVICE_MESSAGES } from "./service-messages.js";
 import { runInTokenHintContext } from "./tools/identity-schema.js";
-import { invokePreToolHook } from "./tool-hooks.js";
+import { invokePreToolHook, FAIL_CLOSED_TOOLS } from "./tool-hooks.js";
 import { checkUnknownParams, injectWarningIntoResult } from "./unknown-param-warning.js";
 import { toError } from "./telegram.js";
 import { recordToolCall } from "./trace-log.js";
@@ -196,21 +196,21 @@ export function createServer(): McpServer {
           // fail safe by treating it as blocked.
           const sessionName = (sid > 0 ? getSession(sid)?.name : undefined) ?? "";
 
-          let hookResult: { allowed: boolean; reason?: string };
-          try {
-            hookResult = await invokePreToolHook(name, cleanArgs);
-          } catch (err) {
-            // Hook threw — treat as blocked to fail safe
-            const reason = err instanceof Error ? err.message : "Hook error";
-            logBlockedToolCall(name, reason);
-            recordToolCall(name, cleanArgs, sid, sessionName, "blocked", "HOOK_ERROR");
-            return toError({ code: "BLOCKED", message: `Pre-tool hook error: ${reason}` });
-          }
+          const hookResult = await invokePreToolHook(name, cleanArgs);
           if (!hookResult.allowed) {
-            const reason = hookResult.reason ?? "Blocked by pre-tool hook";
-            logBlockedToolCall(name, reason);
-            recordToolCall(name, cleanArgs, sid, sessionName, "blocked", "BLOCKED");
-            return toError({ code: "BLOCKED", message: reason });
+            if (hookResult.hookError && !FAIL_CLOSED_TOOLS.has(name)) {
+              // Hook error on a fail-open tool — log and allow the call to proceed.
+              // Not sent to logBlockedToolCall: the call is not blocked; the error
+              // is an infrastructure anomaly, not a policy denial.
+              process.stderr.write(
+                `[hook:error] ${normalizeLogField(name)} — hook error on fail-open tool; proceeding\n`
+              );
+            } else {
+              const reason = hookResult.reason ?? "Blocked by pre-tool hook";
+              logBlockedToolCall(name, reason);
+              recordToolCall(name, cleanArgs, sid, sessionName, "blocked", "BLOCKED");
+              return toError({ code: "BLOCKED", message: reason });
+            }
           }
 
           let callResult: unknown;
