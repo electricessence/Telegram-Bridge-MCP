@@ -31,3 +31,13 @@ directly, not through MCP tool registration.
 - [ ] All action-dispatched handlers still work correctly
 - [ ] Tests pass
 - [ ] No functional change to MCP tool surface
+
+## Spec Revision Needed (2026-04-24)
+
+Worker 2 escalated: `register()` functions in tool files are **live test fixtures** used
+by ~50 test files (833 tests). They are NOT dead code — they register tools against a
+mock server so tests can call them. The premise of this task ("remove dead registerTool
+calls") is incorrect as written.
+
+Curator must revise: either clarify the task is about production `server.ts` surface only
+(leaving test-facing `register()` functions intact), or close this as won't-fix.
