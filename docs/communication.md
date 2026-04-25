@@ -216,15 +216,15 @@ Status values: `pending` · `running` · `done` · `failed` · `skipped`
 
 ## Pinned Messages
 
-Pin for: live task checklists, session state, important reference during complex work.  
+Pin for: live task checklists, session state, important reference during complex work.
 Always `disable_notification: true`. Unpin when content is no longer relevant.
 
 ---
 
 ## Loop
 
-Call `dequeue` again after every task, timeout, or error — loop forever.  
-Only `exit` from the operator ends the loop.  
+Call `dequeue` again after every task, timeout, or error — loop forever.
+Only `exit` from the operator ends the loop.
 When unsure whether to stop, ask via Telegram and wait for the operator's answer.
 
 On timeout (`{ timed_out: true }`): send a brief `send(type: "notification")` ("Still here — are you there?") then call `dequeue` again.

@@ -82,7 +82,7 @@ Never treat a pre-existing message as an answer to a question you just asked.
 
 ## Tool usage: `send(type: "question")` for confirmations
 
-**Never** ask a finite-answer question using `send(type: "notification")`/`send(type: "text")` + `dequeue` or `send(type: "question", ask: "...")`.  
+**Never** ask a finite-answer question using `send(type: "notification")`/`send(type: "text")` + `dequeue` or `send(type: "question", ask: "...")`.
 Whenever the user's response can be one of a predictable set of options — yes/no, proceed/cancel, option A/B/C — use `send(type: "question", choose: [...])` with labeled buttons.
 
 Only use `send(type: "question", ask: "...")` or `dequeue` for truly open-ended free-text input where choices cannot be enumerated.
@@ -468,7 +468,7 @@ Governor status transfers automatically when sessions close — the next lowest-
 
 **Always set a topic** when starting a session, especially in multi-session mode. Topics serve as at-a-glance identifiers and guide routing decisions.
 
-Good topics: `Refactoring animation state`, `Reviewing PR #40`, `Overseeing v4 branch`  
+Good topics: `Refactoring animation state`, `Reviewing PR #40`, `Overseeing v4 branch`
 Bad topics: `Working`, `Agent`, `Session 2`
 
 ### Inter-session communication

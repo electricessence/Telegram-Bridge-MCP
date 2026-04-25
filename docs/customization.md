@@ -212,7 +212,7 @@ See `docs/setup.md` for Kokoro setup and available voices.
 **Workflow:**
 
 1. Open Telegram on your phone
-2. Hold the microphone button and speak your instruction:  
+2. Hold the microphone button and speak your instruction:
    _"Add a timeout parameter to the ask tool, default 60 seconds"_
 3. Release — the voice message is transcribed and sent to the assistant
 4. The assistant acknowledges, edits `src/tools/ask.ts`, runs tests, confirms completion
@@ -277,7 +277,7 @@ If you're away from your computer, silent notifications let you track progress w
 
 ## Example Session
 
-**You (via Telegram voice):**  
+**You (via Telegram voice):**
 _"Add a severity parameter to the notify tool, default to info"_
 
 **Assistant:**
@@ -288,7 +288,7 @@ _"Add a severity parameter to the notify tool, default to info"_
 - Runs `pnpm test`
 - 🫡 "Done — `severity` parameter added, defaults to `info`, all tests pass"
 
-**You:**  
+**You:**
 _"Restart the server"_
 
 **Assistant:**
@@ -298,7 +298,7 @@ _"Restart the server"_
 - Restarts MCP
 - 🔔 "Back online — build clean"
 
-**You:**  
+**You:**
 _"Send a test notification with severity: success"_
 
 **Assistant sends:**
