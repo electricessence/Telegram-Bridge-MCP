@@ -1,9 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { toResult, toError } from "../telegram.js";
-import { enableReminder } from "../reminder-state.js";
-import { requireAuth } from "../session-gate.js";
-import { TOKEN_SCHEMA } from "./identity-schema.js";
+import { toResult, toError } from "../../telegram.js";
+import { enableReminder } from "../../reminder-state.js";
+import { requireAuth } from "../../session-gate.js";
+import { TOKEN_SCHEMA } from "../identity-schema.js";
 
 export function handleEnableReminder({ id, token }: { id: string; token: number }) {
   const _sid = requireAuth(token);

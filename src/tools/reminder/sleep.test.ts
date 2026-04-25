@@ -1,21 +1,21 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createMockServer, parseResult, isError } from "./test-utils.js";
-import type { Reminder } from "../reminder-state.js";
+import { createMockServer, parseResult, isError } from "../test-utils.js";
+import type { Reminder } from "../../reminder-state.js";
 
 const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(() => false),
   sleepReminder: vi.fn((): Reminder | null => null),
 }));
 
-vi.mock("../session-manager.js", () => ({
+vi.mock("../../session-manager.js", () => ({
   validateSession: mocks.validateSession,
 }));
 
-vi.mock("../reminder-state.js", () => ({
+vi.mock("../../reminder-state.js", () => ({
   sleepReminder: mocks.sleepReminder,
 }));
 
-import { register } from "./sleep_reminder.js";
+import { register } from "./sleep.js";
 
 const FUTURE_ISO = "2099-01-01T00:00:00Z";
 const PAST_ISO = "2000-01-01T00:00:00Z";

@@ -1,21 +1,21 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createMockServer, parseResult, isError } from "./test-utils.js";
-import type { Reminder } from "../reminder-state.js";
+import { createMockServer, parseResult, isError } from "../test-utils.js";
+import type { Reminder } from "../../reminder-state.js";
 
 const mocks = vi.hoisted(() => ({
   validateSession: vi.fn(() => false),
-  disableReminder: vi.fn((): Reminder | null => null),
+  enableReminder: vi.fn((): Reminder | null => null),
 }));
 
-vi.mock("../session-manager.js", () => ({
+vi.mock("../../session-manager.js", () => ({
   validateSession: mocks.validateSession,
 }));
 
-vi.mock("../reminder-state.js", () => ({
-  disableReminder: mocks.disableReminder,
+vi.mock("../../reminder-state.js", () => ({
+  enableReminder: mocks.enableReminder,
 }));
 
-import { register } from "./disable_reminder.js";
+import { register } from "./enable.js";
 
 const stubReminder: Reminder = {
   id: "r1",
@@ -26,10 +26,10 @@ const stubReminder: Reminder = {
   state: "active",
   created_at: Date.now(),
   activated_at: Date.now(),
-  disabled: true,
+  disabled: false,
 };
 
-describe("disable_reminder tool", () => {
+describe("enable_reminder tool", () => {
   let call: (args: Record<string, unknown>) => Promise<unknown>;
 
   beforeEach(() => {
@@ -37,33 +37,41 @@ describe("disable_reminder tool", () => {
     mocks.validateSession.mockReturnValue(true);
     const server = createMockServer();
     register(server);
-    call = server.getHandler("disable_reminder");
+    call = server.getHandler("enable_reminder");
   });
 
-  it("disables an existing reminder and returns { disabled: true, id }", async () => {
-    mocks.disableReminder.mockReturnValue(stubReminder);
+  it("enables a disabled reminder and returns { enabled: true, id, state }", async () => {
+    mocks.enableReminder.mockReturnValue(stubReminder);
     const result = await call({ id: "r1", token: 1123456 });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
-    expect(data.disabled).toBe(true);
+    expect(data.enabled).toBe(true);
     expect(data.id).toBe("r1");
-    expect(mocks.disableReminder).toHaveBeenCalledWith("r1");
+    expect(data.state).toBe("active");
+    expect(mocks.enableReminder).toHaveBeenCalledWith("r1");
   });
 
-  it("is idempotent — disabling an already-disabled reminder succeeds", async () => {
-    mocks.disableReminder.mockReturnValue({ ...stubReminder, disabled: true });
+  it("is idempotent — enabling an already-active reminder succeeds", async () => {
+    mocks.enableReminder.mockReturnValue({ ...stubReminder, disabled: false });
     const result = await call({ id: "r1", token: 1123456 });
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
-    expect(data.disabled).toBe(true);
+    expect(data.enabled).toBe(true);
   });
 
   it("returns NOT_FOUND when reminder does not exist", async () => {
-    mocks.disableReminder.mockReturnValue(null);
+    mocks.enableReminder.mockReturnValue(null);
     const result = await call({ id: "missing", token: 1123456 });
     expect(isError(result)).toBe(true);
     const data = parseResult(result);
     expect(data.code).toBe("NOT_FOUND");
+  });
+
+  it("returns the underlying reminder state in the response", async () => {
+    mocks.enableReminder.mockReturnValue({ ...stubReminder, state: "deferred" });
+    const result = await call({ id: "r1", token: 1123456 });
+    const data = parseResult(result);
+    expect(data.state).toBe("deferred");
   });
 
   describe("identity gate", () => {
