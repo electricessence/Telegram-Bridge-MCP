@@ -5,7 +5,7 @@ Assignee: Worker 2 (SID 3)
 Completed: 2026-04-03
 Priority: 10
 Source: Operator directive (voice, 21948)
-Repo: electricessence/Telegram-Bridge-MCP
+Repo: electrified-cortex/Telegram-Bridge-MCP
 Branch target: dev
 Related: 10-196, 15-197
 ---

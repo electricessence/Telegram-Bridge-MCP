@@ -35,7 +35,7 @@ wrong parameter names, no removed features still documented.
 ## Completion
 
 Branch: `10-582`
-Worktree: `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-582`
+Worktree: `Telegram MCP/.worktrees/10-582`
 Commit: `95686ba`
 
 Fixed 4 files:

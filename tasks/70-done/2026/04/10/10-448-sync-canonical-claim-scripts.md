@@ -6,11 +6,11 @@ Priority: 10-448
 Source: Curator investigation — TMCP claim scripts diverged from canonical spec
 ---
 
-# Sync TMCP claim scripts with canonical cortex.lan versions
+# Sync TMCP claim scripts with canonical shared versions
 
 ## Background
 
-The TMCP claim.ps1 and claim.sh diverged from the canonical cortex.lan versions.
+The TMCP claim.ps1 and claim.sh diverged from the canonical shared versions.
 The TMCP versions violate the claim.spec.md in multiple ways:
 
 - Uses `[System.IO.File]::Move` instead of `git mv` (spec requires git mv)
@@ -24,14 +24,14 @@ and 3-in-progress) during Worker task claiming.
 
 ## Objective
 
-Replace TMCP claim scripts with the canonical cortex.lan versions so all repos
+Replace TMCP claim scripts with the canonical shared versions so all repos
 use identical claim implementations matching the spec.
 
 ## Acceptance Criteria
 
-- [ ] `tasks/claim.ps1` replaced with exact copy of cortex.lan `tasks/claim.ps1`
-- [ ] `tasks/claim.sh` replaced with exact copy of cortex.lan `tasks/claim.sh`
-- [ ] `tasks/claim.spec.md` copied from cortex.lan `tasks/claim.spec.md`
+- [ ] `tasks/claim.ps1` replaced with exact copy of the canonical `tasks/claim.ps1`
+- [ ] `tasks/claim.sh` replaced with exact copy of the canonical `tasks/claim.sh`
+- [ ] `tasks/claim.spec.md` copied from the canonical `tasks/claim.spec.md`
 - [ ] Verify both scripts match the canonical versions (compare file hashes)
 - [ ] Test: `claim.ps1 -DryRun` runs without error from TMCP repo root
 
@@ -52,7 +52,7 @@ entries since all repos will have identical scripts with matching hashes.
 
 ### What changed
 
-- `tasks/claim.ps1` — replaced with canonical cortex.lan version (git mv, optional TaskFile, no GIT_INDEX_FILE, no baseline copy to 4-completed)
+- `tasks/claim.ps1` — replaced with canonical shared version (git mv, optional TaskFile, no GIT_INDEX_FILE, no baseline copy to 4-completed)
 - `tasks/claim.sh` — same replacement
 - `tasks/claim.spec.md` — new file (design spec, previously missing from TMCP)
 - `docs/git-index-safety.md` — removed "claim.ps1/claim.sh pattern" labels from examples; added note clarifying git mv scripts are exempt from GIT_INDEX_FILE clearing requirement

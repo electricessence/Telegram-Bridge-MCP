@@ -5,7 +5,7 @@
 **Status:** completed
 **Completed:** 2026-04-03
 **Assigned:** Worker 2 (SID 3)
-**Repo:** electricessence/Telegram-Bridge-MCP
+**Repo:** electrified-cortex/Telegram-Bridge-MCP
 **Branch target:** dev
 
 ## Problem

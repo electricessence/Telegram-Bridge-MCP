@@ -50,7 +50,7 @@ When the Deputy session closed, governor reassignment logic may have set governo
 ## Completion
 
 - **Branch:** `10-493`
-- **Worktree:** `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-493`
+- **Worktree:** `Telegram MCP/.worktrees/10-493`
 - **Commit:** `9262ee0` — fix(session): preserve governor role on non-governor 2→1 close (10-493)
 - **Root cause:** `session-teardown.ts` unconditionally called `setGovernorSid(0)` on 2→1 transition regardless of `wasGovernor`
 - **Fix:** check `wasGovernor` before mutating; non-governor close leaves governor SID untouched; governor close promotes remaining session

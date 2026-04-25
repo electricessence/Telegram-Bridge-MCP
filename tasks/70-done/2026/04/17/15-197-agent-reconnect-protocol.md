@@ -3,7 +3,7 @@ Created: 2026-04-03
 Status: Draft
 Priority: 15
 Source: Operator directive (voice)
-Repo: electricessence/Telegram-Bridge-MCP
+Repo: electrified-cortex/Telegram-Bridge-MCP
 Branch target: dev
 Related: 10-196
 ---

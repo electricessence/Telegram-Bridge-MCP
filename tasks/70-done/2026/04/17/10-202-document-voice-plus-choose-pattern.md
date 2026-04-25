@@ -3,7 +3,7 @@ Created: 2026-04-03
 Status: Draft
 Priority: 10
 Source: Operator feedback (voice, session 2026-04-03)
-Repo: electricessence/Telegram-Bridge-MCP
+Repo: electrified-cortex/Telegram-Bridge-MCP
 Branch target: dev
 ---
 

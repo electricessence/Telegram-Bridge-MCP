@@ -20,7 +20,7 @@ Once configured, this MCP becomes your development assistant for its own codebas
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/electricessence/Telegram-Bridge-MCP.git
+git clone https://github.com/electrified-cortex/Telegram-Bridge-MCP.git
 cd Telegram-Bridge-MCP
 pnpm install
 pnpm build

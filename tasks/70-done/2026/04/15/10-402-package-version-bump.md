@@ -19,7 +19,7 @@ Bump `package.json` version to `6.0.0` to match the actual release version.
 ## Context
 
 PR #126 Copilot comment:
-- [r3048353449](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3048353449)
+- [r3048353449](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3048353449)
 
 PR title/description indicate a release but package.json version doesn't match.
 The version should be `6.0.0` per operator directive and the breaking changes

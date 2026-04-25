@@ -28,12 +28,12 @@ voice mode, matching the behavior of the unified `send` tool.
 ## Context
 
 PR #126 Copilot comments:
-- [r3049211335](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049211335) (confirm)
-- [r3049211404](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049211404) (choose)
-- [r3049408370](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049408370) (choose, Round 3)
-- [r3049408387](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049408387) (choose, Round 3)
-- [r3049408402](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049408402) (confirm, Round 3)
-- [r3049408413](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049408413) (confirm, Round 3)
+- [r3049211335](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049211335) (confirm)
+- [r3049211404](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049211404) (choose)
+- [r3049408370](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049408370) (choose, Round 3)
+- [r3049408387](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049408387) (choose, Round 3)
+- [r3049408402](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049408402) (confirm, Round 3)
+- [r3049408413](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049408413) (confirm, Round 3)
 
 Currently `resolvedVoice = voice` with no fallback to `getSessionVoice()` /
 `getDefaultVoice()`. The description says "session default if omitted" but

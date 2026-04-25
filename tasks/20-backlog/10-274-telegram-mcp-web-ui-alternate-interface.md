@@ -4,7 +4,7 @@ Status: Draft
 Priority: 10
 Source: Operator direction (2026-04-04 session) — replaces 20-225
 Type: Epic / Minor or Major Version Feature
-Repo: electricessence/Telegram-Bridge-MCP
+Repo: electrified-cortex/Telegram-Bridge-MCP
 ---
 
 # 10-274: Telegram Bridge MCP — Web UI Alternate Interface

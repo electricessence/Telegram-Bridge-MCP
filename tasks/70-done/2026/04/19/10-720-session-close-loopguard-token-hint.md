@@ -47,7 +47,7 @@ Worker (TMCP). Curator stages, operator merges.
 - Memory `feedback_session_close_vs_shutdown.md` (Curator's understanding of close vs shutdown).
 - Memory `feedback_deputy_session_end.md` (SESSION_DENIED on reconnect = intentional, do not retry).
 - Memory `feedback_session_token_file.md` (token is plain-value file; empty = closed).
-- The PreCompact / Stop hooks in `cortex.lan/.claude/` that enforce the dequeue loop (don't modify those — fix the hint instead).
+- The PreCompact / Stop hooks in `<workspace>/.claude/` that enforce the dequeue loop (don't modify those — fix the hint instead).
 
 ## Completion
 

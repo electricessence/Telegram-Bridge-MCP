@@ -4,7 +4,7 @@ Status: Completed
 Priority: 05
 Source: Overseer process violation (PR #112 merged without squash or Copilot exhaustion)
 Type: Task
-Repo: electricessence/Telegram-Bridge-MCP
+Repo: electrified-cortex/Telegram-Bridge-MCP
 ---
 
 # 05-247: PR Merge Gate Enforcement

@@ -4,7 +4,7 @@ Status: Draft
 Priority: 15
 Source: Operator directive (voice)
 Epic: Bot API 9.6
-Repo: electricessence/Telegram-Bridge-MCP
+Repo: electrified-cortex/Telegram-Bridge-MCP
 Branch target: dev
 Depends: 10-192
 ---

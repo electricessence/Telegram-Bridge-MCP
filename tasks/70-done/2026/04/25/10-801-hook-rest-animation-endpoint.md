@@ -3,7 +3,7 @@ id: 10-801
 title: Hook-friendly REST endpoint — POST /hook/animation
 status: draft
 priority: 10
-origin: operator directive 2026-04-24 (split from cortex.lan 15-0584)
+origin: operator directive 2026-04-24 (split from parent workspace task 15-0584)
 ---
 
 # Hook-friendly REST endpoint — POST /hook/animation
@@ -53,7 +53,7 @@ Narrowly scoped: this endpoint does ONE thing — fires an animation on an authe
 
 ## Consumers
 
-- `cortex.lan/tasks/10-drafts/curator-only/15-0584-precompact-direct-animation.md` — blocked on this task.
+- `<workspace>/tasks/10-drafts/curator-only/15-0584-precompact-direct-animation.md` — blocked on this task.
 - Future: any other one-shot hook-driven animation needs (shutdown? stop-hook recovery?). Track as separate tasks, don't pre-build.
 
 ## Completion

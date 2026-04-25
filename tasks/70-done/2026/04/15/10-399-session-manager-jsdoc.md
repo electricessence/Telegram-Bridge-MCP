@@ -24,7 +24,7 @@ implementation.
 ## Context
 
 PR #126 Copilot comment:
-- [r3049754352](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049754352)
+- [r3049754352](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049754352)
 
 JSDoc says "hint is promoted only if it has never been assigned" but the
 implementation promotes any hint that is "not currently in use" (no longer

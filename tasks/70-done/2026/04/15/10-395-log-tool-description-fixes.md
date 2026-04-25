@@ -25,9 +25,9 @@ Fix misleading tool descriptions and a filter inconsistency in the logging tools
 ## Context
 
 PR #126 Copilot comments:
-- [r3048353396](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3048353396) — listLogs filter
-- [r3048353413](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3048353413) — roll_log description
-- [r3048353431](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3048353431) — toggle_logging description
+- [r3048353396](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3048353396) — listLogs filter
+- [r3048353413](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3048353413) — roll_log description
+- [r3048353431](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3048353431) — toggle_logging description
 
 ## Issues
 

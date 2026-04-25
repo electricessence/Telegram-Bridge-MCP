@@ -12,16 +12,16 @@ Companion to `10-799` (help("compacted") rewrite). The shared skill at `skills/t
 
 Concerns
 
-- References `memory/telegram/session.md` as token store; cortex.lan now uses `memory/telegram/session.token` (plain value, no frontmatter). Confirm across agents.
+- References `memory/telegram/session.md` as token store; the current convention uses `memory/telegram/session.token` (plain value, no frontmatter). Confirm across agents.
 - "Checkpoint block" in session file mentioned as forced-stop indicator — verify this contract is still honored.
 - Procedure assumes `dequeue(timeout: 0)` — current arg is `max_wait: 0` (`timeout` deprecated alias). Update to canonical.
 - Step 2 suggests an animation as the alive-probe. Re-evaluate: does `dequeue(max_wait: 0)` with the stored token already answer the question cheaper, with no user-visible side effect?
-- The PostCompact `additionalContext` fold-in note assumes a hook config many agents no longer install. Confirm against current cortex.lan hooks.
+- The PostCompact `additionalContext` fold-in note assumes a hook config many agents no longer install. Confirm against current workspace hooks.
 - Terminology alignment with the new agent layout: references to agent files should stay abstract (this is a shared skill), but examples and variable names must be consistent with what agents actually use today.
 
 Acceptance (pending refinement)
 
-- SKILL.md rewritten to reflect current session-file naming (`session.token`), canonical dequeue params, and cortex.lan hook reality.
+- SKILL.md rewritten to reflect current session-file naming (`session.token`), canonical dequeue params, and current hook reality.
 - No conflicts with `docs/help/compacted.md` after its rewrite.
 - No direct references to agent-specific files (`CLAUDE.md`, `context/*.md`) — stays portable.
 

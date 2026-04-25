@@ -17,9 +17,9 @@ formatted captions with raw `**` markup that renders as literal text.
 ## Context
 
 PR #126 Copilot comments:
-- [r3049211330](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049211330) (confirm)
-- [r3049211343](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049211343) (choose)
-- [r3049232871](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049232871) (choose, Round 3)
+- [r3049211330](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049211330) (confirm)
+- [r3049211343](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049211343) (choose)
+- [r3049232871](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049232871) (choose, Round 3)
 
 The text path correctly converts to MarkdownV2 but the voice path skips it.
 

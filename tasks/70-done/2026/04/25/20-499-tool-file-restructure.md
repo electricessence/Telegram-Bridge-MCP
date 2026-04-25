@@ -67,7 +67,7 @@ v6.5 — not blocking current work. Filed as priority 20 (low urgency).
 
 ## Completion
 
-Branch: `20-499` in `D:/Users/essence/Development/cortex.lan/Telegram MCP/.worktrees/20-499`
+Branch: `20-499` in `Telegram MCP/.worktrees/20-499`
 
 All 6 prior commits (first wave: session/, reminder/, profile/, log/, logging/, message/, chat/) plus final commit `d780988` (second wave + import depth fixes). 103 files changed across 22 namespace dirs.
 

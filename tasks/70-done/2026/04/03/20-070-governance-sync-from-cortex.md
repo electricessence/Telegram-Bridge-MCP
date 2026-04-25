@@ -1,4 +1,4 @@
-# Task: Sync Governance Patterns from cortex.lan
+# Task: Sync Governance Patterns from the parent workspace
 
 | Field    | Value                          |
 | -------- | ------------------------------ |
@@ -11,20 +11,20 @@
 
 ## Goal
 
-Port valuable governance patterns from `cortex.lan` workspace to this repo's agent/instruction files. The cortex.lan workspace has a mature governance framework that this repo currently lacks.
+Port valuable governance patterns from the parent workspace to this repo's agent/instruction files. The parent workspace has a mature governance framework that this repo currently lacks.
 
 ## Gaps Identified
 
 ### High Priority
 
-1. **Governance Framework** — cortex.lan has 10 "Absolute Rules" in `copilot-instructions.md`; this repo's version is minimal. Key rules to adapt:
+1. **Governance Framework** — the parent workspace has 10 "Absolute Rules" in `copilot-instructions.md`; this repo's version is minimal. Key rules to adapt:
    - Friction Protocol (one retry max, never brute-force, report up)
    - Ask Questions — Don't Assume
    - Document Everything
    - No One-Off Complex Commands (write temp scripts)
    - Keep Workspace in High Order
 
-2. **Adversarial Reviewer Agent** — cortex.lan has a dedicated skeptic agent that source-verifies claims and outputs structured RISKS/FLAWS/RECOMMENDATIONS. This repo has no equivalent.
+2. **Adversarial Reviewer Agent** — the parent workspace has a dedicated skeptic agent that source-verifies claims and outputs structured RISKS/FLAWS/RECOMMENDATIONS. This repo has no equivalent.
 
 ### Medium Priority
 
@@ -59,7 +59,7 @@ Port valuable governance patterns from `cortex.lan` workspace to this repo's age
 
 ### What was done
 
-- `.github/copilot-instructions.md` — added Governance Rules section: Friction Protocol, Ask Don't Assume, Document Everything, No One-Off Complex Commands, Keep Workspace in High Order (adapted from cortex.lan, infrastructure-specific refs removed). Fixed missing trailing newline.
+- `.github/copilot-instructions.md` — added Governance Rules section: Friction Protocol, Ask Don't Assume, Document Everything, No One-Off Complex Commands, Keep Workspace in High Order (adapted from the parent workspace, infrastructure-specific refs removed). Fixed missing trailing newline.
 - `.github/agents/adversarial-reviewer.agent.md` — created new file with source-verification focus, RISKS/FLAWS/RECOMMENDATIONS/VERDICT output format, test coverage as hard requirement.
 - `.github/AGENTS.md` — created new file registering all agents (Overseer, Worker, Task Runner, Code Reviewer, Adversarial Reviewer, task subagents) with usage guidance.
 - `.github/agents/overseer.agent.md` — refined Identity section: "librarian not taskmaster", "voice of reason", "less is more", "serve the operator", "source-verify everything".

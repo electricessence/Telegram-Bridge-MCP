@@ -23,7 +23,7 @@ Fix the tool description for `answer_callback_query` which incorrectly says
 ## Context
 
 PR #126 Copilot comment:
-- [r3049232911](https://github.com/electricessence/Telegram-Bridge-MCP/pull/126#discussion_r3049232911)
+- [r3049232911](https://github.com/electrified-cortex/Telegram-Bridge-MCP/pull/126#discussion_r3049232911)
 
 Should only reference `send_choice` as the non-blocking alternative.
 

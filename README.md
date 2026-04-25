@@ -340,7 +340,7 @@ Five resources are available to any connected client — no tool call required:
 ## Docker
 
 ```text
-ghcr.io/electricessence/telegram-bridge-mcp:latest
+ghcr.io/electrified-cortex/telegram-bridge-mcp:latest
 ```
 
 > **Before running Docker:** Create your `.env` file first by running `pnpm pair` on a machine with Node.js, or copy `.env.example` and fill it in manually.
@@ -353,7 +353,7 @@ docker run -d --name telegram-mcp \
   -e MCP_PORT=3099 \
   -p 3099:3099 \
   -v telegram-mcp-cache:/home/node/.cache \
-  ghcr.io/electricessence/telegram-bridge-mcp:latest
+  ghcr.io/electrified-cortex/telegram-bridge-mcp:latest
 ```
 
 Connect MCP hosts to `http://127.0.0.1:3099/mcp`.
@@ -368,7 +368,7 @@ Connect MCP hosts to `http://127.0.0.1:3099/mcp`.
     "run", "--rm", "-i",
     "--env-file", "/absolute/path/to/.env",
     "-v", "telegram-mcp-cache:/home/node/.cache",
-    "ghcr.io/electricessence/telegram-bridge-mcp:latest"
+    "ghcr.io/electrified-cortex/telegram-bridge-mcp:latest"
   ]
 }
 ```

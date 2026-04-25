@@ -46,7 +46,7 @@ This caused a false-positive hook trigger: the bridge was reachable but no sessi
 ## Completion
 
 - **Branch:** `10-492`
-- **Worktree:** `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-492`
+- **Worktree:** `Telegram MCP/.worktrees/10-492`
 - **Commit:** `c7512f1` — feat(session): add last-session close guard (10-492)
 - **Tests:** 2222 passed (109 files)
 - **Files changed:** `src/tools/close_session.ts`, `src/tools/action.ts`, `src/tools/close_session.test.ts`, `src/tools/multi-session-integration.test.ts`, `src/telegram.ts`, `src/tools/help.ts`, `changelog/unreleased.md`

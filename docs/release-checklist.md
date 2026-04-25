@@ -24,7 +24,7 @@ Reusable checklist template for all releases. Copy and fill in the version numbe
 
 - [ ] Version bumped in `package.json`
 - [ ] Git tag created: `vX.Y.Z`
-- [ ] Docker image published to `ghcr.io/electricessence/telegram-bridge-mcp:latest` and `:vX.Y.Z`
+- [ ] Docker image published to `ghcr.io/electrified-cortex/telegram-bridge-mcp:latest` and `:vX.Y.Z`
 - [ ] GitHub release created with changelog notes
 
 ## Nice-to-Have — Won't Block

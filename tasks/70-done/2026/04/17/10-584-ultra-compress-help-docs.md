@@ -41,7 +41,7 @@ For each file:
 ## Completion
 
 Branch: `10-584`
-Worktree: `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-584`
+Worktree: `Telegram MCP/.worktrees/10-584`
 Commit: `dcbe784`
 
 73 files ultra-compressed in docs/help/ (all subdirectories). 73 `.uncompressed.md` backups created alongside each. 7 `.spec.md` files left untouched.

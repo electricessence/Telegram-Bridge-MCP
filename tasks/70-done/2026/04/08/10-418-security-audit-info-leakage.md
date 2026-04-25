@@ -28,10 +28,10 @@ disastrous.
 
 - Hardcoded API keys, tokens, passwords, or secrets
 - Bot tokens (Telegram or otherwise)
-- Internal hostnames (`*.cortex.lan`, IP addresses, LXC IDs)
+- Internal hostnames (private workspace hostnames, IP addresses, LXC IDs)
 - Operator PII (names, emails, usernames beyond public GitHub profile)
 - File paths containing usernames or private directory structures
-- References to `cortex.lan` workspace internals
+- References to private workspace internals
 - Session tokens, PINs, or authentication material in logs/comments
 
 ### High (fix before merge)

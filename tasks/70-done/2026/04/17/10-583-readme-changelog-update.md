@@ -39,7 +39,7 @@ Less is more — tight, descriptive, accurate. No bloat.
 ## Completion
 
 Branch: `10-583`
-Worktree: `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-583`
+Worktree: `Telegram MCP/.worktrees/10-583`
 Commit: `5998198`
 
 - `README.md` — Added 3 rows to Highlights table: Reactions, Guided behavior, Transport reliability

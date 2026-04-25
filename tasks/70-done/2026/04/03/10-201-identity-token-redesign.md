@@ -3,7 +3,7 @@ Created: 2026-04-03
 Status: Completed
 Priority: 10
 Source: Operator directive (voice) + Overseer request
-Repo: electricessence/Telegram-Bridge-MCP
+Repo: electrified-cortex/Telegram-Bridge-MCP
 Branch target: dev
 Breaking: true (major version bump)
 ---

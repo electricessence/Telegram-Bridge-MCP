@@ -59,7 +59,7 @@ The reaction appeared to be applied server-side without agent request.
 ## Completion
 
 Branch: `10-585`
-Worktree: `D:\Users\essence\Development\cortex.lan\Telegram MCP\.worktrees\10-585`
+Worktree: `Telegram MCP/.worktrees/10-585`
 Commit: `3956da5`
 
 Root cause for ghost 😴: poller's `hasSessionWaiterForMessage` guard didn't cover the brief window when the agent was processing a prior event (reminder) between dequeue calls. Fixed with 1500ms delay + `hasPendingWaiters()` re-check.
