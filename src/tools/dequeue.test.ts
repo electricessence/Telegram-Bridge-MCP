@@ -1067,7 +1067,7 @@ describe("dequeue tool", () => {
       const data = parseResult<DequeueResult>(result);
       expect(data.hint).toBeDefined();
       expect(data.hint).toContain("2 voice msg pending");
-      expect(data.hint).toContain("processing preset");
+      expect(data.hint).toContain("reaction preset");
     });
 
     it("does not include hint when batch has voice but no pending voice", async () => {
