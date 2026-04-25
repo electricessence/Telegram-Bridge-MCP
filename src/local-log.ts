@@ -106,7 +106,10 @@ export function logEvent(event: unknown): void {
   if (_flushTimer === null) {
     _flushTimer = setTimeout(() => {
       _flushTimer = null;
-      _flushPromise = _flushPromise.then(_actualFlush);
+      _flushPromise = _flushPromise.then(_actualFlush, (error: unknown) => {
+        console.error("local-log: previous flush failed", error);
+        return _actualFlush();
+      });
     }, FLUSH_DELAY_MS);
   }
 }
@@ -120,9 +123,13 @@ async function _actualFlush(): Promise<void> {
     if (line === undefined) break;
     lines.push(line);
   }
-  ensureLogsDir();
-  const filePath = currentFilePath();
-  await appendFile(filePath, lines.join(''), 'utf-8').catch(() => { /* best-effort */ });
+  try {
+    ensureLogsDir();
+    const filePath = currentFilePath();
+    await appendFile(filePath, lines.join(""), "utf-8");
+  } catch {
+    // best-effort
+  }
 }
 
 /**
@@ -148,7 +155,7 @@ export async function flushCurrentLog(): Promise<void> {
     _flushTimer = null;
   }
   // Chain the drain onto any in-flight flush so writes are serialized.
-  _flushPromise = _flushPromise.then(_actualFlush, (error) => {
+  _flushPromise = _flushPromise.then(_actualFlush, (error: unknown) => {
     console.error("local-log: previous flush failed", error);
     return _actualFlush();
   });

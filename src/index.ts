@@ -119,20 +119,16 @@ const TRANSCRIPTION_FAILED_PREFIX = "[transcription failed:";
 setOnTranscriptionLog((messageId, text) => {
   if (text.startsWith(TRANSCRIPTION_FAILED_PREFIX)) {
     const raw = text.slice(TRANSCRIPTION_FAILED_PREFIX.length);
-    const errMsg = (raw.endsWith(']') ? raw.slice(0, -1) : raw).trim();
+    const errMsg = (raw.endsWith("]") ? raw.slice(0, -1) : raw).trim();
     const errorCode = errMsg.includes("timed out") ? "service_timeout" : "service_error";
     logLocalEvent({
       id: messageId,
-      timestamp: new Date().toISOString(),
-      from: "system",
       event: "transcription_error",
       content: { type: "voice_transcription_error", error_code: errorCode, error: errMsg },
     });
   } else {
     logLocalEvent({
       id: messageId,
-      timestamp: new Date().toISOString(),
-      from: "system",
       event: "transcription",
       content: { type: "voice_transcription", text },
     });
