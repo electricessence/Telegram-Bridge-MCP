@@ -148,6 +148,7 @@ describe("session_start tool", () => {
       name: "Primary",
       color: "🟦",
       sessionsActive: 1,
+      connectionToken: "test-connection-token-uuid",
     });
     const server = createMockServer();
     register(server);
@@ -173,6 +174,7 @@ describe("session_start tool", () => {
       pending: 0,
       discarded: 3,
       fellow_sessions: [],
+      connection_token: "test-connection-token-uuid",
     });
   });
 
@@ -190,6 +192,7 @@ describe("session_start tool", () => {
       pending: 0,
       discarded: 0,
       fellow_sessions: [],
+      connection_token: "test-connection-token-uuid",
     });
   });
 
@@ -201,6 +204,39 @@ describe("session_start tool", () => {
     expect(result.token).toBeDefined();
     expect(result.sid).toBeDefined();
     expect(result.discarded).toBeDefined();
+  });
+
+  it("includes connection_token UUID in response when createSession returns one", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    const expectedToken = "550e8400-e29b-41d4-a716-446655440000"; // valid v4 UUID
+    mocks.createSession.mockReturnValue({
+      sid: 1,
+      suffix: 123456,
+      name: "Primary",
+      color: "🟦",
+      sessionsActive: 1,
+      connectionToken: expectedToken,
+    });
+
+    const result = parseResult(await call({}));
+
+    expect(result.connection_token).toBe(expectedToken);
+  });
+
+  it("omits connection_token from response when createSession does not return one", async () => {
+    mocks.pendingCount.mockReturnValue(0);
+    // The default mock does not include connectionToken
+    mocks.createSession.mockReturnValue({
+      sid: 1,
+      suffix: 123456,
+      name: "Primary",
+      color: "🟦",
+      sessionsActive: 1,
+    });
+
+    const result = parseResult(await call({}));
+
+    expect(result.connection_token).toBeUndefined();
   });
 
   it("calls createSession with provided name", async () => {

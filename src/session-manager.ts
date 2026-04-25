@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { dlog } from "./debug-log.js";
 import { recordNonToolEvent } from "./trace-log.js";
 
@@ -23,6 +23,12 @@ export interface Session {
   pendingEnvelopeHint?: string;
   silenceThresholdS?: number;
   firstUseHintsSeen?: Set<string>;
+  /**
+   * Connection token assigned at session/start. Used for duplicate-session
+   * detection: if two callers present the same SID/suffix but different
+   * connection tokens, the bridge alerts the governor (Option A).
+   */
+  connectionToken: string;
 }
 
 /** Public view returned by `listSessions` — no token suffix. */
@@ -40,6 +46,7 @@ export interface SessionCreateResult {
   name: string;
   color: string;
   sessionsActive: number;
+  connectionToken: string;
 }
 
 // ── State ──────────────────────────────────────────────────
@@ -154,6 +161,7 @@ export function createSession(name = "", colorHint?: string, forceColor = false)
     );
   }
   const color = assignColor(colorHint, forceColor);
+  const connectionToken = randomUUID();
   const session: Session = {
     sid,
     suffix,
@@ -162,11 +170,12 @@ export function createSession(name = "", colorHint?: string, forceColor = false)
     createdAt: new Date().toISOString(),
     lastPollAt: undefined,
     healthy: true,
+    connectionToken,
   };
   _sessions.set(sid, session);
   dlog("session", `created sid=${sid} name=${JSON.stringify(name)} color=${color} total=${_sessions.size}`);
   recordNonToolEvent("session_create", sid, name);
-  return { sid, suffix, name, color, sessionsActive: _sessions.size };
+  return { sid, suffix, name, color, sessionsActive: _sessions.size, connectionToken };
 }
 
 export function getSession(sid: number): Session | undefined {
@@ -176,6 +185,38 @@ export function getSession(sid: number): Session | undefined {
 export function validateSession(sid: number, suffix: number): boolean {
   const session = _sessions.get(sid);
   return session !== undefined && session.suffix === suffix;
+}
+
+/**
+ * Return the connection token for a session, or undefined if the session
+ * does not exist. Connection tokens are assigned at session/start and used
+ * for duplicate-session detection (Option A).
+ */
+export function getConnectionToken(sid: number): string | undefined {
+  return _sessions.get(sid)?.connectionToken;
+}
+
+/**
+ * Check whether a presented connection token matches the one stored for the
+ * given session. Returns:
+ *   - "match"    — token matches; this is the expected caller
+ *   - "mismatch" — token present but does not match; duplicate session detected
+ *   - "absent"   — no token presented; legacy caller or caller that did not
+ *                  save their connection token (non-fatal; allow through)
+ *
+ * Open design question: should we also issue a mismatch alert when the caller
+ * presents a token but the session has no stored token (e.g. after a reconnect
+ * that does not regenerate the token)? Currently treated as "match" to avoid
+ * false positives.
+ */
+export function checkConnectionToken(
+  sid: number,
+  presented: string | undefined,
+): "match" | "mismatch" | "absent" {
+  if (presented === undefined) return "absent";
+  const stored = _sessions.get(sid)?.connectionToken;
+  if (!stored) return "match"; // no stored token → cannot verify, allow through
+  return presented === stored ? "match" : "mismatch";
 }
 
 export function closeSession(sid: number): boolean {

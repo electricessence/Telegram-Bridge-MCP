@@ -279,7 +279,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
 
       // forceColor = true when the operator explicitly tapped a color button, or on auto-approve (hint is definitive);
       // forceColor = false for the first session (no dialog, no hint).
-      const session = createSession(effectiveName, chosenColor, decision?.forceColor ?? !isFirstSession);
+      const session = createSession(effectiveName, chosenColor, decision?.forceColor ?? false);
       createSessionQueue(session.sid);
       setActiveSession(session.sid);
       if (!isPollerRunning()) startPoller();
@@ -299,6 +299,11 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           pending: 0,
           discarded,
           fellow_sessions: [] as unknown[],
+          // connection_token: UUID assigned to this session start instance.
+          // Pass it on every dequeue call to enable duplicate-session detection.
+          // The bridge alerts the governor (without rejecting) if two callers
+          // share the same SID/suffix but present different connection tokens.
+          connection_token: session.connectionToken,
         };
         if (isFirstSession) {
           // First session is the governor by default

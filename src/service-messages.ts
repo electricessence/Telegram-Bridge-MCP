@@ -172,6 +172,25 @@ export const SERVICE_MESSAGES = deepFreeze({
     text: "User sent voice — consider replying with voice or hybrid. Buttons first for yes/no choices. See help('modality').",
   },
 
+  // ── Duplicate session detection ───────────────────────────────────────────
+
+  /**
+   * Alert sent to the governor when two callers present the same SID/suffix
+   * but different connection tokens. This strongly suggests two agent instances
+   * are sharing one session identity (e.g. via shared memory files).
+   *
+   * @param sid      The session SID being shared
+   * @param name     The session name
+   */
+  DUPLICATE_SESSION_DETECTED: {
+    eventType: "duplicate_session_detected" as const,
+    text: (sid: number, name: string) =>
+      `**Duplicate session detected:**\n**SID:** ${sid}\n**Name:** ${name}\n` +
+      `Two callers presented the same token but different connection tokens. ` +
+      `A second agent instance may be sharing this session identity. ` +
+      `Investigate — one caller may be consuming events intended for the other.`,
+  },
+
   // ── Presence / silent-work nudges ─────────────────────────────────────────
 
   NUDGE_PRESENCE_RUNG1: {

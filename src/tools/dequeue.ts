@@ -6,9 +6,9 @@ import { requireAuth } from "../session-gate.js";
 import {
   type TimelineEvent,
 } from "../message-store.js";
-import { setActiveSession, touchSession, getDequeueDefault, setDequeueIdle, getSession, takeSilenceHint } from "../session-manager.js";
+import { setActiveSession, touchSession, getDequeueDefault, setDequeueIdle, getSession, takeSilenceHint, checkConnectionToken } from "../session-manager.js";
 import { recordNonToolEvent } from "../trace-log.js";
-import { getSessionQueue, getMessageOwner, peekSessionCategories } from "../session-queue.js";
+import { getSessionQueue, getMessageOwner, peekSessionCategories, deliverServiceMessage } from "../session-queue.js";
 import { TOKEN_SCHEMA } from "./identity-schema.js";
 import {
   promoteDeferred,
@@ -17,6 +17,8 @@ import {
   getSoonestDeferredMs,
   buildReminderEvent,
 } from "../reminder-state.js";
+import { getGovernorSid } from "../routing-mode.js";
+import { SERVICE_MESSAGES } from "../service-messages.js";
 
 /** Defensive clamp for a single setTimeout call, kept below Node.js's ~2^31-1 ms overflow limit. */
 const MAX_SET_TIMEOUT_MS = 2_000_000_000;
@@ -69,6 +71,7 @@ const DESCRIPTION =
   "`{ empty: true }` for instant polls (max_wait: 0); " +
   "`{ error: \"session_closed\", message }` (isError: false) when the session queue is gone — stop looping. " +
   "pending > 0 → call again. Omit max_wait to use session default (action(type: 'profile/dequeue-default'), fallback 300 s); max explicit: 300 s. " +
+  "Pass connection_token (from session/start) to enable duplicate-session detection — the bridge alerts the governor if two callers share the same identity. " +
   "Call `help(topic: 'dequeue')` for details.";
 
 /**
@@ -112,14 +115,59 @@ export function register(server: McpServer) {
           .default(false)
           .describe("Pass true to allow a one-time override when max_wait exceeds your current session default. Only applies to values ≤ 300 s (the hard cap on max_wait). To wait longer than 300 s by default, use action(type: 'profile/dequeue-default') instead."),
         token: TOKEN_SCHEMA,
+        connection_token: z
+          .uuid()
+          .optional()
+          .describe("UUID returned by session/start. Pass on every dequeue call to enable duplicate-session detection. The bridge alerts the governor (without rejecting the call) if two agents share the same SID but present different connection tokens."),
       },
     },
-    async ({ max_wait, timeout: timeoutAlias, force, token }, { signal }) => {
+    async ({ max_wait, timeout: timeoutAlias, force, token, connection_token }, { signal }) => {
       // Resolve max_wait from primary param or deprecated `timeout` alias.
       const timeout = max_wait ?? timeoutAlias;
       const _sid = requireAuth(token);
       if (typeof _sid !== "number") return toError(_sid);
       const sid = _sid;
+
+      // Option A — Duplicate session detection:
+      // If the caller passes a connection_token, check it against the one stored
+      // at session/start. A mismatch means two agents are sharing the same SID/suffix
+      // (e.g. via shared memory files). We do NOT reject the call — both callers are
+      // allowed to proceed — but we alert the governor so the operator can investigate.
+      //
+      // Open design questions:
+      //   1. Rate-limiting: Should we throttle governor alerts to avoid flooding?
+      //      Currently we fire once per mismatch event. A per-session cooldown would
+      //      reduce noise during a runaway duplicate loop.
+      //   2. connection_token on reconnect: session/reconnect does NOT regenerate
+      //      the connection_token (it reuses the stored one). If a caller after reconnect
+      //      passes the old token, it will match. If they lost it, they omit it → "absent".
+      //      This is intentional to avoid false positives on reconnect.
+      //   3. Alert delivery: alerts go to the governor queue (in-process service message).
+      //      If no governor is set, the alert is logged via dlog (see else branch below).
+      //      A future improvement could deliver to all active sessions.
+      if (connection_token && sid > 0) {
+        const tokenStatus = checkConnectionToken(sid, connection_token);
+        if (tokenStatus === "mismatch") {
+          const sessionName = getSession(sid)?.name ?? "";
+          dlog("session", `duplicate session detected sid=${sid} name=${sessionName}`);
+          const governorSid = getGovernorSid();
+          if (governorSid > 0 && governorSid !== sid) {
+            deliverServiceMessage(
+              governorSid,
+              SERVICE_MESSAGES.DUPLICATE_SESSION_DETECTED.text(sid, sessionName),
+              SERVICE_MESSAGES.DUPLICATE_SESSION_DETECTED.eventType,
+              { sid, name: sessionName },
+            );
+          } else {
+            // No governor to alert (unset or is the duplicate itself) — record a
+            // debug trace so the mismatch is observable even without a governor.
+            dlog(
+              "session",
+              `duplicate session mismatch with no alertable governor — sid=${sid} name=${sessionName} governorSid=${governorSid}`,
+            );
+          }
+        }
+      }
 
       // Gate: reject timeout values above the session default unless force is set
       const sessionDefault = getDequeueDefault(sid);

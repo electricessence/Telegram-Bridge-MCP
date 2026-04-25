@@ -41,6 +41,9 @@ const mocks = vi.hoisted(() => ({
   validateSession: vi.fn((_sid: number, _suffix: number) => true),
   getDequeueDefault: vi.fn((_sid: number): number => 300),
   setDequeueDefault: vi.fn((_sid: number, _timeout: number) => {}),
+  checkConnectionToken: vi.fn((_sid: number, _token: string | undefined): "match" | "mismatch" | "absent" => "absent"),
+  deliverServiceMessage: vi.fn((_targetSid: number, ..._args: unknown[]) => true),
+  getGovernorSid: vi.fn((): number => 0),
 }));
 
 vi.mock("../telegram.js", async (importActual) => {
@@ -78,12 +81,27 @@ vi.mock("../session-manager.js", () => ({
   setDequeueIdle: vi.fn(),
   getSession: vi.fn(() => ({ name: "TestSession" })),
   takeSilenceHint: vi.fn().mockReturnValue(undefined),
+  checkConnectionToken: (sid: number, token: string | undefined) => mocks.checkConnectionToken(sid, token),
 }));
 
 vi.mock("../session-queue.js", () => ({
   getSessionQueue: (sid: number) => mocks.getSessionQueue(sid),
   getMessageOwner: (msgId: number) => mocks.getMessageOwner(msgId),
   peekSessionCategories: (sid: number) => mocks.peekSessionCategories(sid),
+  deliverServiceMessage: (targetSid: number, ...args: unknown[]) => mocks.deliverServiceMessage(targetSid, ...args),
+}));
+
+vi.mock("../routing-mode.js", () => ({
+  getGovernorSid: () => mocks.getGovernorSid(),
+}));
+
+vi.mock("../service-messages.js", () => ({
+  SERVICE_MESSAGES: {
+    DUPLICATE_SESSION_DETECTED: {
+      eventType: "duplicate_session_detected",
+      text: (sid: number, name: string) => `Duplicate session detected: SID ${sid} Name ${name}`,
+    },
+  },
 }));
 
 vi.mock("../trace-log.js", () => ({
@@ -165,6 +183,10 @@ describe("dequeue tool", () => {
     mocks.pendingCount.mockReturnValue(0);
     mocks.waitForEnqueue.mockResolvedValue(undefined);
     mocks.peekSessionCategories.mockReturnValue(undefined);
+    // Default: connection token check returns "absent" (caller omitted token)
+    mocks.checkConnectionToken.mockReturnValue("absent");
+    // Default: no governor set
+    mocks.getGovernorSid.mockReturnValue(0);
     // Default session queue for any sid proxies to the global mock fns
     mocks.getSessionQueue.mockImplementation(() => ({
       dequeueBatch: () => mocks.dequeueBatch(),
@@ -1221,6 +1243,149 @@ describe("dequeue tool", () => {
       } finally {
         Date.now = realDateNow;
       }
+    });
+  });
+
+  // =========================================================================
+  // Option A — Duplicate session detection (connection_token mismatch)
+  // =========================================================================
+
+  describe("duplicate session detection (Option A)", () => {
+    // Valid v4 UUIDs for use across tests
+    const UUID_A = "550e8400-e29b-41d4-a716-446655440000";
+    const UUID_B = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
+
+    it("does not alert governor when connection_token matches stored token", async () => {
+      const evt = makeEvent(1, "hello");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      mocks.checkConnectionToken.mockReturnValue("match");
+      mocks.getGovernorSid.mockReturnValue(2); // governor exists
+
+      const result = await call({ token: 1_123_456, timeout: 0, connection_token: UUID_A });
+      expect(isError(result)).toBe(false);
+      // Governor should NOT be alerted on a match
+      expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+    });
+
+    it("does not alert governor when connection_token is absent (legacy caller)", async () => {
+      const evt = makeEvent(2, "no token");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      mocks.checkConnectionToken.mockReturnValue("absent");
+      mocks.getGovernorSid.mockReturnValue(2);
+
+      await call({ token: 1_123_456, timeout: 0 }); // no connection_token
+      expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+    });
+
+    it("alerts governor when connection_token mismatches stored token", async () => {
+      const evt = makeEvent(3, "duplicate");
+      const mockSessionQueue = {
+        dequeueBatch: vi.fn(() => [evt] as TimelineEvent[]),
+        pendingCount: vi.fn(() => 0),
+        waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+      };
+      mocks.getSessionQueue.mockImplementation((sid: number) =>
+        sid === 1 ? mockSessionQueue : undefined,
+      );
+      mocks.checkConnectionToken.mockReturnValue("mismatch");
+      mocks.getGovernorSid.mockReturnValue(2); // governor is SID 2
+
+      await call({ token: 1_123_456, timeout: 0, connection_token: UUID_B });
+
+      // Governor (SID 2) should receive a service message alert
+      expect(mocks.deliverServiceMessage).toHaveBeenCalledWith(
+        2,
+        expect.stringContaining("Duplicate session detected"),
+        "duplicate_session_detected",
+        expect.objectContaining({ sid: 1 }),
+      );
+    });
+
+    it("does not alert when governor sid is 0 (no governor set)", async () => {
+      const evt = makeEvent(4, "no governor");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      mocks.checkConnectionToken.mockReturnValue("mismatch");
+      mocks.getGovernorSid.mockReturnValue(0); // no governor
+
+      await call({ token: 1_123_456, timeout: 0, connection_token: UUID_A });
+      // No governor to alert — silently drops
+      expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+    });
+
+    it("does not alert governor when the duplicate IS the governor (avoids self-alert)", async () => {
+      const evt = makeEvent(5, "self alert guard");
+      mocks.dequeueBatch.mockReturnValueOnce([evt]);
+      mocks.checkConnectionToken.mockReturnValue("mismatch");
+      mocks.getGovernorSid.mockReturnValue(1); // governor SID == caller SID
+
+      await call({ token: 1_123_456, timeout: 0, connection_token: UUID_B });
+      // Governor === duplicate session: skip alert to avoid self-delivery
+      expect(mocks.deliverServiceMessage).not.toHaveBeenCalled();
+    });
+
+    it("still returns valid dequeue result even after a mismatch alert", async () => {
+      const evt = makeEvent(6, "still proceeds");
+      const mockSessionQueue = {
+        dequeueBatch: vi.fn(() => [evt] as TimelineEvent[]),
+        pendingCount: vi.fn(() => 0),
+        waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+      };
+      mocks.getSessionQueue.mockImplementation((sid: number) =>
+        sid === 1 ? mockSessionQueue : undefined,
+      );
+      mocks.checkConnectionToken.mockReturnValue("mismatch");
+      mocks.getGovernorSid.mockReturnValue(2);
+
+      const result = await call({ token: 1_123_456, timeout: 0, connection_token: UUID_A });
+      // Call must NOT be rejected — the duplicate alert is advisory only
+      expect(isError(result)).toBe(false);
+      const data = parseResult<DequeueResult>(result);
+      expect(data.updates).toBeDefined();
+      expect(data.updates[0].id).toBe(6);
+    });
+
+    it("does not call checkConnectionToken when sid is 0", async () => {
+      // sid=0 is the no-session sentinel — skip duplicate check
+      const mockQueue0 = {
+        dequeueBatch: vi.fn(() => [] as TimelineEvent[]),
+        pendingCount: vi.fn(() => 0),
+        waitForEnqueue: vi.fn().mockResolvedValue(undefined),
+      };
+      mocks.getSessionQueue.mockImplementation((sid: number) =>
+        sid === 0 ? mockQueue0 : undefined,
+      );
+      await call({ token: 123456, timeout: 0, connection_token: UUID_B });
+      expect(mocks.checkConnectionToken).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // Option B — Dead session explicit error (existing behavior confirmed)
+  // =========================================================================
+
+  describe("dead session explicit error (Option B)", () => {
+    it("returns session_closed with isError: false when no session queue exists", async () => {
+      mocks.getSessionQueue.mockReturnValue(undefined);
+      const result = await call({ token: 5_001_234 });
+      expect(isError(result)).toBe(false);
+      const data = parseResult(result);
+      expect(data.error).toBe("session_closed");
+      expect(typeof data.message).toBe("string");
+      expect((data.message as string).length).toBeGreaterThan(0);
+    });
+
+    it("includes the SID in the session_closed message", async () => {
+      mocks.getSessionQueue.mockReturnValue(undefined);
+      const result = await call({ token: 13_001_234 });
+      const data = parseResult(result);
+      expect(data.error).toBe("session_closed");
+      expect((data.message as string)).toContain("13");
+    });
+
+    it("does not set setActiveSession on session_closed path", async () => {
+      mocks.getSessionQueue.mockReturnValue(undefined);
+      await call({ token: 8_001_234 });
+      expect(mocks.setActiveSession).not.toHaveBeenCalled();
     });
   });
 });

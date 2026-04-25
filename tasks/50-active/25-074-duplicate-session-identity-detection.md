@@ -47,3 +47,29 @@ Operator wants to discuss implementation approach before queuing. Specifically:
 - See GitHub issue #102 for full spec.
 - Security-tagged issue.
 - Requires bridge-level implementation (session manager, dequeue handler).
+
+## Completion
+
+Branch: `25-074`
+Commit: `32d9ee4`
+Worker: Worker 6 (SID 8)
+
+### Deliverables
+- `src/session-manager.ts` — `connectionToken` (UUID) field added to `Session`; `createSession` generates and returns it; `checkConnectionToken` + `getConnectionToken` helpers added
+- `src/tools/session_start.ts` — `connection_token` returned in response; `forceColor` fallback corrected to `?? false`
+- `src/tools/dequeue.ts` — Option A detection: mismatch alerts governor or falls back to `dlog`; truthy guard; design questions documented
+- `src/service-messages.ts` — `DUPLICATE_SESSION_DETECTED` entry added
+- `src/tools/dequeue.test.ts` — 10 new tests (Option A + Option B behaviors)
+- `src/tools/session_start.test.ts` — 2 new tests; existing snapshots updated to include `connection_token`
+
+### Design choices
+- Advisory (alert) not reject — allows legitimate session to continue while flagging duplicate
+- `connection_token` absent on dequeue → silently skipped (backward-compatible)
+- Dead session error was pre-existing; tests added to lock behavior
+
+### Follow-up filed
+`tasks/10-drafts/20-draft-session-joined-fellow-service-message.md` — pre-existing SERVICE_MESSAGES inconsistency surfaced during review
+
+### Verification
+- Build: PASS; Lint: PASS; Tests: 2613/2613 pass
+- 3-pass code review: all majors resolved; remaining minors/nits accepted per Overseer
