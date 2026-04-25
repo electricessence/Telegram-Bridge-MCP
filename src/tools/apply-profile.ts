@@ -2,6 +2,7 @@ import type { ProfileData } from "../profile-store.js";
 import { setSessionVoice, setSessionSpeed } from "../voice-state.js";
 import { setSessionDefault, registerPreset } from "../animation-state.js";
 import { addReminder, listReminders, reminderContentHash } from "../reminder-state.js";
+import { getSession } from "../session-manager.js";
 
 export interface ApplyResult {
   applied: Record<string, unknown>;
@@ -16,6 +17,14 @@ export function applyProfile(sid: number, profile: ProfileData): ApplyResult | A
   const applied: Record<string, unknown> = {};
 
   try {
+    if (profile.nametag_emoji !== undefined) {
+      const session = getSession(sid);
+      if (session) {
+        session.nametag_emoji = profile.nametag_emoji;
+        applied.nametag_emoji = profile.nametag_emoji;
+      }
+    }
+
     if (profile.voice !== undefined) {
       setSessionVoice(profile.voice);
       applied.voice = profile.voice;

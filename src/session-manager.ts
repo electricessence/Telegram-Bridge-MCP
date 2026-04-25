@@ -23,6 +23,7 @@ export interface Session {
   pendingEnvelopeHint?: string;
   silenceThresholdS?: number;
   firstUseHintsSeen?: Set<string>;
+  nametag_emoji?: string;
   /**
    * Connection token assigned at session/start. Used for duplicate-session
    * detection: if two callers present the same SID/suffix but different

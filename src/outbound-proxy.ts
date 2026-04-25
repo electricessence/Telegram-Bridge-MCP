@@ -25,8 +25,9 @@ import { escapeHtml, escapeV2 } from "./markdown.js";
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the `🤖 {name}\n` header when 2+ sessions are active
- * and the current session has a name, otherwise returns `""` or `"🤖 Session {sid}\n"`.
+ * Returns the `{emoji} {name}\n` header when 2+ sessions are active,
+ * where emoji defaults to 🤖 if no nametag_emoji is set on the session.
+ * Returns `""` when fewer than 2 sessions are active or the session has no name.
  * Uses parse-mode specific formatting for the name portion.
  */
 export function buildHeader(parseMode?: string): { plain: string; formatted: string } {
@@ -35,19 +36,20 @@ export function buildHeader(parseMode?: string): { plain: string; formatted: str
   const session = sid > 0 ? getSession(sid) : undefined;
   const name = session?.name || (sid > 0 ? `Session ${sid}` : "");
   if (!name) return { plain: "", formatted: "" };
+  const emoji = session?.nametag_emoji ?? "🤖";
   const colorPrefix = session?.color ? `${session.color} ` : "";
-  const plain = `${colorPrefix}🤖 ${name}\n`;
+  const plain = `${colorPrefix}${emoji} ${name}\n`;
 
   let formatted: string;
   if (parseMode === "MarkdownV2") {
-    formatted = `${colorPrefix}🤖 \`${escapeV2(name)}\`\n`;
+    formatted = `${colorPrefix}${emoji} \`${escapeV2(name)}\`\n`;
   } else if (parseMode === "HTML") {
-    formatted = `${colorPrefix}🤖 <code>${escapeHtml(name)}</code>\n`;
+    formatted = `${colorPrefix}${emoji} <code>${escapeHtml(name)}</code>\n`;
   } else {
     // Markdown (legacy) or no parse_mode — use backtick formatting.
     // The caller is responsible for setting parse_mode: "Markdown" when
     // no parse_mode was originally provided (see sendMessage proxy).
-    formatted = `${colorPrefix}🤖 \`${name}\`\n`;
+    formatted = `${colorPrefix}${emoji} \`${name}\`\n`;
   }
 
   return { plain, formatted };

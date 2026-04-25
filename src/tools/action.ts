@@ -380,6 +380,12 @@ export function register(server: McpServer): void {
           )
           .optional()
           .describe("profile/import: Reminders to register for this session."),
+        nametag_emoji: z
+          .string()
+          .min(1)
+          .max(10)
+          .optional()
+          .describe("profile/import: Custom emoji to replace the default 🤖 in the session name tag."),
         // reminder/set params
         trigger: z
           .enum(["time", "startup"])

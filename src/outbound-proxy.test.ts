@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   recordOutgoing: vi.fn(),
   getCallerSid: vi.fn(() => 0),
   activeSessionCount: vi.fn(() => 1),
-  getSession: vi.fn((_sid: number) => undefined as { name: string; color?: string } | undefined),
+  getSession: vi.fn((_sid: number) => undefined as { name: string; color?: string; nametag_emoji?: string } | undefined),
 }));
 
 vi.mock("./typing-state.js", () => ({
@@ -792,6 +792,32 @@ describe("outbound-proxy", () => {
       const [, , sentOpts] = raw.sendMessage.mock.calls[0] as [number, string, Record<string, unknown>];
       expect(sentOpts._skipHeader).toBeUndefined();
       expect(sentOpts.reply_to_message_id).toBe(99);
+    });
+
+    it("uses nametag_emoji from session when set", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout", color: "🟦", nametag_emoji: "🦊" });
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendMessage(42, "Hello");
+
+      const [, sentText] = raw.sendMessage.mock.calls[0] as [number, string, unknown];
+      expect(sentText).toBe("🟦 🦊 `Scout`\nHello");
+    });
+
+    it("falls back to 🤖 when nametag_emoji is not set", async () => {
+      mocks.activeSessionCount.mockReturnValue(2);
+      mocks.getCallerSid.mockReturnValue(1);
+      mocks.getSession.mockReturnValue({ name: "Scout", color: "🟦" });
+
+      const raw = fakeApi();
+      const p = proxy(raw);
+      await (p as unknown as FakeApi).sendMessage(42, "Hello");
+
+      const [, sentText] = raw.sendMessage.mock.calls[0] as [number, string, unknown];
+      expect(sentText).toBe("🟦 🤖 `Scout`\nHello");
     });
 
     it("_skipHeader suppresses nametag injection in editMessageText", async () => {

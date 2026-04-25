@@ -7,6 +7,7 @@ import { writeProfile, resolveProfilePath } from "../profile-store.js";
 import { getSessionVoiceFor, getSessionSpeedFor } from "../voice-state.js";
 import { hasSessionDefault, getDefaultFrames, listPresets, getPreset } from "../animation-state.js";
 import { listReminders } from "../reminder-state.js";
+import { getSession } from "../session-manager.js";
 
 const DESCRIPTION =
   "Snapshot the current session's voice, animation, and reminder configuration " +
@@ -23,6 +24,7 @@ export function handleSaveProfile({ key, token }: { key: string; token: number }
 
   const sections: string[] = [];
 
+  const sessionObj = getSession(_sid);
   const voice = getSessionVoiceFor(_sid);
   const speed = getSessionSpeedFor(_sid);
   const animationDefault = getDefaultFrames(_sid);
@@ -65,6 +67,11 @@ export function handleSaveProfile({ key, token }: { key: string; token: number }
       ...(r.trigger !== "time" ? { trigger: r.trigger } : {}),
     }));
     sections.push("reminders");
+  }
+
+  if (sessionObj?.nametag_emoji !== undefined) {
+    data.nametag_emoji = sessionObj.nametag_emoji;
+    sections.push("nametag_emoji");
   }
 
   let path: string;
