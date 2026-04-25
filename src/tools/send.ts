@@ -16,17 +16,17 @@ import { enqueueAsyncSend } from "../async-send-queue.js";
 import { getFirstUseHint, appendHintToResult, markFirstUseHintSeen } from "../first-use-hints.js";
 import { SERVICE_MESSAGES } from "../service-messages.js";
 // Type-routing handlers (v6 Phase 2)
-import { handleSendFile } from "./send_file.js";
-import { handleNotify } from "./notify.js";
-import { handleSendChoice } from "./send_choice.js";
-import { handleSendDirectMessage } from "./send_direct_message.js";
-import { handleAppendText } from "./append_text.js";
-import { handleShowAnimation } from "./show_animation.js";
-import { handleSendNewChecklist } from "./send_new_checklist.js";
-import { handleSendNewProgress } from "./send_new_progress.js";
-import { handleAsk } from "./ask.js";
-import { handleChoose } from "./choose.js";
-import { handleConfirm } from "./confirm.js";
+import { handleSendFile } from "./send/file.js";
+import { handleNotify } from "./send/notify.js";
+import { handleSendChoice } from "./send/choice.js";
+import { handleSendDirectMessage } from "./send/dm.js";
+import { handleAppendText } from "./send/append.js";
+import { handleShowAnimation } from "./animation/show.js";
+import { handleSendNewChecklist } from "./checklist/update.js";
+import { handleSendNewProgress } from "./progress/new.js";
+import { handleAsk } from "./send/ask.js";
+import { handleChoose } from "./send/choose.js";
+import { handleConfirm } from "./confirm/handler.js";
 
 const TABLE_WARNING = "Message sent. Note: markdown tables were detected but not formatted — Telegram does not support table rendering.";
 

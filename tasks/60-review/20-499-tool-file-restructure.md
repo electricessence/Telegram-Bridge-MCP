@@ -54,13 +54,21 @@ v6.5 — not blocking current work. Filed as priority 20 (low urgency).
 
 ## Acceptance Criteria
 
-- [ ] Tool files organized by API path namespace (session/, reminders/, etc.)
-- [ ] Tool registration names unchanged (backward compatible)
-- [ ] All imports updated to new paths
-- [ ] Tests updated for new file locations
-- [ ] No functional changes — pure restructure
+- [x] Tool files organized by API path namespace (session/, reminders/, etc.)
+- [x] Tool registration names unchanged (backward compatible)
+- [x] All imports updated to new paths
+- [x] Tests updated for new file locations
+- [x] No functional changes — pure restructure
 
 ## Notes
 
 - Large refactor. May benefit from incremental approach (one namespace at a time).
 - Operator noted this explicitly as a "v6.5 or something like that" scope item.
+
+## Completion
+
+Branch: `20-499` in `D:/Users/essence/Development/cortex.lan/Telegram MCP/.worktrees/20-499`
+
+All 6 prior commits (first wave: session/, reminder/, profile/, log/, logging/, message/, chat/) plus final commit `d780988` (second wave + import depth fixes). 103 files changed across 22 namespace dirs.
+
+Build PASS · Test 2601/2601 PASS · 2026-04-25

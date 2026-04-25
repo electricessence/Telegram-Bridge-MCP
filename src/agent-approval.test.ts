@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   registerApproveAgent: vi.fn(),
 }));
 
-vi.mock("./tools/approve_agent.js", () => ({
+vi.mock("./tools/approve/agent.js", () => ({
   register: (...args: unknown[]) => {
     mocks.registerApproveAgent(...args);
     return mocks.mockTool;

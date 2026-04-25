@@ -16,7 +16,7 @@
 
 import { randomBytes } from "node:crypto";
 import type { RegisteredTool, McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { register as registerApproveAgent } from "./tools/approve_agent.js";
+import { register as registerApproveAgent } from "./tools/approve/agent.js";
 
 // ---------------------------------------------------------------------------
 // Types

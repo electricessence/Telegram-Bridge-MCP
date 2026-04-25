@@ -82,80 +82,82 @@ vi.mock("../routing-mode.js", () => ({
   getGovernorSid: mocks.getGovernorSid,
 }));
 
-vi.mock("./set_voice.js", () => ({
+vi.mock("./profile/voice.js", () => ({
   handleSetVoice: mocks.handleSetVoice,
   register: vi.fn(),
 }));
 
-vi.mock("./list_sessions.js", () => ({
+vi.mock("./session/list.js", () => ({
   handleListSessions: mocks.handleListSessions,
   register: vi.fn(),
 }));
 
-vi.mock("./close_session.js", () => ({
+vi.mock("./session/close.js", () => ({
   handleCloseSession: mocks.handleCloseSession,
   register: vi.fn(),
 }));
 
-vi.mock("./session_start.js", () => ({
+vi.mock("./session/start.js", () => ({
   handleSessionStart: mocks.handleSessionStart,
   handleSessionReconnect: mocks.handleSessionReconnect,
   register: vi.fn(),
 }));
 
-vi.mock("./rename_session.js", () => ({
+vi.mock("./session/rename.js", () => ({
   handleRenameSession: mocks.handleRenameSession,
   register: vi.fn(),
 }));
 
-vi.mock("./edit_message.js", () => ({
+vi.mock("./message/edit.js", () => ({
   handleEditMessage: mocks.handleEditMessage,
   register: vi.fn(),
 }));
 
 // Phase 2 vi.mocks — message/*
-vi.mock("./delete_message.js", () => ({ handleDeleteMessage: mocks.handleDeleteMessage, register: vi.fn() }));
-vi.mock("./pin_message.js", () => ({ handlePinMessage: mocks.handlePinMessage, register: vi.fn() }));
-vi.mock("./set_reaction.js", () => ({ handleSetReaction: mocks.handleSetReaction, register: vi.fn() }));
-vi.mock("./answer_callback_query.js", () => ({ handleAnswerCallbackQuery: mocks.handleAnswerCallbackQuery, register: vi.fn() }));
-vi.mock("./route_message.js", () => ({ handleRouteMessage: mocks.handleRouteMessage, register: vi.fn() }));
+vi.mock("./message/delete.js", () => ({ handleDeleteMessage: mocks.handleDeleteMessage, register: vi.fn() }));
+vi.mock("./message/pin.js", () => ({ handlePinMessage: mocks.handlePinMessage, register: vi.fn() }));
+vi.mock("./react/set.js", () => ({ handleSetReaction: mocks.handleSetReaction, handleSetReactionPreset: vi.fn(), register: vi.fn() }));
+vi.mock("./acknowledge/query.js", () => ({ handleAnswerCallbackQuery: mocks.handleAnswerCallbackQuery, register: vi.fn() }));
+vi.mock("./message/route.js", () => ({ handleRouteMessage: mocks.handleRouteMessage, register: vi.fn() }));
 // Phase 2 vi.mocks — profile/*, reminder/*, etc.
-vi.mock("./set_topic.js", () => ({ handleSetTopic: mocks.handleSetTopic, register: vi.fn() }));
-vi.mock("./save_profile.js", () => ({ handleSaveProfile: mocks.handleSaveProfile, register: vi.fn() }));
-vi.mock("./load_profile.js", () => ({ handleLoadProfile: mocks.handleLoadProfile, register: vi.fn() }));
-vi.mock("./import_profile.js", () => ({ handleImportProfile: mocks.handleImportProfile, register: vi.fn() }));
-vi.mock("./set_reminder.js", () => ({ handleSetReminder: mocks.handleSetReminder, register: vi.fn() }));
-vi.mock("./cancel_reminder.js", () => ({ handleCancelReminder: mocks.handleCancelReminder, register: vi.fn() }));
-vi.mock("./list_reminders.js", () => ({ handleListReminders: mocks.handleListReminders, register: vi.fn() }));
+vi.mock("./profile/topic.js", () => ({ handleSetTopic: mocks.handleSetTopic, register: vi.fn() }));
+vi.mock("./profile/save.js", () => ({ handleSaveProfile: mocks.handleSaveProfile, register: vi.fn() }));
+vi.mock("./profile/load.js", () => ({ handleLoadProfile: mocks.handleLoadProfile, register: vi.fn() }));
+vi.mock("./profile/import.js", () => ({ handleImportProfile: mocks.handleImportProfile, register: vi.fn() }));
+vi.mock("./reminder/set.js", () => ({ handleSetReminder: mocks.handleSetReminder, register: vi.fn() }));
+vi.mock("./reminder/cancel.js", () => ({ handleCancelReminder: mocks.handleCancelReminder, register: vi.fn() }));
+vi.mock("./reminder/list.js", () => ({ handleListReminders: mocks.handleListReminders, register: vi.fn() }));
 vi.mock("./disable_reminder.js", () => ({ handleDisableReminder: mocks.handleDisableReminder, register: vi.fn() }));
 vi.mock("./enable_reminder.js", () => ({ handleEnableReminder: mocks.handleEnableReminder, register: vi.fn() }));
 vi.mock("./sleep_reminder.js", () => ({ handleSleepReminder: mocks.handleSleepReminder, register: vi.fn() }));
-vi.mock("./set_dequeue_default.js", () => ({ handleSetDequeueDefault: mocks.handleSetDequeueDefault, register: vi.fn() }));
-vi.mock("./set_default_animation.js", () => ({ handleSetDefaultAnimation: mocks.handleSetDefaultAnimation, register: vi.fn() }));
-vi.mock("./toggle_logging.js", () => ({ handleToggleLogging: mocks.handleToggleLogging, register: vi.fn() }));
+vi.mock("./profile/dequeue-default.js", () => ({ handleSetDequeueDefault: mocks.handleSetDequeueDefault, register: vi.fn() }));
+vi.mock("./animation/default.js", () => ({ handleSetDefaultAnimation: mocks.handleSetDefaultAnimation, register: vi.fn() }));
+vi.mock("./logging/toggle.js", () => ({ handleToggleLogging: mocks.handleToggleLogging, register: vi.fn() }));
 // Phase 2 vi.mocks — message/history, message/get
-vi.mock("./get_chat_history.js", () => ({ handleGetChatHistory: mocks.handleGetChatHistory, register: vi.fn() }));
-vi.mock("./get_chat.js", () => ({ handleGetChat: mocks.handleGetChat, register: vi.fn() }));
-vi.mock("./get_message.js", () => ({ handleGetMessage: mocks.handleGetMessage, register: vi.fn() }));
+vi.mock("./message/history.js", () => ({ handleGetChatHistory: mocks.handleGetChatHistory, register: vi.fn() }));
+vi.mock("./chat/info.js", () => ({ handleGetChat: mocks.handleGetChat, register: vi.fn() }));
+vi.mock("./message/get.js", () => ({ handleGetMessage: mocks.handleGetMessage, register: vi.fn() }));
 // Phase 2 vi.mocks — log/*
-vi.mock("./get_log.js", () => ({ handleGetLog: mocks.handleGetLog, register: vi.fn() }));
-vi.mock("./list_logs.js", () => ({ handleListLogs: mocks.handleListLogs, register: vi.fn() }));
-vi.mock("./roll_log.js", () => ({ handleRollLog: mocks.handleRollLog, register: vi.fn() }));
-vi.mock("./delete_log.js", () => ({ handleDeleteLog: mocks.handleDeleteLog, register: vi.fn() }));
-vi.mock("./get_debug_log.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, handleGetTraceLog: mocks.handleGetTraceLog, register: vi.fn() }));
+vi.mock("./log/get.js", () => ({ handleGetLog: mocks.handleGetLog, register: vi.fn() }));
+vi.mock("./log/list.js", () => ({ handleListLogs: mocks.handleListLogs, register: vi.fn() }));
+vi.mock("./log/roll.js", () => ({ handleRollLog: mocks.handleRollLog, register: vi.fn() }));
+vi.mock("./log/delete.js", () => ({ handleDeleteLog: mocks.handleDeleteLog, register: vi.fn() }));
+vi.mock("./log/debug.js", () => ({ handleGetDebugLog: mocks.handleGetDebugLog, handleGetTraceLog: mocks.handleGetTraceLog, register: vi.fn() }));
+vi.mock("./dump_session_record.js", () => ({ handleDumpSessionRecord: mocks.handleDumpSessionRecord, register: vi.fn() }));
 // Phase 2 vi.mocks — animation/*
-vi.mock("./cancel_animation.js", () => ({ handleCancelAnimation: mocks.handleCancelAnimation, register: vi.fn() }));
+vi.mock("./animation/cancel.js", () => ({ handleCancelAnimation: mocks.handleCancelAnimation, register: vi.fn() }));
 // Phase 2 vi.mocks — standalone
-vi.mock("./show_typing.js", () => ({ handleShowTyping: mocks.handleShowTyping, register: vi.fn() }));
-vi.mock("./confirm.js", () => ({ handleConfirm: (...args: unknown[]) => mocks.handleConfirm(...args), register: vi.fn() }));
-vi.mock("./approve_agent.js", () => ({ handleApproveAgent: mocks.handleApproveAgent, register: vi.fn() }));
-vi.mock("./shutdown.js", () => ({ handleShutdown: mocks.handleShutdown, register: vi.fn() }));
-vi.mock("./notify_shutdown_warning.js", () => ({ handleNotifyShutdownWarning: mocks.handleNotifyShutdownWarning, register: vi.fn() }));
-vi.mock("./transcribe_voice.js", () => ({ handleTranscribeVoice: mocks.handleTranscribeVoice, register: vi.fn() }));
-vi.mock("./download_file.js", () => ({ handleDownloadFile: mocks.handleDownloadFile, register: vi.fn() }));
-vi.mock("./send_new_checklist.js", () => ({ handleUpdateChecklist: mocks.handleUpdateChecklist, register: vi.fn() }));
-vi.mock("./update_progress.js", () => ({ handleUpdateProgress: mocks.handleUpdateProgress, register: vi.fn() }));
-vi.mock("./close_session_signal.js", () => ({ handleCloseSessionSignal: mocks.handleCloseSessionSignal, register: vi.fn() }));
+vi.mock("./show-typing/show-typing.js", () => ({ handleShowTyping: mocks.handleShowTyping, register: vi.fn() }));
+vi.mock("./confirm/handler.js", () => ({ handleConfirm: (...args: unknown[]) => mocks.handleConfirm(...args), register: vi.fn() }));
+vi.mock("./approve/agent.js", () => ({ handleApproveAgent: mocks.handleApproveAgent, register: vi.fn() }));
+vi.mock("./shutdown/handler.js", () => ({ handleShutdown: mocks.handleShutdown, register: vi.fn() }));
+vi.mock("./shutdown/warn.js", () => ({ handleNotifyShutdownWarning: mocks.handleNotifyShutdownWarning, register: vi.fn() }));
+vi.mock("./transcribe/voice.js", () => ({ handleTranscribeVoice: mocks.handleTranscribeVoice, register: vi.fn() }));
+vi.mock("./download/file.js", () => ({ handleDownloadFile: mocks.handleDownloadFile, register: vi.fn() }));
+vi.mock("./checklist/update.js", () => ({ handleUpdateChecklist: mocks.handleUpdateChecklist, register: vi.fn() }));
+vi.mock("./progress/update.js", () => ({ handleUpdateProgress: mocks.handleUpdateProgress, register: vi.fn() }));
+vi.mock("./commands/set.js", () => ({ handleSetCommands: vi.fn(), register: vi.fn() }));
+vi.mock("./session/close-signal.js", () => ({ handleCloseSessionSignal: mocks.handleCloseSessionSignal, register: vi.fn() }));
 
 import { register } from "./action.js";
 

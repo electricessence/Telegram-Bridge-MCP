@@ -50,10 +50,10 @@ import { resetRoutingModeForTest } from "../routing-mode.js";
 import { resetDmPermissionsForTest } from "../dm-permissions.js";
 import { runInSessionContext } from "../session-context.js";
 
-import { register as registerConfirm } from "./confirm.js";
-import { register as registerChoose } from "./choose.js";
-import { register as registerAsk } from "./ask.js";
-import { register as registerSendChoice } from "./send_choice.js";
+import { register as registerConfirm } from "./confirm/handler.js";
+import { register as registerChoose } from "./send/choose.js";
+import { register as registerAsk } from "./send/ask.js";
+import { register as registerSendChoice } from "./send/choice.js";
 import { register as registerDequeueUpdate } from "./dequeue.js";
 
 // ---------------------------------------------------------------------------

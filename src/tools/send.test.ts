@@ -90,23 +90,23 @@ vi.mock("../session-manager.js", () => ({
   validateSession: (sid: number, suffix: number) => mocks.validateSession(sid, suffix),
 }));
 
-vi.mock("./show_animation.js", () => ({
+vi.mock("./animation/show.js", () => ({
   handleShowAnimation: (args: unknown) => mocks.handleShowAnimation(args),
 }));
 
-vi.mock("./send_new_progress.js", () => ({
+vi.mock("./progress/new.js", () => ({
   handleSendNewProgress: (args: unknown) => mocks.handleSendNewProgress(args),
 }));
 
-vi.mock("./send_direct_message.js", () => ({
+vi.mock("./send/dm.js", () => ({
   handleSendDirectMessage: (args: unknown) => mocks.handleSendDirectMessage(args),
 }));
 
-vi.mock("./confirm.js", () => ({
+vi.mock("./confirm/handler.js", () => ({
   handleConfirm: (args: unknown) => mocks.handleConfirm(args),
 }));
 
-vi.mock("./append_text.js", () => ({
+vi.mock("./send/append.js", () => ({
   handleAppendText: (args: unknown) => mocks.handleAppendText(args),
 }));
 
@@ -137,19 +137,19 @@ vi.mock("../first-use-hints.js", () => ({
   },
 }));
 
-vi.mock("./send_choice.js", () => ({
+vi.mock("./send/choice.js", () => ({
   handleSendChoice: (args: unknown) => mocks.handleSendChoice(args),
 }));
 
-vi.mock("./send_new_checklist.js", () => ({
+vi.mock("./checklist/update.js", () => ({
   handleSendNewChecklist: (args: unknown) => mocks.handleSendNewChecklist(args),
 }));
 
-vi.mock("./ask.js", () => ({
+vi.mock("./send/ask.js", () => ({
   handleAsk: (args: unknown, signal: unknown) => mocks.handleAsk(args, signal),
 }));
 
-vi.mock("./choose.js", () => ({
+vi.mock("./send/choose.js", () => ({
   handleChoose: (args: unknown, signal: unknown) => mocks.handleChoose(args, signal),
 }));
 

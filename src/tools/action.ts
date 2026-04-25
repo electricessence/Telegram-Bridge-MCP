@@ -12,59 +12,59 @@ import {
   toActionHandler,
 } from "../action-registry.js";
 
-import { handleSetVoice } from "./set_voice.js";
-import { handleListSessions } from "./list_sessions.js";
-import { handleCloseSession } from "./close_session.js";
-import { handleSessionStart, handleSessionReconnect } from "./session_start.js";
-import { handleRenameSession } from "./rename_session.js";
-import { handleSessionIdle } from "./session_idle.js";
+import { handleSetVoice } from "./profile/voice.js";
+import { handleListSessions } from "./session/list.js";
+import { handleCloseSession } from "./session/close.js";
+import { handleSessionStart, handleSessionReconnect } from "./session/start.js";
+import { handleRenameSession } from "./session/rename.js";
+import { handleSessionIdle } from "./session/idle.js";
 import { handleSessionStatus } from "./session_status.js";
-import { handleEditMessage } from "./edit_message.js";
+import { handleEditMessage } from "./message/edit.js";
 
 // Phase 2 imports — message/*
-import { handleDeleteMessage } from "./delete_message.js";
-import { handlePinMessage } from "./pin_message.js";
-import { handleSetReaction, handleSetReactionPreset } from "./set_reaction.js";
-import { handleAnswerCallbackQuery } from "./answer_callback_query.js";
-import { handleRouteMessage } from "./route_message.js";
+import { handleDeleteMessage } from "./message/delete.js";
+import { handlePinMessage } from "./message/pin.js";
+import { handleSetReaction, handleSetReactionPreset } from "./react/set.js";
+import { handleAnswerCallbackQuery } from "./acknowledge/query.js";
+import { handleRouteMessage } from "./message/route.js";
 // Phase 2 imports — profile/*, reminder/*, etc.
-import { handleSetTopic } from "./set_topic.js";
-import { handleSaveProfile } from "./save_profile.js";
-import { handleLoadProfile } from "./load_profile.js";
-import { handleImportProfile } from "./import_profile.js";
-import { handleSetReminder } from "./set_reminder.js";
-import { handleCancelReminder } from "./cancel_reminder.js";
-import { handleListReminders } from "./list_reminders.js";
+import { handleSetTopic } from "./profile/topic.js";
+import { handleSaveProfile } from "./profile/save.js";
+import { handleLoadProfile } from "./profile/load.js";
+import { handleImportProfile } from "./profile/import.js";
+import { handleSetReminder } from "./reminder/set.js";
+import { handleCancelReminder } from "./reminder/cancel.js";
+import { handleListReminders } from "./reminder/list.js";
 import { handleDisableReminder } from "./disable_reminder.js";
 import { handleEnableReminder } from "./enable_reminder.js";
 import { handleSleepReminder } from "./sleep_reminder.js";
-import { handleSetDequeueDefault } from "./set_dequeue_default.js";
-import { handleSetDefaultAnimation } from "./set_default_animation.js";
-import { handleToggleLogging } from "./toggle_logging.js";
+import { handleSetDequeueDefault } from "./profile/dequeue-default.js";
+import { handleSetDefaultAnimation } from "./animation/default.js";
+import { handleToggleLogging } from "./logging/toggle.js";
 // Phase 2 imports — message/history, message/get
-import { handleGetChatHistory } from "./get_chat_history.js";
-import { handleGetChat } from "./get_chat.js";
-import { handleGetMessage } from "./get_message.js";
+import { handleGetChatHistory } from "./message/history.js";
+import { handleGetChat } from "./chat/info.js";
+import { handleGetMessage } from "./message/get.js";
 // Phase 2 imports — log/*
-import { handleGetLog } from "./get_log.js";
-import { handleListLogs } from "./list_logs.js";
-import { handleRollLog } from "./roll_log.js";
-import { handleDeleteLog } from "./delete_log.js";
-import { handleGetDebugLog, handleGetTraceLog } from "./get_debug_log.js";
+import { handleGetLog } from "./log/get.js";
+import { handleListLogs } from "./log/list.js";
+import { handleRollLog } from "./log/roll.js";
+import { handleDeleteLog } from "./log/delete.js";
+import { handleGetDebugLog, handleGetTraceLog } from "./log/debug.js";
 // Phase 2 imports — animation/*
-import { handleCancelAnimation } from "./cancel_animation.js";
+import { handleCancelAnimation } from "./animation/cancel.js";
 // Phase 2 imports — standalone
-import { handleShowTyping } from "./show_typing.js";
-import { handleConfirm } from "./confirm.js";
-import { handleApproveAgent } from "./approve_agent.js";
-import { handleShutdown } from "./shutdown.js";
-import { handleNotifyShutdownWarning } from "./notify_shutdown_warning.js";
-import { handleCloseSessionSignal } from "./close_session_signal.js";
-import { handleTranscribeVoice } from "./transcribe_voice.js";
-import { handleDownloadFile } from "./download_file.js";
-import { handleUpdateChecklist } from "./send_new_checklist.js";
-import { handleUpdateProgress } from "./update_progress.js";
-import { handleSetCommands } from "./set_commands.js";
+import { handleShowTyping } from "./show-typing/show-typing.js";
+import { handleConfirm } from "./confirm/handler.js";
+import { handleApproveAgent } from "./approve/agent.js";
+import { handleShutdown } from "./shutdown/handler.js";
+import { handleNotifyShutdownWarning } from "./shutdown/warn.js";
+import { handleCloseSessionSignal } from "./session/close-signal.js";
+import { handleTranscribeVoice } from "./transcribe/voice.js";
+import { handleDownloadFile } from "./download/file.js";
+import { handleUpdateChecklist } from "./checklist/update.js";
+import { handleUpdateProgress } from "./progress/update.js";
+import { handleSetCommands } from "./commands/set.js";
 type ToolResult = ReturnType<typeof toResult>;
 
 /** Returns the closest string in `candidates` to `input`, or null if no reasonable match. */

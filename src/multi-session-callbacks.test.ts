@@ -73,9 +73,9 @@ import { resetRoutingModeForTest, setGovernorSid } from "./routing-mode.js";
 import { resetDmPermissionsForTest } from "./dm-permissions.js";
 import { runInSessionContext, getCallerSid } from "./session-context.js";
 
-import { register as registerConfirm } from "./tools/confirm.js";
-import { register as registerChoose } from "./tools/choose.js";
-import { register as registerCloseSession } from "./tools/close_session.js";
+import { register as registerConfirm } from "./tools/confirm/handler.js";
+import { register as registerChoose } from "./tools/send/choose.js";
+import { register as registerCloseSession } from "./tools/session/close.js";
 import { register as registerDequeueUpdate } from "./tools/dequeue.js";
 
 // ---------------------------------------------------------------------------

@@ -62,9 +62,9 @@ import {
 import { resetRoutingModeForTest } from "../routing-mode.js";
 import { resetDmPermissionsForTest } from "../dm-permissions.js";
 
-import { register as registerAsk } from "./ask.js";
-import { register as registerConfirm } from "./confirm.js";
-import { register as registerChoose } from "./choose.js";
+import { register as registerAsk } from "./send/ask.js";
+import { register as registerConfirm } from "./confirm/handler.js";
+import { register as registerChoose } from "./send/choose.js";
 
 // ---------------------------------------------------------------------------
 // Telegram update factories

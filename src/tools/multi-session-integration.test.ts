@@ -94,7 +94,7 @@ import { resetDmPermissionsForTest } from "../dm-permissions.js";
 
 import { register as registerDequeue } from "./dequeue.js";
 import { register as registerSend } from "./send.js";
-import { register as registerCloseSession } from "./close_session.js";
+import { register as registerCloseSession } from "./session/close.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
