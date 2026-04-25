@@ -67,6 +67,7 @@ const DESCRIPTION =
   "Pass topic: 'presence' for presence signal hierarchy and silent-work detector thresholds. " +
   "Pass topic: 'behavior' for the behavioral-shaping rule registry and severity tier guidance. " +
   "Pass topic: 'modality' for the priority axis (buttons > text > audio) and modality-matching rules. " +
+  "Pass topic: 'events' for the external event system docs (POST /event endpoint, kinds, metrics). " +
   "Pass topic: '<tool_name>' for detailed docs on a specific tool.";
 
 /**
@@ -130,6 +131,7 @@ const TOOL_INDEX: Record<string, string> = {
   approve_agent: "Approve a pending session_start request by ticket. Only available when agent delegation is enabled by the operator via the /approve panel. The one-time ticket is delivered to the governor via dequeue when the session requests approval.",
   shutdown: "Shut down the MCP server process.",
   notify_shutdown_warning: "Broadcast a shutdown warning to all active sessions.",
+  events: "External HTTP event endpoint — POST /event for cross-participant signaling, metrics, and lifecycle awareness. help(topic: 'events') for full docs.",
 };
 
 function buildOverview(): string {
@@ -196,7 +198,7 @@ export function register(server: McpServer) {
       }
 
       // Topics with rich file-based content — skip TOOL_INDEX even if present
-      const RICH_TOPICS = new Set(["dequeue", "shutdown", "animation", "checklist", "compression", "startup", "start", "quick_start", "compacted", "dump", "forced-stop", "reminders", "orphaned", "stop-hook", "index", "guide", "send", "append_text", "reactions", "presence", "behavior", "audio", "modality"]);
+      const RICH_TOPICS = new Set(["dequeue", "shutdown", "animation", "checklist", "compression", "startup", "start", "quick_start", "compacted", "dump", "forced-stop", "reminders", "orphaned", "stop-hook", "index", "guide", "send", "append_text", "reactions", "presence", "behavior", "audio", "modality", "events"]);
 
       // topic: "<tool_name>" → per-tool description (checked before file lookup)
       // Skip for rich topics that have dedicated file-based content

@@ -26,6 +26,7 @@ import { initDebugLog } from "./debug-log.js";
 import { cleanupStalePins } from "./startup-token-cleanup.js";
 import { resolveHttpPort } from "./cli-args.js";
 import { enableLogging, isLoggingEnabled, rollLog, logEvent as logLocalEvent, flushCurrentLog } from "./local-log.js";
+import { attachEventRoute } from "./event-endpoint.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")) as { name: string; version: string };
@@ -131,6 +132,7 @@ try {
 if (mcpPort !== undefined) {
   // ── Streamable HTTP mode (shared server, multiple clients) ──
   const app = createMcpExpressApp();
+  attachEventRoute(app);
 
   /** Normalize header that may be string | string[] | undefined → string | undefined */
   const getSessionId = (req: Request): string | undefined => {
