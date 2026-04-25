@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   deliverServiceMessage: vi.fn((): boolean => true),
   getGovernorSid: vi.fn((): number => 0),
   handleShowAnimation: vi.fn(),
+  handleCancelAnimation: vi.fn(),
 }));
 
 vi.mock("./session-manager.js", () => ({
@@ -35,6 +36,10 @@ vi.mock("./routing-mode.js", () => ({
 
 vi.mock("./tools/animation/show.js", () => ({
   handleShowAnimation: (...args: unknown[]) => mocks.handleShowAnimation(...args),
+}));
+
+vi.mock("./tools/animation/cancel.js", () => ({
+  handleCancelAnimation: (...args: unknown[]) => mocks.handleCancelAnimation(...args),
 }));
 
 // Silence the NDJSON write — we don't test fire-and-forget I/O
@@ -68,6 +73,7 @@ describe("POST /event handler", () => {
     mocks.deliverServiceMessage.mockReturnValue(true);
     mocks.getGovernorSid.mockReturnValue(0);
     mocks.handleShowAnimation.mockResolvedValue({ content: [{ type: "text", text: "{}" }] });
+    mocks.handleCancelAnimation.mockResolvedValue({ content: [{ type: "text", text: "{}" }] });
   });
 
   // ── 401: missing / invalid token ──────────────────────────────────────────
@@ -168,12 +174,12 @@ describe("POST /event handler", () => {
     );
   });
 
-  it("accepts unknown kind (logged + fanned out, no error)", async () => {
+  it("returns 400 for unknown kind", async () => {
     const [status, body] = await handlePostEvent(String(VALID_TOKEN), {
       kind: "some_new_custom_event",
     });
-    expect(status).toBe(200);
-    expect((body as { ok: boolean }).ok).toBe(true);
+    expect(status).toBe(400);
+    expect((body as { error: string }).error).toBe("unknown kind");
   });
 
   it("fanout count reflects only delivered sessions (deliverServiceMessage returns false)", async () => {
@@ -199,11 +205,22 @@ describe("POST /event handler", () => {
     );
   });
 
-  it("does NOT trigger animation when kind is unknown even if actor is governor", async () => {
+  it("returns 400 for unknown kind even when actor is governor", async () => {
     mocks.getGovernorSid.mockReturnValue(1);
 
     const [status] = await handlePostEvent(String(VALID_TOKEN), { kind: "unknown_kind" });
+    expect(status).toBe(400);
+    expect(mocks.handleShowAnimation).not.toHaveBeenCalled();
+  });
+
+  it("triggers animation cancel when actor is governor and kind is compacted", async () => {
+    mocks.getGovernorSid.mockReturnValue(1);
+
+    const [status] = await handlePostEvent(String(VALID_TOKEN), { kind: "compacted" });
     expect(status).toBe(200);
+    expect(mocks.handleCancelAnimation).toHaveBeenCalledWith(
+      expect.objectContaining({ token: VALID_TOKEN }),
+    );
     expect(mocks.handleShowAnimation).not.toHaveBeenCalled();
   });
 });

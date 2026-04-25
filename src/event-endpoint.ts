@@ -27,6 +27,7 @@ import { validateSession, listSessions, getSession } from "./session-manager.js"
 import { deliverServiceMessage } from "./session-queue.js";
 import { getGovernorSid } from "./routing-mode.js";
 import { handleShowAnimation } from "./tools/animation/show.js";
+import { handleCancelAnimation } from "./tools/animation/cancel.js";
 import { DIGITS_ONLY } from "./utils/patterns.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -46,6 +47,8 @@ const KIND_ANIMATION: Record<string, string> = {
   compacting: "working",
   startup: "bounce",
 };
+
+const VALID_KINDS = new Set(["compacting", "compacted", "startup", "shutdown_warn", "shutdown_complete"]);
 
 // ── Internal handler (exported for testing) ──────────────────────────────────
 
@@ -89,6 +92,9 @@ export async function handlePostEvent(
   }
   if (typeof kind !== "string") {
     return [400, { ok: false, error: "kind must be a string" }];
+  }
+  if (!VALID_KINDS.has(kind)) {
+    return [400, { ok: false, error: "unknown kind" }];
   }
 
   // actor_sid: optional integer; defaults to caller's SID
@@ -163,11 +169,17 @@ export async function handlePostEvent(
   // ── 4. Governor side-effect ──────────────────────────────────────────────
   const governorSid = getGovernorSid();
   if (governorSid !== 0 && resolvedActorSid === governorSid) {
-    const animPreset = KIND_ANIMATION[kind];
-    if (animPreset !== undefined) {
-      void handleShowAnimation({ token: tokenNum, preset: animPreset }).catch((err: unknown) => {
-        process.stderr.write(`[event] animation error: ${String(err)}\n`);
+    if (kind === "compacted") {
+      void handleCancelAnimation({ token: tokenNum }).catch((err: unknown) => {
+        process.stderr.write(`[event] animation cancel error: ${String(err)}\n`);
       });
+    } else {
+      const animPreset = KIND_ANIMATION[kind];
+      if (animPreset !== undefined) {
+        void handleShowAnimation({ token: tokenNum, preset: animPreset }).catch((err: unknown) => {
+          process.stderr.write(`[event] animation error: ${String(err)}\n`);
+        });
+      }
     }
   }
 

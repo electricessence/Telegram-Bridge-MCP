@@ -8,7 +8,7 @@ POST /event
 
 ## Auth
 
-Session token via `?token=<int>` query param **or** JSON body field `"token"`. Same pattern as `/hook/animation`.
+Session token via `?token=<int>` query param **or** JSON body field `"token"`. (Token auth same as other bridge endpoints — session integer.)
 
 ## Request Body
 
@@ -22,7 +22,7 @@ Session token via `?token=<int>` query param **or** JSON body field `"token"`. S
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `kind` | Yes | Event kind string. Unknown kinds are accepted. |
+| `kind` | Yes | Event kind string. Must be one of the known kinds (see Event Kinds table). Unknown kinds → 400. |
 | `actor_sid` | No | Integer SID of the acting session. Defaults to the token's session. |
 | `details` | No | Arbitrary object. `run_id` is recommended for paired events (see Metrics). Must not contain `token`. |
 
@@ -39,12 +39,10 @@ Session token via `?token=<int>` query param **or** JSON body field `"token"`. S
 | Kind | Description | Animation |
 |------|-------------|-----------|
 | `compacting` | Agent is compacting context | `working` |
-| `compaction_complete` | Compaction finished | — |
+| `compacted` | Compaction finished | cancel active animation (governor only) |
 | `startup` | Agent starting up | `bounce` |
 | `shutdown_warn` | Agent about to shut down | — |
 | `shutdown_complete` | Agent shut down | — |
-
-Unknown kinds: logged + fanned out, no side-effect.
 
 ## Metrics
 
@@ -54,10 +52,9 @@ The event log (`data/events.ndjson`) records every event. Each line:
 {"timestamp":"2026-04-25T14:35:22.123Z","kind":"compacting","actor_sid":3,"actor_name":"Overseer","details":{"run_id":"abc"}}
 ```
 
-For paired kinds (`compacting` → `compaction_complete`, `shutdown_warn` → `shutdown_complete`), emit **both** events with a shared `details.run_id` UUID to enable duration reporting.
+For paired kinds (`compacting` → `compacted`, `shutdown_warn` → `shutdown_complete`), emit **both** events with a shared `details.run_id` UUID to enable duration reporting.
 
 ## Notes
 
 - Fan-out is fire-and-forget — the endpoint does not block on delivery.
-- `/hook/animation` continues to work unchanged (Layer pattern).
 - Tokens and secrets must not be passed in `details`.
