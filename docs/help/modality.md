@@ -28,6 +28,6 @@ See `help(topic: 'audio')` for the two valid hybrid patterns (long audio + brief
 
 ## Related
 
-`help(topic: 'audio')` — audio format and compression style  
-`help(topic: 'send')` — send types reference  
+`help(topic: 'audio')` — audio format and compression style
+`help(topic: 'send')` — send types reference
 `help(topic: 'compression')` — tier map including audio form

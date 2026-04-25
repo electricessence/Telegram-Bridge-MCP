@@ -15,7 +15,7 @@ Showing a Telegram "online" green dot is **not feasible via the Bot API**. It is
 ## Verdict
 
 | Path | Feasibility |
-|---|---|
+| --- | --- |
 | Bot API | Not feasible — no presence methods exist |
 | MTProto (user account) | Partially feasible — Node.js library available, ToS risk applies |
 

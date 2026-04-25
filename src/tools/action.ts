@@ -18,7 +18,7 @@ import { handleCloseSession } from "./session/close.js";
 import { handleSessionStart, handleSessionReconnect } from "./session/start.js";
 import { handleRenameSession } from "./session/rename.js";
 import { handleSessionIdle } from "./session/idle.js";
-import { handleSessionStatus } from "./session_status.js";
+import { handleSessionStatus } from "./session/status.js";
 import { handleEditMessage } from "./message/edit.js";
 
 // Phase 2 imports — message/*
@@ -35,9 +35,9 @@ import { handleImportProfile } from "./profile/import.js";
 import { handleSetReminder } from "./reminder/set.js";
 import { handleCancelReminder } from "./reminder/cancel.js";
 import { handleListReminders } from "./reminder/list.js";
-import { handleDisableReminder } from "./disable_reminder.js";
-import { handleEnableReminder } from "./enable_reminder.js";
-import { handleSleepReminder } from "./sleep_reminder.js";
+import { handleDisableReminder } from "./reminder/disable.js";
+import { handleEnableReminder } from "./reminder/enable.js";
+import { handleSleepReminder } from "./reminder/sleep.js";
 import { handleSetDequeueDefault } from "./profile/dequeue-default.js";
 import { handleSetDefaultAnimation } from "./animation/default.js";
 import { handleToggleLogging } from "./logging/toggle.js";
