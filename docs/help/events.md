@@ -37,7 +37,7 @@ Session token via `?token=<int>` query param **or** JSON body field `"token"`. (
 ## Event Kinds
 
 | Kind | Description | Animation |
-|------|-------------|-----------|
+| --- | --- | --- |
 | `compacting` | Agent is compacting context | `working` |
 | `compacted` | Compaction finished | cancel active animation (governor only) |
 | `startup` | Agent starting up | `bounce` |
