@@ -43,7 +43,7 @@ vi.mock("fs", async (importActual) => {
       const p = String(path);
       if (p.includes("docs") && p.includes("help") && p.includes("guide.md")) return MOCK_GUIDE;
       if (p.includes("docs") && p.includes("help") && p.includes("dequeue.md")) return "Dequeue Loop — drain before acting. pending > 0 → call dequeue again.";
-      if (p.includes("docs") && p.includes("help") && p.includes("shutdown.md")) return "Graceful Shutdown — shutdown signal triggers clean exit.";
+      if (p.includes("docs") && p.includes("help") && p.includes("shutdown.md")) return "Graceful Shutdown — how to exit the Telegram bridge cleanly.\n\nOnly the **governor** (Curator) may call action(type: \"shutdown\"). Participants call action(type: \"session/close\") on their own session only.\n\n## Participant Shutdown\n\nWhen the governor DMs you \"Shutting down — close your session\" (or you decide to close early):\n\n1. Wipe your session token. Overwrite `memory/telegram/session.token` with empty content. Prevents stale-token resume on next launch.\n2. action(type: \"session/close\") — closes YOUR session only. Never pass target_sid.\n3. Stop. No more tool calls after session/close.\n4. Optional: write a handoff doc and commit. Your agent process is still alive after session/close; you can still write files and commit. Token is already wiped so you are no longer connected to the bridge.\n\n## Governor Shutdown\n\nOnly Curator executes this flow. action(type: \"shutdown\") is the governor's analogue of session/close — it tears down the whole bridge, including the governor's own session. Do NOT call session/close on yourself before shutdown.\n\n1. Drain queue. dequeue(max_wait: 0) until empty.\n2. Wipe session memory file. Overwrite `memory/telegram/session.token` with empty content before calling shutdown.\n3. DM each remaining session: \"Shutting down — close your session.\"\n4. Wait for session_closed events from each participant.\n5. Write session log: logs/session/YYYYMM/DD/HHmmss/summary.md\n6. Commit: git add session log + any pending changes.\n7. Acknowledge operator (brief voice message).\n8. action(type: \"shutdown\") — triggers MCP bridge graceful shutdown. This is the last action you take; it closes your session and shuts down the bridge. Do NOT call session/close on yourself before this.\n\nInvariant: wipe token BEFORE calling shutdown.\nNote: handoff doc is optional. It may be written before or after shutdown — your process continues running. Curator's habit of writing it before shutdown is a preference, not a TMCP requirement.\n\nIf a participant fails to close cleanly, the governor may need action(type: \"session/close\", force: true, target_sid: N) before invoking shutdown.";
       // Fall through to actual for anything else
       return (actual.readFileSync as (...a: unknown[]) => unknown)(path, _encoding);
     },
@@ -148,7 +148,24 @@ describe("help tool", () => {
     const result = await call({ topic: "shutdown" });
     expect(isError(result)).toBe(false);
     const { content } = parseResult<{ content: string }>(result);
-    expect(content).toContain("shutdown");
+    expect(content).toContain("## Participant Shutdown");
+    expect(content).toContain("## Governor Shutdown");
+    expect(content).toContain('action(type: "session/close")');
+    expect(content).toContain('action(type: "shutdown")');
+    expect(content).toContain("Only the **governor**");
+    expect(content).toContain("Do NOT call session/close on yourself before shutdown");
+
+    // Finding 2: wipe step must appear before the shutdown action call (scoped to Governor section)
+    const governorSectionForOrder = content.slice(content.indexOf("## Governor Shutdown"));
+    const wipeIdx = governorSectionForOrder.indexOf("memory/telegram/session.token");
+    const shutdownActionIdx = governorSectionForOrder.lastIndexOf('action(type: "shutdown")');
+    expect(wipeIdx).toBeGreaterThan(-1);
+    expect(shutdownActionIdx).toBeGreaterThan(-1);
+    expect(wipeIdx).toBeLessThan(shutdownActionIdx);
+
+    // Finding 3: governor section must NOT instruct agents to call session/close
+    const governorSection = content.slice(content.indexOf("## Governor Shutdown"));
+    expect(governorSection).not.toContain("action(type: \"session/close\")");
   });
 
   describe("topic: 'identity'", () => {

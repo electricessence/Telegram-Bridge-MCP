@@ -353,8 +353,8 @@ export function register(server: McpServer) {
             // gen is updated after each showTyping() so cancelTypingIfSameGeneration
             // always targets the most recent generation, not a stale pre-start value.
             let gen = typingGeneration();
-            let voiceSent = false;
-            acquireRecordingIndicator(chatId);
+            let voiceStarted = false;
+            const recordingEpoch = acquireRecordingIndicator(chatId);
             try {
               await showTyping(typingSeconds, "record_voice");
               gen = typingGeneration();
@@ -376,8 +376,8 @@ export function register(server: McpServer) {
                   reply_to_message_id: isFirst ? reply_to_message_id : undefined,
                 });
                 message_ids.push(msg.message_id);
+                voiceStarted = true; // at least one chunk successfully delivered
               }
-              voiceSent = true;
               if (captionOverflow && finalTextForSplit) {
                 const splitText = finalTextForSplit;
                 const textMsg = await callApi(() =>
@@ -439,12 +439,19 @@ export function register(server: McpServer) {
               }
               return toError(err);
             } finally {
-              releaseRecordingIndicator(chatId);
-              if (voiceSent) {
+              // Order matters: delay first so the recording indicator stays visible
+              // during the post-send render window, then cancel typing, then release.
+              // Releasing before the delay would briefly expose a "typing" tick
+              // during the 3 s window when the voice message is still rendering.
+              // Use voiceStarted (not voiceSent) so the delay also applies when at
+              // least one chunk was delivered but a later chunk failed — the first
+              // chunk is still rendering on the client.
+              if (voiceStarted) {
                 // Voice messages take 2-5s to render after API confirmation; keep indicator alive.
                 await new Promise<void>(resolve => setTimeout(resolve, 3000));
               }
               cancelTypingIfSameGeneration(gen);
+              releaseRecordingIndicator(chatId, recordingEpoch);
             }
           }
 
