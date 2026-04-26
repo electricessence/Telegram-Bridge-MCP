@@ -472,23 +472,70 @@ describe("send — sync voice path recording indicator", () => {
   });
 
   it("sync voice: acquireRecordingIndicator called once before send", async () => {
+    mocks.acquireRecordingIndicator.mockReturnValue(1);
     await call({ audio: "hello", async: false, token: TOKEN });
     expect(mocks.acquireRecordingIndicator).toHaveBeenCalledOnce();
     expect(mocks.acquireRecordingIndicator).toHaveBeenCalledWith(42);
   });
 
-  it("sync voice: releaseRecordingIndicator called once in finally (success path)", async () => {
+  it("sync voice: releaseRecordingIndicator called with chatId and epoch in finally (success path)", async () => {
+    const EPOCH = 7;
+    mocks.acquireRecordingIndicator.mockReturnValue(EPOCH);
     await call({ audio: "hello", async: false, token: TOKEN });
     expect(mocks.releaseRecordingIndicator).toHaveBeenCalledOnce();
-    expect(mocks.releaseRecordingIndicator).toHaveBeenCalledWith(42);
+    expect(mocks.releaseRecordingIndicator).toHaveBeenCalledWith(42, EPOCH);
   });
 
   it("sync voice: releaseRecordingIndicator still called in finally when sendVoiceDirect rejects", async () => {
+    const EPOCH = 3;
+    mocks.acquireRecordingIndicator.mockReturnValue(EPOCH);
     mocks.sendVoiceDirect.mockRejectedValue(new Error("network failure"));
     const result = await call({ audio: "hello", async: false, token: TOKEN });
     expect(isError(result)).toBe(true);
     expect(mocks.releaseRecordingIndicator).toHaveBeenCalledOnce();
-    expect(mocks.releaseRecordingIndicator).toHaveBeenCalledWith(42);
+    expect(mocks.releaseRecordingIndicator).toHaveBeenCalledWith(42, EPOCH);
+  });
+
+  // Bug 5: delay + cancelTyping must run BEFORE release so the recording indicator
+  // stays active during the 3 s post-send render window.
+  it("sync voice path: releaseRecordingIndicator is called AFTER the 3 s post-send delay", async () => {
+    vi.useFakeTimers();
+    try {
+      const EPOCH = 5;
+      mocks.acquireRecordingIndicator.mockReturnValue(EPOCH);
+      const callOrder: string[] = [];
+
+      // Intercept the 3 s delay by wrapping setTimeout — we just let it fire
+      // naturally via fake timers, but record the order of events.
+      mocks.releaseRecordingIndicator.mockImplementation(() => {
+        callOrder.push("release");
+      });
+      mocks.cancelTypingIfSameGeneration.mockImplementation(() => {
+        callOrder.push("cancel");
+      });
+
+      // Start the call but don't await it yet — it will stall at the 3 s delay.
+      const resultPromise = call({ audio: "hello", async: false, token: TOKEN });
+
+      // Tick through the send loop (synthesizeToOgg + sendVoiceDirect resolve immediately)
+      await vi.runAllTicks();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Neither release nor cancel should have fired yet (still in the 3 s delay)
+      expect(mocks.releaseRecordingIndicator).not.toHaveBeenCalled();
+
+      // Advance past the 3 s post-send delay
+      await vi.advanceTimersByTimeAsync(3100);
+      await resultPromise;
+
+      // After the delay: cancel fires, then release
+      expect(callOrder).toEqual(["cancel", "release"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
