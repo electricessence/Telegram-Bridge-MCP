@@ -227,4 +227,9 @@ export const SERVICE_MESSAGES = deepFreeze({
       `Acknowledge with show-typing, a reaction, or a persistent animation ` +
       `(preset: 'working' or 'thinking'). help('presence')`,
   },
+
+  NUDGE_CAPTION_DUPLICATION: {
+    eventType: "behavior_nudge_caption_duplication" as const,
+    text: "Caption appears to restate audio content. Keep it to a brief topic label — see help('audio') for the hybrid pattern.",
+  },
 });

@@ -2,6 +2,12 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { createMockServer, parseResult, isError, errorCode } from "./test-utils.js";
 
 const mocks = vi.hoisted(() => ({
+  detectCaptionDuplication: vi.fn((_audio: string, _caption: string) => ({
+    isDuplicate: false,
+    jaccard: 0,
+    audioWords: 0,
+    captionWords: 0,
+  })),
   activeSessionCount: vi.fn(() => 0),
   getActiveSession: vi.fn(() => 0),
   validateSession: vi.fn((_sid?: number, _suffix?: number) => true),
@@ -155,6 +161,11 @@ vi.mock("./send/ask.js", () => ({
 
 vi.mock("./send/choose.js", () => ({
   handleChoose: (args: unknown, signal: unknown) => mocks.handleChoose(args, signal),
+}));
+
+vi.mock("../hybrid-duplication-detector.js", () => ({
+  detectCaptionDuplication: (audio: string, caption: string) =>
+    mocks.detectCaptionDuplication(audio, caption),
 }));
 
 import { register } from "./send.js";
@@ -1255,5 +1266,150 @@ describe("audio markup leak detection", () => {
     expect(isError(result)).toBe(false);
     const data = parseResult(result);
     expect(data.warning).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// caption duplication detector (integration via send tool)
+// =============================================================================
+describe("caption duplication detector", () => {
+  let call: (args: Record<string, unknown>) => Promise<unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.validateSession.mockReturnValue(true);
+    mocks.resolveChat.mockReturnValue(42);
+    mocks.validateText.mockReturnValue(null);
+    mocks.isTtsEnabled.mockReturnValue(true);
+    mocks.stripForTts.mockImplementation((t: string) => t);
+    mocks.applyTopicToText.mockImplementation((t: string) => t);
+    mocks.markdownToV2.mockImplementation((t: string) => t);
+    mocks.splitMessage.mockImplementation((t: string) => [t]);
+    mocks.synthesizeToOgg.mockResolvedValue(Buffer.from("ogg"));
+    mocks.sendVoiceDirect.mockResolvedValue({ message_id: 43 });
+    mocks.sendMessage.mockResolvedValue({ message_id: 42 });
+    mocks.showTyping.mockResolvedValue(undefined);
+    mocks.deliverServiceMessage.mockReturnValue(undefined);
+    // Default: no duplication
+    mocks.detectCaptionDuplication.mockReturnValue({
+      isDuplicate: false,
+      jaccard: 0,
+      audioWords: 10,
+      captionWords: 5,
+    });
+
+    const server = createMockServer();
+    register(server);
+    call = server.getHandler("send");
+  });
+
+  it("fires nudge when caption Jaccard similarity >= 0.7", async () => {
+    mocks.detectCaptionDuplication.mockReturnValue({
+      isDuplicate: true,
+      jaccard: 0.82,
+      audioWords: 11,
+      captionWords: 9,
+    });
+    const result = await call({
+      audio: "The quick brown fox jumped over the lazy dog running fast today",
+      text: "quick brown fox jump lazy dog running fast today here",
+      async: false,
+      token: TOKEN,
+    });
+    expect(isError(result)).toBe(false);
+    const dupCall = mocks.deliverServiceMessage.mock.calls.find(
+      (c: unknown[]) => {
+        const entry = c[1] as { eventType?: string };
+        return entry?.eventType === "behavior_nudge_caption_duplication";
+      },
+    );
+    expect(dupCall).toBeDefined();
+    const details = dupCall![2] as Record<string, unknown>;
+    expect(typeof details.jaccard).toBe("number");
+  });
+
+  it("does not fire nudge when caption is a brief topic label", async () => {
+    // detectCaptionDuplication returns isDuplicate: false (default mock)
+    const result = await call({
+      audio: "The project status shows all systems nominal with no errors found anywhere today",
+      text: "weather update",
+      async: false,
+      token: TOKEN,
+    });
+    expect(isError(result)).toBe(false);
+    const dupCall = mocks.deliverServiceMessage.mock.calls.find(
+      (c: unknown[]) => {
+        const entry = c[1] as { eventType?: string };
+        return entry?.eventType === "behavior_nudge_caption_duplication";
+      },
+    );
+    expect(dupCall).toBeUndefined();
+  });
+
+  it("does not fire nudge when similarity is below threshold", async () => {
+    mocks.detectCaptionDuplication.mockReturnValue({
+      isDuplicate: false,
+      jaccard: 0.3,
+      audioWords: 12,
+      captionWords: 8,
+    });
+    const result = await call({
+      audio: "Deployment complete all services healthy metrics nominal",
+      text: "rainfall forecast precipitation humidity dew point barometric pressure",
+      async: false,
+      token: TOKEN,
+    });
+    expect(isError(result)).toBe(false);
+    const dupCall = mocks.deliverServiceMessage.mock.calls.find(
+      (c: unknown[]) => {
+        const entry = c[1] as { eventType?: string };
+        return entry?.eventType === "behavior_nudge_caption_duplication";
+      },
+    );
+    expect(dupCall).toBeUndefined();
+  });
+
+  it("does not fire nudge for audio-only send", async () => {
+    const result = await call({
+      audio: "The quick brown fox jumped over the lazy dog running fast today",
+      async: false,
+      token: TOKEN,
+    });
+    expect(isError(result)).toBe(false);
+    const dupCall = mocks.deliverServiceMessage.mock.calls.find(
+      (c: unknown[]) => {
+        const entry = c[1] as { eventType?: string };
+        return entry?.eventType === "behavior_nudge_caption_duplication";
+      },
+    );
+    expect(dupCall).toBeUndefined();
+    // detectCaptionDuplication should NOT have been called (no text)
+    expect(mocks.detectCaptionDuplication).not.toHaveBeenCalled();
+  });
+
+  it("nudge details include jaccard score, audioWords, captionWords", async () => {
+    mocks.detectCaptionDuplication.mockReturnValue({
+      isDuplicate: true,
+      jaccard: 0.75,
+      audioWords: 11,
+      captionWords: 9,
+    });
+    await call({
+      audio: "The quick brown fox jumped over the lazy dog running fast today",
+      text: "quick brown fox jump lazy dog running fast today here",
+      async: false,
+      token: TOKEN,
+    });
+    const dupCall = mocks.deliverServiceMessage.mock.calls.find(
+      (c: unknown[]) => {
+        const entry = c[1] as { eventType?: string };
+        return entry?.eventType === "behavior_nudge_caption_duplication";
+      },
+    );
+    expect(dupCall).toBeDefined();
+    const details = dupCall![2] as Record<string, unknown>;
+    expect(details.jaccard).toBe(0.75);
+    expect(details.audioWords).toBe(11);
+    expect(details.captionWords).toBe(9);
   });
 });

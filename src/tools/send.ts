@@ -27,6 +27,7 @@ import { handleSendNewProgress } from "./progress/new.js";
 import { handleAsk } from "./send/ask.js";
 import { handleChoose } from "./send/choose.js";
 import { handleConfirm } from "./confirm/handler.js";
+import { detectCaptionDuplication } from "../hybrid-duplication-detector.js";
 
 const TABLE_WARNING = "Message sent. Note: markdown tables were detected but not formatted — Telegram does not support table rendering.";
 
@@ -312,6 +313,10 @@ export function register(server: McpServer) {
               }
             }
 
+            const dup = effectiveText
+              ? detectCaptionDuplication(effectiveAudio, effectiveText)
+              : null;
+
             // ── Async TTS path ────────────────────────────────────────────
             if (args.async !== false) {
               const pendingId = enqueueAsyncSend(_sid, {
@@ -326,6 +331,13 @@ export function register(server: McpServer) {
                 replyToMessageId: reply_to_message_id,
                 timeoutMs: _timeoutMs,
               });
+              if (dup?.isDuplicate) {
+                deliverServiceMessage(
+                  _sid,
+                  SERVICE_MESSAGES.NUDGE_CAPTION_DUPLICATION,
+                  { jaccard: Math.round(dup.jaccard * 100) / 100, audioWords: dup.audioWords, captionWords: dup.captionWords },
+                );
+              }
               return toResult({ ok: true, message_id_pending: pendingId, status: "queued", ...(leakWarning ? { warning: leakWarning } : {}) });
             }
             const voiceChunks = splitMessage(plainText);
@@ -376,6 +388,13 @@ export function register(server: McpServer) {
                 );
                 // Scan the overflow text for unrenderable characters after it is sent
                 warnUnrenderableChars(_sid, splitText);
+                if (dup?.isDuplicate) {
+                  deliverServiceMessage(
+                    _sid,
+                    SERVICE_MESSAGES.NUDGE_CAPTION_DUPLICATION,
+                    { jaccard: Math.round(dup.jaccard * 100) / 100, audioWords: dup.audioWords, captionWords: dup.captionWords },
+                  );
+                }
                 if (message_ids.length === 1) {
                   return toResult({
                     message_id: message_ids[0],
@@ -398,6 +417,13 @@ export function register(server: McpServer) {
               // Scan the inline caption for unrenderable characters after voice is sent
               if (resolvedCaption) {
                 warnUnrenderableChars(_sid, resolvedCaption);
+              }
+              if (dup?.isDuplicate) {
+                deliverServiceMessage(
+                  _sid,
+                  SERVICE_MESSAGES.NUDGE_CAPTION_DUPLICATION,
+                  { jaccard: Math.round(dup.jaccard * 100) / 100, audioWords: dup.audioWords, captionWords: dup.captionWords },
+                );
               }
               if (message_ids.length === 1) {
                 return toResult({ message_id: message_ids[0], ...(leakWarning ? { warning: leakWarning } : {}) });
