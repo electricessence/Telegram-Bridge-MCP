@@ -169,6 +169,20 @@ describe("hook throws or rejects", () => {
     expect(result.allowed).toBe(false);
     expect(result.hookError).toBeUndefined();
   });
+
+  it("sets hookError: true on the result when hook throws", async () => {
+    setPreToolHook(() => { throw new Error("boom"); });
+    const result = await invokePreToolHook("any_tool", {});
+    expect(result.allowed).toBe(false);
+    expect(result.hookError).toBe(true);
+  });
+
+  it("does not set hookError when hook intentionally blocks", async () => {
+    setPreToolHook(() => ({ allowed: false, reason: "intentional block" }));
+    const result = await invokePreToolHook("any_tool", {});
+    expect(result.allowed).toBe(false);
+    expect(result.hookError).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
