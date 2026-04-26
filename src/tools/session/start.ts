@@ -332,6 +332,10 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR);
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL);
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_HYBRID_MESSAGING);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_MODALITY_PRIORITY);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PRESENCE_SIGNALS);
+          if (discarded === 0) deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_NO_PENDING_YET);
         } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
           res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
@@ -400,6 +404,10 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           // Skip onboarding_role here to avoid duplication.
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PROTOCOL);
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_BUTTONS_TEXT);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_HYBRID_MESSAGING);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_MODALITY_PRIORITY);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_PRESENCE_SIGNALS);
+          if (discarded === 0) deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_NO_PENDING_YET);
         }
         void refreshGovernorCommand();
 
