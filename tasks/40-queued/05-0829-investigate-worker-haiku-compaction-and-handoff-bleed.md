@@ -94,6 +94,10 @@ Worker 1 dispatched a subagent that ran typecheck and reported nothing to do, be
 
 **Fix:** Worker pre-task checklist must include `git diff --staged --stat` on a pre-existing worktree before dispatching any work. Saves ~6-12 tool calls per claim.
 
+## Operator note (2026-04-26)
+
+Before implementing: verify whether these patterns have already been addressed organically. If current Overseer recovery and Worker pre-task behavior already handles staged state, scope down to a quick audit + documentation only — do not add fixes that solve a problem that no longer exists.
+
 ## Acceptance criteria
 
 - Findings document at `agents/curator/notes/worker-recovery-postmortem-2026-04-25.md` (or similar) with answers to all 4 "What's NOT known" items.
