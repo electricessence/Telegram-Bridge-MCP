@@ -41,13 +41,6 @@ interface PostEventBody {
   details?: unknown;
 }
 
-// ── Animation map ─────────────────────────────────────────────────────────────
-
-const KIND_ANIMATION: Record<string, string> = {
-  compacting: "working",
-  startup: "bounce",
-};
-
 const VALID_KINDS = new Set(["compacting", "compacted", "startup", "shutdown_warn", "shutdown_complete"]);
 
 // ── Internal handler (exported for testing) ──────────────────────────────────
@@ -173,12 +166,13 @@ export function handlePostEvent(
       void handleCancelAnimation({ token: tokenNum }).catch((err: unknown) => {
         process.stderr.write(`[event] animation cancel error: ${String(err)}\n`);
       });
+      void handleShowAnimation({ token: tokenNum, preset: "recovering", timeout: 60 }).catch((err: unknown) => {
+        process.stderr.write(`[event] animation error: ${String(err)}\n`);
+      });
     } else {
-      if (kind in KIND_ANIMATION) {
-        void handleShowAnimation({ token: tokenNum, preset: KIND_ANIMATION[kind] }).catch((err: unknown) => {
-          process.stderr.write(`[event] animation error: ${String(err)}\n`);
-        });
-      }
+      void handleShowAnimation({ token: tokenNum, preset: kind }).catch((err: unknown) => {
+        process.stderr.write(`[event] animation error: ${String(err)}\n`);
+      });
     }
   }
 
