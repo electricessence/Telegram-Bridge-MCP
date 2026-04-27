@@ -176,6 +176,8 @@ describe("interactive flows — end-to-end integration", () => {
     expect(data.confirmed).toBe(true);
     expect(data.value).toBe("confirm_yes");
     expect(data.message_id).toBe(5);
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
     // Hook fired: ackAndEditSelection called answerCallbackQuery + editMessageText
     expect(mocks.answerCallbackQuery).toHaveBeenCalledWith("qid1");
     expect(mocks.editMessageText).toHaveBeenCalled();
@@ -221,6 +223,8 @@ describe("interactive flows — end-to-end integration", () => {
     expect(data.value).toBe("b");
     expect(data.message_id).toBe(5);
     expect(mocks.answerCallbackQuery).toHaveBeenCalledWith("qid1");
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
     expect(mocks.editMessageText).toHaveBeenCalled();
   });
 
@@ -298,8 +302,8 @@ describe("interactive flows — end-to-end integration", () => {
     // Stage 2 not yet: timer hasn't fired
     expect(mocks.editMessageText).not.toHaveBeenCalled();
 
-    // Advance past collapse delay (150 ms) — stage 2 fires
-    await vi.advanceTimersByTimeAsync(200);
+    // Advance past collapse delay (250 ms) — stage 2 fires
+    await vi.advanceTimersByTimeAsync(300);
     // Stage 2: keyboard cleared and suffix appended
     expect(mocks.editMessageText).toHaveBeenCalled();
 
@@ -381,10 +385,10 @@ describe("interactive flows — end-to-end integration", () => {
     const ackCallsBefore = mocks.answerCallbackQuery.mock.calls.length;
     recordInbound(cbUpdate(5, "confirm_yes", "qid_late"));
 
-    // dequeue surfaces the event; an extra yield lets the hook's
-    // fire-and-forget chain (answerCallbackQuery → editMessageText) complete.
+    // dequeue surfaces the event; wait for the hook's fire-and-forget
+    // chain (answerCallbackQuery → 250 ms delay → editMessageText) to complete.
     const dqResult = await handlers.dequeue({ timeout: 0, token });
-    await Promise.resolve();
+    await new Promise<void>((r) => { setTimeout(r, 300); });
 
     expect(mocks.answerCallbackQuery.mock.calls.length).toBeGreaterThan(ackCallsBefore);
     expect(mocks.editMessageText).toHaveBeenCalled();

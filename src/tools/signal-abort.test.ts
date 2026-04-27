@@ -288,8 +288,8 @@ describe("signal abort — interactive tools", () => {
     // Now abort — tool is already resolved, this is a no-op
     expect(() => { controller.abort(); }).not.toThrow();
 
-    // Wait a tick to ensure no async errors propagate
-    await new Promise<void>((r) => { setTimeout(r, 20); });
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
 
     // Verify the normal success path: button was acked and message was edited
     expect(mocks.answerCallbackQuery).toHaveBeenCalledWith("qid_pressed");

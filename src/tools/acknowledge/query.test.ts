@@ -74,6 +74,24 @@ describe("answer_callback_query tool", () => {
       expect(mocks.editMessageReplyMarkup).toHaveBeenCalledWith(12345, 42, { reply_markup: { inline_keyboard: [] } });
     });
 
+    it("does not call editMessageReplyMarkup before 250 ms delay, calls it after 300 ms", async () => {
+      vi.useFakeTimers();
+      mocks.answerCallbackQuery.mockResolvedValue(true);
+      mocks.editMessageReplyMarkup.mockResolvedValue(true);
+      const resultPromise = call({ callback_query_id: "cq1", token: 1_123_456, remove_keyboard: true, message_id: 42 });
+      // Flush microtasks for answerCallbackQuery
+      await Promise.resolve();
+      await Promise.resolve();
+      // Before the 250 ms threshold: editMessageReplyMarkup must not have been called
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mocks.editMessageReplyMarkup).not.toHaveBeenCalled();
+      // Advance past threshold (total 300 ms > 250 ms): editMessageReplyMarkup must be called
+      await vi.advanceTimersByTimeAsync(200);
+      await resultPromise;
+      expect(mocks.editMessageReplyMarkup).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
     it("returns ok: true and writes to stderr when editMessageReplyMarkup throws", async () => {
       mocks.answerCallbackQuery.mockResolvedValue(true);
       mocks.editMessageReplyMarkup.mockRejectedValue(new Error("edit failed"));

@@ -74,3 +74,10 @@ Added `BUTTON_COLLAPSE_DELAY_MS = 250` constant (exported) to `button-helpers.ts
 - `src/tools/callback-edge-cases.test.ts` — timer advances updated
 - `src/tools/interactive-flows.integration.test.ts` — timer advances updated
 - `src/tools/signal-abort.test.ts` — timer advance updated
+
+## Verification
+
+**Verdict:** APPROVED
+**Date:** 2026-04-27
+**Criteria:** 4/4 passed
+**Evidence:** `BUTTON_COLLAPSE_DELAY_MS = 250` exported constant used in all three keyboard-collapse paths (`ackAndEditSelection`, `highlightThenCollapse`, `acknowledge/query.ts`); delay gated strictly inside `if (callbackQueryId)`; persistent path passes `delayMs=0`; fake-timer gate test in `query.test.ts` verifies <250ms gap and >250ms fire.

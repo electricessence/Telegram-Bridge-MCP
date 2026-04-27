@@ -139,6 +139,9 @@ describe("callback edge-cases — rapid clicks and expired queries", () => {
     recordInbound(cbUpdate(5, "confirm_yes", "qid1"));
     const result = await toolPromise;
 
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
+
     // Second click (same message_id, different query_id) — arrives after confirm resolved
     recordInbound(cbUpdate(5, "confirm_yes", "qid2"));
     await new Promise<void>((r) => { setTimeout(r, 20); });
@@ -176,6 +179,9 @@ describe("callback edge-cases — rapid clicks and expired queries", () => {
 
     const result = await toolPromise;
 
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
+
     expect(isError(result)).toBe(false);
     expect(parseResult(result).value).toBe("b");
     expect(parseResult(result).label).toBe("Beta");
@@ -203,8 +209,8 @@ describe("callback edge-cases — rapid clicks and expired queries", () => {
     recordInbound(cbUpdate(5, "confirm_yes", "qid1"));
     const result = await toolPromise;
 
-    // Give ackAndEditSelection (fire-and-forget from hook) time to complete
-    await new Promise<void>((r) => { setTimeout(r, 20); });
+    // Give ackAndEditSelection (fire-and-forget from hook) time to complete (250 ms collapse delay)
+    await new Promise<void>((r) => { setTimeout(r, 300); });
 
     // No crash despite answerCallbackQuery failing
     expect(isError(result)).toBe(false);
@@ -285,13 +291,13 @@ describe("callback edge-cases — rapid clicks and expired queries", () => {
     // Stage 2 not yet: timer hasn't fired
     expect(mocks.editMessageText).not.toHaveBeenCalled();
 
-    // Advance past collapse delay (150 ms) — stage 2 fires
-    await vi.advanceTimersByTimeAsync(200);
+    // Advance past collapse delay (250 ms) — stage 2 fires
+    await vi.advanceTimersByTimeAsync(300);
     expect(mocks.editMessageText).toHaveBeenCalledTimes(1);
 
     // Second click — hook already consumed; no additional ack or keyboard removal
     recordInbound(cbUpdate(5, "a", "qid2"));
-    await vi.advanceTimersByTimeAsync(200);
+    await vi.advanceTimersByTimeAsync(300);
 
     // Keyboard NOT removed a second time
     expect(mocks.editMessageText).toHaveBeenCalledTimes(1);

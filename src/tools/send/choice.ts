@@ -15,7 +15,7 @@ import { validateButtonSymbolParity } from "../../button-validation.js";
 const DESCRIPTION =
   "Non-blocking one-shot keyboard — sends a message with choice buttons and " +
   "returns immediately with a message_id. On first button press the keyboard " +
-  "highlights the chosen option and collapses within ~150 ms (highlight-then-collapse). " +
+  "highlights the chosen option and collapses within ~250 ms (highlight-then-collapse). " +
   "The callback_query event still appears in dequeue so the agent can read " +
   "which option was picked at its own pace. " +
   "Pass persistent: true to opt into multi-tap control-panel mode where the " +
@@ -118,7 +118,7 @@ export async function handleSendChoice({
     //
     // One-shot (default, persistent !== true):
     //   Two-stage highlight-then-collapse — chosen button highlighted immediately,
-    //   keyboard removed + selection suffix appended ~150 ms later.
+    //   keyboard removed + selection suffix appended ~250 ms later.
     //   The hook is one-shot; a second tap between stage 1 and stage 2 is ignored
     //   (the hook has already fired and won't re-enter this path).
     //
@@ -138,9 +138,11 @@ export async function handleSendChoice({
 
       if (persistent) {
         // Persistent / multi-tap: keep keyboard visible with highlight after each press.
-        void ackAndEditSelection(chatId, messageId, text, label, qid, false, highlighted);
+        // Pass delayMs=0 so the highlight update fires immediately without the
+        // collapse delay (no keyboard removal is happening here).
+        void ackAndEditSelection(chatId, messageId, text, label, qid, false, highlighted, 0);
       } else {
-        // One-shot: highlight immediately, then collapse keyboard after ~150 ms.
+        // One-shot: highlight immediately, then collapse keyboard after ~250 ms.
         void highlightThenCollapse(chatId, messageId, text, label, qid, highlighted);
       }
     };
@@ -199,7 +201,7 @@ export function register(server: McpServer) {
           .describe(
             "Set true to enable multi-tap control-panel mode: the keyboard stays visible " +
             "after each press, the chosen button is highlighted, and every tap is handled. " +
-            "Default false = one-shot highlight-then-collapse (~150 ms).",
+            "Default false = one-shot highlight-then-collapse (~250 ms).",
           ),
               token: TOKEN_SCHEMA,
 },

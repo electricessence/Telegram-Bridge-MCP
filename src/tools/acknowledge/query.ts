@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../../telegram.js";
 import { requireAuth } from "../../session-gate.js";
 import { TOKEN_SCHEMA } from "../identity-schema.js";
+import { BUTTON_COLLAPSE_DELAY_MS } from "../button-helpers.js";
 
 const DESCRIPTION =
   "Acknowledges a callback query from an inline button press. " +
@@ -49,6 +50,8 @@ export async function handleAnswerCallbackQuery({ callback_query_id, text, show_
     });
 
     if (remove_keyboard && message_id) {
+      // Brief delay so the button color-flip is visible before the keyboard collapses.
+      await new Promise<void>((r) => setTimeout(r, BUTTON_COLLAPSE_DELAY_MS));
       const chatId = resolveChat();
       if (typeof chatId === "number") {
         try {

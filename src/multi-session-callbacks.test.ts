@@ -171,6 +171,9 @@ describe("multi-session callback isolation", () => {
     expect(isError(result)).toBe(false);
     expect(parseResult(result).confirmed).toBe(true);
 
+    // Wait for the fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
+
     // Hook fired exactly once — SID2's presence didn't duplicate or suppress it
     expect(mocks.answerCallbackQuery).toHaveBeenCalledTimes(1);
     expect(mocks.answerCallbackQuery).toHaveBeenCalledWith("qid1");
@@ -212,6 +215,9 @@ describe("multi-session callback isolation", () => {
     expect(parseResult(sid2Result).value).toBe("blue");
     expect(parseResult(sid2Result).label).toBe("Blue");
 
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
+
     // editMessageText called once (SID2's hook)
     expect(mocks.editMessageText).toHaveBeenCalledTimes(1);
 
@@ -222,6 +228,9 @@ describe("multi-session callback isolation", () => {
 
     expect(isError(sid1Result)).toBe(false);
     expect(parseResult(sid1Result).confirmed).toBe(true);
+
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
 
     // editMessageText called a second time (SID1's hook)
     expect(mocks.editMessageText).toHaveBeenCalledTimes(2);
@@ -293,6 +302,9 @@ describe("multi-session callback isolation", () => {
 
     expect(isError(sid2Result)).toBe(false);
     expect(parseResult(sid2Result).confirmed).toBe(true);
+
+    // Wait for fire-and-forget ackAndEditSelection (250 ms collapse delay) to complete
+    await new Promise<void>((r) => { setTimeout(r, 300); });
 
     // Hook fired (acked + edited) — regardless of governor routing
     expect(mocks.answerCallbackQuery).toHaveBeenCalledWith("qid_sid2");

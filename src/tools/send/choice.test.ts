@@ -195,7 +195,7 @@ describe("send_choice tool", () => {
       await Promise.resolve();
 
       // Stage 1 done — advance timer past collapse delay
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(300);
 
       expect(mocks.editMessageText).toHaveBeenCalledWith(
         42, 9,
@@ -214,7 +214,7 @@ describe("send_choice tool", () => {
       hookFn({ content: { qid: "ack123", data: "like" } });
       await Promise.resolve();
       await Promise.resolve();
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(300);
 
       const callArgs = mocks.editMessageText.mock.calls[0] as [number, number, string, Record<string, unknown>];
       const markup = callArgs[3].reply_markup as { inline_keyboard: unknown[][] };
@@ -266,7 +266,7 @@ describe("send_choice tool", () => {
       hookFn({ content: { data: "ghost" } });
       await Promise.resolve();
       await Promise.resolve();
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(300);
 
       expect(mocks.editMessageText).toHaveBeenCalledWith(
         42, 9,
@@ -299,6 +299,7 @@ describe("send_choice tool", () => {
 
       hookFn({ content: { qid: "ack123", data: "like" } });
       await new Promise<void>((r) => setTimeout(r, 0));
+      await new Promise<void>((r) => setTimeout(r, 0));
 
       expect(mocks.answerCallbackQuery).toHaveBeenCalledWith("ack123");
       // editMessageText called with non-empty keyboard (persistent highlight)
@@ -324,6 +325,7 @@ describe("send_choice tool", () => {
 
       hookFn({ content: { qid: "ack456", data: "dislike" } });
       await new Promise<void>((r) => setTimeout(r, 0));
+      await new Promise<void>((r) => setTimeout(r, 0));
 
       expect(mocks.editMessageReplyMarkup).not.toHaveBeenCalled();
       expect(mocks.editMessageText).toHaveBeenCalledTimes(1);
@@ -338,7 +340,9 @@ describe("send_choice tool", () => {
 
       hookFn({ content: { qid: "q1", data: "like" } });
       await new Promise<void>((r) => setTimeout(r, 0));
+      await new Promise<void>((r) => setTimeout(r, 0));
       hookFn({ content: { qid: "q2", data: "dislike" } });
+      await new Promise<void>((r) => setTimeout(r, 0));
       await new Promise<void>((r) => setTimeout(r, 0));
 
       expect(mocks.editMessageText).toHaveBeenCalledTimes(2);
