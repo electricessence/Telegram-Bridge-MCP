@@ -33,9 +33,9 @@ Built-in presets:
 | recovering | `[ recovering ]` cycling bracket animation |
 
 Checking animation state:
-action(type: 'animation/status') → { session: { active, message_id, frames, started_at, expires_at } }
-Governor variant (all sessions): action(type: 'animation/status') with no extra args (governor only)
-Per-session of another session: action(type: 'animation/status', sid: N) (governor only)
+Own session:    action(type: 'animation/status') → { session: { active, message_id, frames, started_at, expires_at } }
+Other session:  action(type: 'animation/status', sid: N) → { session: { ... } } (governor only)
+All sessions:   action(type: 'animation/status') with no sid, when caller is governor → { sessions: [...] }
 
 Stale-on-idle warning:
 When you call dequeue and your queue is empty (idle wait begins), the bridge injects a warning
