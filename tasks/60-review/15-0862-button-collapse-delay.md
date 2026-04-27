@@ -51,3 +51,26 @@ UX polish, not blocking. Pairs with the existing button + interactive-message in
 ## Source
 
 Operator directive 2026-04-26 evening via Curator session.
+
+## Completion
+
+**Branch:** `15-0862-button-collapse-delay`
+**Commit:** `a264e94a`
+**Date:** 2026-04-27
+
+### Summary
+
+Added `BUTTON_COLLAPSE_DELAY_MS = 250` constant (exported) to `button-helpers.ts`. Delay is gated inside `if (callbackQueryId)` in `ackAndEditSelection` so calls without a real button press incur zero delay. Persistent mode in `choice.ts` passes `delayMs=0` to skip the delay on highlight updates. `highlightThenCollapse` default bumped from 150ms to the constant. `acknowledge/query.ts` now imports the constant for its `remove_keyboard` collapse path. All test timer advances updated; new fake-timer test in `query.test.ts` verifies gate behavior. 2930/2930 tests pass.
+
+### Changed files
+
+- `src/tools/button-helpers.ts` — constant, gated delay, delayMs param, JSDoc fix
+- `src/tools/send/choice.ts` — persistent path passes delayMs=0, comment updates
+- `src/tools/acknowledge/query.ts` — import and use BUTTON_COLLAPSE_DELAY_MS
+- `src/tools/acknowledge/query.test.ts` — fake-timer gate test added
+- `src/tools/button-helpers.test.ts` — timer advances updated to 300ms
+- `src/tools/send/choice.test.ts` — timer advances and persistent-mode ticks updated
+- `src/multi-session-callbacks.test.ts` — 300ms real-timer waits after button press
+- `src/tools/callback-edge-cases.test.ts` — timer advances updated
+- `src/tools/interactive-flows.integration.test.ts` — timer advances updated
+- `src/tools/signal-abort.test.ts` — timer advance updated
