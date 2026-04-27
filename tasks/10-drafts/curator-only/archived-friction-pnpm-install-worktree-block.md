@@ -7,8 +7,6 @@ type: friction
 delegation: curator
 ---
 
-# Friction: pnpm install required in every new TMCP worktree
-
 ## Observed pattern
 
 Every time a Worker creates a new worktree in Telegram MCP, `node_modules` is absent and `pnpm test` fails immediately. Workers cannot run `pnpm install` themselves (permission boundary). Overseer must intervene to unblock — adding round-trip latency before any work can begin.
