@@ -518,7 +518,7 @@ describe("send — sync voice path recording indicator", () => {
       const resultPromise = call({ audio: "hello", async: false, token: TOKEN });
 
       // Tick through the send loop (synthesizeToOgg + sendVoiceDirect resolve immediately)
-      await vi.runAllTicks();
+      vi.runAllTicks();
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();

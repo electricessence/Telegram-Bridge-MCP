@@ -3,7 +3,7 @@ import { getAnimationStatus, getAllActiveAnimations } from "../../animation-stat
 import { requireAuth } from "../../session-gate.js";
 import { getGovernorSid } from "../../routing-mode.js";
 
-export async function handleAnimationStatus({ token, sid }: {
+export function handleAnimationStatus({ token, sid }: {
   token: number;
   sid?: number;
 }) {
