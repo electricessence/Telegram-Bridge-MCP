@@ -76,6 +76,24 @@ action — that overrides the override.
 Rationale: with the kicker in play, 5s dequeues stay near-real-
 time AND keep context cache warm.
 
+### Emergent simplification — loop guard becomes redundant
+
+Operator (2026-05-04): once `activity/file` is in active use, the
+Telegram loop-guard hook (catches "agent silently stuck in long
+dequeue") becomes redundant. The loop guard exists because of
+the failure mode where a 300s blocking dequeue masks an unhealthy
+agent. With 5s default dequeue + activity-file kicker:
+
+- Agent loops back every 5s anyway → "stuck in dequeue" window
+  shrinks 60x.
+- Health-watcher fires on actual unhealthy events, not on long
+  cooperative blocks.
+- Loop guard's signal-to-noise ratio drops to zero.
+
+Future task (after this lands + agents adopt activity/file): mark
+the loop-guard hook as deprecated, plan removal. Will require
+verifying no agents still depend on it.
+
 ### Naming rationale
 
 Operator (2026-05-04): "Maybe we shouldn't call it monitor from
