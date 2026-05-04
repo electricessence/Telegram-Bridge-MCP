@@ -176,3 +176,23 @@ the routing layer than tape-on a touch fire that can race ahead.
   (sibling bridge work)
 - Operator framing: "we don't need to know if monitor works. We
   should just do this." (2026-05-04)
+
+## Completion
+
+**Worker 1 — 2026-05-04**
+
+Implemented the full `activity/file/` namespace. Commit `1f15e703` on branch `50-0868`.
+
+### What was built
+
+- `src/tools/activity/file-state.ts` — core state module with debounce engine, activity-aware suppression, max-interval ceiling, TMCP-owned file creation
+- `src/tools/activity/create.ts` — `activity/file/create` (agent-supplied or TMCP-generated path)
+- `src/tools/activity/edit.ts` — `activity/file/edit` (swap registered path, old TMCP-owned file deleted)
+- `src/tools/activity/delete.ts` — `activity/file/delete` (idempotent; deletes TMCP-owned file)
+- `src/tools/activity/get.ts` — `activity/file/get` (read-only registration query)
+- `src/session-queue.ts` — `touchActivityFile(sid)` wired after `q.enqueue()` in both `enqueueToSession()` and the broadcast loop in `routeToSession()`
+- `src/tools/dequeue.ts` — 5s dequeue cap injected when `isActivityFileActive(sid)` and no explicit `max_wait`
+- `src/session-teardown.ts` — `clearActivityFile(sid)` in cleanup sequence
+- `src/server.ts` — `recordActivityTouch(sid)` in `dispatchBehaviorTracking()` to reset activity suppression on every authenticated tool call
+
+Build: `pnpm build` passes (tsc clean, 0 errors).
