@@ -106,3 +106,10 @@ unify in this task.
 - `agents/overseer/hooks/`
 - Curator skill `session-lifecycle` (consumes the events)
 - 50-0865 + 50-0866 (sibling postmortem-driven tasks)
+
+## Completion
+
+- **Branch:** `50-0867` in `Telegram MCP`
+- **Commit:** `fbaee00e`
+- **Deliverable:** `docs/consumer-hooks.md` — 205-line consumer guide covering loop guard (Stop hook), compaction notifications (PreCompact + PostCompact), setup checklist with 6 steps, 4 common pitfalls, and See Also links to existing docs.
+- **Reference implementations used:** `.agents/hooks/telegram-loop-guard.ps1`, `.agents/hooks/telegram-event.ps1`, `.claude/hooks/telegram-loop-guard.sh`
