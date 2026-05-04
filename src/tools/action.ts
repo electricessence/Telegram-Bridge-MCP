@@ -66,6 +66,10 @@ import { handleDownloadFile } from "./download/file.js";
 import { handleUpdateChecklist } from "./checklist/update.js";
 import { handleUpdateProgress } from "./progress/update.js";
 import { handleSetCommands } from "./commands/set.js";
+import { handleActivityFileCreate } from "./activity/create.js";
+import { handleActivityFileEdit } from "./activity/edit.js";
+import { handleActivityFileDelete } from "./activity/delete.js";
+import { handleActivityFileGet } from "./activity/get.js";
 type ToolResult = ReturnType<typeof toResult>;
 
 /** Returns the closest string in `candidates` to `input`, or null if no reasonable match. */
@@ -200,6 +204,12 @@ export function setupActionRegistry(): void {
       token: args.token as number,
     })
   ));
+
+  // activity/file/*
+  registerAction("activity/file/create", toActionHandler(handleActivityFileCreate));
+  registerAction("activity/file/edit", toActionHandler(handleActivityFileEdit));
+  registerAction("activity/file/delete", toActionHandler(handleActivityFileDelete));
+  registerAction("activity/file/get", toActionHandler(handleActivityFileGet));
 
 }
 
@@ -591,6 +601,11 @@ export function register(server: McpServer): void {
           .enum(["chat", "default"])
           .optional()
           .describe('commands/set: "chat" scopes commands to active chat (default). "default" sets globally.'),
+        // activity/file/* params
+        file_path: z
+          .string()
+          .optional()
+          .describe("activity/file/create, activity/file/edit: Absolute path to the activity file. Omit to let TMCP generate one in data/activity/."),
       },
     },
     async (args) => {
