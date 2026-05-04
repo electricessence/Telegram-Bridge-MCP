@@ -43,10 +43,10 @@ import { removeSilenceState } from "./silence-detector.js";
  * The caller is responsible for any pre-flight checks (auth, permissions,
  * operator confirmation). This function only does the teardown.
  *
- * @returns `{ closed: true, sid }` on success, `{ closed: false, sid }` if the
+ * @returns `{ closed: true, sid, name }` on success, `{ closed: false, sid }` if the
  *          session did not exist (already closed or never created).
  */
-export function closeSessionById(sid: number): { closed: boolean; sid: number } {
+export function closeSessionById(sid: number): { closed: boolean; sid: number; name?: string } {
   // Capture session name before closing (used in notifications)
   const sessionInfo = getSession(sid);
   const sessionName = sessionInfo?.name || `Session ${sid}`;
@@ -192,7 +192,7 @@ export function closeSessionById(sid: number): { closed: boolean; sid: number } 
   });
 
   if (activeSessionCount() === 0) stopPoller();
-  return { closed: true, sid };
+  return { closed: true, sid, name: sessionName };
 }
 
 function dlogOrphans(sid: number, count: number): void {

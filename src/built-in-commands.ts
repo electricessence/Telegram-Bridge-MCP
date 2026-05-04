@@ -1364,7 +1364,7 @@ async function handleSessionCallback(
     _activePanels.delete(panelMsgId);
     const closeResult = closeSessionById(sid);
     const closeMsg = closeResult.closed
-      ? "✓ Session closed."
+      ? `✅ Session closed: ${closeResult.name || `Session ${sid}`} (SID ${sid})`
       : "⚠️ Session was already closed.";
     void refreshGovernorCommand();
     try {
