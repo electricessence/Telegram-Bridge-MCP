@@ -27,33 +27,35 @@ This task implements that design on the TMCP side.
 
 Bridge-side only. **Agent owns the file; TMCP just touches it.**
 
-1. New CRUD action sub-namespace under existing `session/`:
-   **`session/file/`** (agnostic, not
+1. New top-level action namespace **`activity/file/`** —
+   semantically describes what the file signals (activity), not who
+   owns it. Each session can have its own activity file; the
+   namespace lives parallel to `session/`. Agnostic, not
    tied to Claude Code's Monitor concept — any consumer can poll
    the file with `tail`, `inotify`, or whatever).
 
    Verbs:
-   - **`session/file/create`** — opt-in start. Two call shapes:
+   - **`activity/file/create`** — opt-in start. Two call shapes:
      - With `file_path: <abs path>` — agent supplies its own path.
        TMCP records, never creates/deletes the file.
      - Without `file_path` — TMCP generates a cryptographically
        random filename in its own data dir, creates the file,
        returns the absolute path in the response. TMCP owns the
        lifecycle.
-   - **`session/file/edit`** — change which file the session is
+   - **`activity/file/edit`** — change which file the session is
      pointing at (e.g. agent moves it). New `file_path` replaces
      the old. Ownership rules apply per-call.
-   - **`session/file/delete`** — stop touching for this session.
+   - **`activity/file/delete`** — stop touching for this session.
      If TMCP created the file (no path supplied at create time),
      TMCP deletes it. If agent-supplied, TMCP just forgets.
-   - **`session/file/get`** — query current registration (path,
+   - **`activity/file/get`** — query current registration (path,
      ownership, last-touch timestamp). Read-only.
 
-   Either way, TMCP does NOTHING until `session/file/create` is
+   Either way, TMCP does NOTHING until `activity/file/create` is
    called. No default I/O.
 
 2. Auto-cleanup on `session/close`: equivalent to firing
-   `session/file/delete` (deletes TMCP-owned file, forgets
+   `activity/file/delete` (deletes TMCP-owned file, forgets
    agent-supplied path).
 
 ### Naming rationale
