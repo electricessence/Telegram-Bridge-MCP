@@ -58,6 +58,15 @@ Bridge-side only. **Agent owns the file; TMCP just touches it.**
    `activity/file/delete` (deletes TMCP-owned file, forgets
    agent-supplied path).
 
+### Auto-shorten dequeue default on activity/file enable
+
+Operator (2026-05-04): when an agent calls `activity/file/create`,
+TMCP auto-drops that session's default `max_wait` to **5s**
+(familiar to Claude users). After `activity/file/delete`, the
+session default reverts. Per-call `max_wait` override still
+honored. Rationale: with the kicker in play, a 5s dequeue window
+gives near-real-time responsiveness AND keeps context cache warm.
+
 ### Naming rationale
 
 Operator (2026-05-04): "Maybe we shouldn't call it monitor from
