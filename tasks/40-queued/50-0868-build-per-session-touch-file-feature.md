@@ -69,7 +69,9 @@ returns to the standard **5 minutes (300s)**.
 Important: this is NOT a profile mutation. The session's profile
 default is unchanged. The override lives only while
 `activity/file` is active. Per-call `max_wait` argument still
-trumps the override.
+trumps the override. Agent can also adjust the session-level
+default at any time via the existing `profile/dequeue-default`
+action — that overrides the override.
 
 Rationale: with the kicker in play, 5s dequeues stay near-real-
 time AND keep context cache warm.
