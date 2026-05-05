@@ -16,6 +16,11 @@ pending == 0, then block.
 Claude Code sessions (long-lived):
 action(type: 'profile/dequeue-default', timeout: N,
 token) to increase default.
+Optional: if your harness has a filesystem watcher,
+action(type: 'activity/file/create', token) registers
+an activity file — TMCP bumps its mtime on inbound
+messages so your watcher can trigger dequeue without
+keeping a blocking poll open. Augment only.
 
 ## Send Basics
 send(type: 'text', token, text: 'Hello') → text message
