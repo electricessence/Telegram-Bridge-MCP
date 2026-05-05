@@ -19,11 +19,13 @@ export interface Session {
   announcementMsgId?: number;
   reauthDialogMsgId?: number;
   dequeueDefault?: number; // per-session timeout default, undefined = use server default (300)
+  kickDebounceMs?: number; // per-session activity-file kick debounce window (ms), undefined = use default (60_000)
   dequeueIdleAt?: number; // timestamp when session entered dequeue blocking wait; undefined = not idle
   pendingEnvelopeHint?: string;
   silenceThresholdS?: number;
   firstUseHintsSeen?: Set<string>;
-  nametag_emoji?: string;
+  /** Explicitly-set name tag string. When undefined, callers fall back to defaultNameTag(session). */
+  name_tag?: string;
   /**
    * Connection token assigned at session/start. Used for duplicate-session
    * detection: if two callers present the same SID/suffix but different
@@ -308,6 +310,23 @@ export function setDequeueDefault(sid: number, timeout: number): void {
   if (session) session.dequeueDefault = timeout;
 }
 
+/**
+ * Get the per-session activity-file kick debounce window (ms).
+ * Falls back to 60 000 ms if not set.
+ */
+export function getKickDebounceMs(sid: number): number {
+  return _sessions.get(sid)?.kickDebounceMs ?? 60_000;
+}
+
+/**
+ * Set the per-session activity-file kick debounce window (ms).
+ * No-op if the session does not exist.
+ */
+export function setKickDebounceMs(sid: number, ms: number): void {
+  const session = _sessions.get(sid);
+  if (session) session.kickDebounceMs = ms;
+}
+
 /** Set a pending envelope hint to be included on the next dequeue response for this session. */
 export function setSilenceHint(sid: number, hint: string): void {
   const s = _sessions.get(sid);
@@ -487,4 +506,16 @@ export function clearHasCompacted(sid: number): void {
 /** Return true if a `compacted` event has fired and the notify hasn't fired yet. */
 export function getHasCompacted(sid: number): boolean {
   return !!_sessions.get(sid)?.hasCompacted;
+}
+
+// ── Name Tag ───────────────────────────────────────────────
+
+/**
+ * Compute the default name tag for a session.
+ * Returns `<color-emoji> <name>` when color is set, or just `<name>` otherwise.
+ * Does NOT include the robot emoji. Does NOT apply the "Session N" fallback —
+ * callers must resolve the name first.
+ */
+export function defaultNameTag(session: Pick<Session, "color" | "name">): string {
+  return session.color ? `${session.color} ${session.name}` : session.name;
 }

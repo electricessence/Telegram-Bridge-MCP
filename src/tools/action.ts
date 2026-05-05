@@ -39,6 +39,7 @@ import { handleDisableReminder } from "./reminder/disable.js";
 import { handleEnableReminder } from "./reminder/enable.js";
 import { handleSleepReminder } from "./reminder/sleep.js";
 import { handleSetDequeueDefault } from "./profile/dequeue-default.js";
+import { handleKickDebounce } from "./profile/kick-debounce.js";
 import { handleSetDefaultAnimation } from "./animation/default.js";
 import { handleToggleLogging } from "./logging/toggle.js";
 // Phase 2 imports — message/history, message/get
@@ -70,6 +71,7 @@ import { handleActivityFileCreate } from "./activity/create.js";
 import { handleActivityFileEdit } from "./activity/edit.js";
 import { handleActivityFileDelete } from "./activity/delete.js";
 import { handleActivityFileGet } from "./activity/get.js";
+import { handleNameTag } from "./name-tag.js";
 type ToolResult = ReturnType<typeof toResult>;
 
 /** Returns the closest string in `candidates` to `input`, or null if no reasonable match. */
@@ -141,6 +143,7 @@ export function setupActionRegistry(): void {
   registerAction("reminder/enable", toActionHandler(handleEnableReminder));
   registerAction("reminder/sleep", toActionHandler(handleSleepReminder));
   registerAction("profile/dequeue-default", toActionHandler(handleSetDequeueDefault));
+  registerAction("profile/kick-debounce", toActionHandler(handleKickDebounce));
   registerAction("animation/default", toActionHandler(handleSetDefaultAnimation));
   registerAction("logging/toggle", toActionHandler(handleToggleLogging));
 
@@ -210,6 +213,10 @@ export function setupActionRegistry(): void {
   registerAction("activity/file/edit", toActionHandler(handleActivityFileEdit));
   registerAction("activity/file/delete", toActionHandler(handleActivityFileDelete));
   registerAction("activity/file/get", toActionHandler(handleActivityFileGet));
+
+  // name-tag — get or set session name tag
+  registerAction("name-tag", toActionHandler(handleNameTag));
+  registerAction("name-tag/set", toActionHandler(handleNameTag));
 
 }
 
@@ -405,12 +412,11 @@ export function register(server: McpServer): void {
           )
           .optional()
           .describe("profile/import: Reminders to register for this session."),
-        nametag_emoji: z
+        name_tag: z
           .string()
-          .min(1)
-          .max(10)
+          .max(64)
           .optional()
-          .describe("profile/import: Custom emoji to replace the default 🤖 in the session name tag."),
+          .describe("name-tag/set or profile/import: Custom name tag string. Replaces the auto-default (<color> <name>). No newlines. Max 64 chars."),
         // reminder/set params
         trigger: z
           .enum(["time", "startup"])
@@ -443,6 +449,14 @@ export function register(server: McpServer): void {
           .max(3600)
           .optional()
           .describe("profile/dequeue-default: Default dequeue timeout in seconds (0–3600)."),
+        // profile/kick-debounce params
+        ms: z
+          .number()
+          .int()
+          .min(30_000)
+          .max(600_000)
+          .optional()
+          .describe("profile/kick-debounce: Activity-file kick debounce window in milliseconds (30_000–600_000). Omit to get current value."),
         // animation/default params
         frames: z
           .array(z.string())
