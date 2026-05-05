@@ -17,7 +17,7 @@ depends_on: []
 `activity/file/create` was reshaped this session: dropped `ok` and `tmcp_owned`, added a `hint` field telling the caller what to do with the file. New shape:
 
 ```json
-{ "file_path": "...", "hint": "When this file changes, call dequeue()" }
+{ "file_path": "...", "hint": "Configure your watcher to call dequeue() when this file changes" }
 ```
 
 Sibling endpoint `activity/file/edit` was NOT touched in the same pass. It still emits the old shape:
@@ -35,7 +35,7 @@ Edit `src/tools/activity/edit.ts` — both `toResult` sites (lines 56 and 79) an
 Target shape:
 
 ```json
-{ "file_path": "...", "hint": "When this file changes, call dequeue()", "previous_path": "..." }
+{ "file_path": "...", "hint": "Configure your watcher to call dequeue() when this file changes", "previous_path": "..." }
 ```
 
 Keep `previous_path` — it's the only edit-specific field and tells the caller what was unregistered. Drop `ok` and `tmcp_owned` to match create.
