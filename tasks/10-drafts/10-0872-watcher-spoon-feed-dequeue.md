@@ -3,7 +3,7 @@ id: "10-0872"
 title: "Watcher includes drained events in the wake notification — eliminate the second turn per wake"
 type: feature
 priority: 30
-status: draft
+status: superseded
 created: 2026-05-05
 updated: 2026-05-05
 repo: Telegram MCP
@@ -12,6 +12,18 @@ depends_on: ["10-0871", "10-0873"]
 ---
 
 # Watcher includes drained events in the wake notification
+
+## SUPERSEDED 2026-05-05
+
+Operator clarified the architecture: long-poll dequeue is primary; Monitor is just a "kick the loop" nudge replacing the old Telegram loop guard. Content delivery stays in `dequeue` proper. Spoon-feeding events through Monitor is over-design — the current pattern of "watcher prints `call dequeue`, agent dequeues" is correct and wanted. See Curator memory `feedback_dequeue_long_poll_primary_monitor_nudge.md`.
+
+No work required for this task. Kept in drafts as a record of the design exploration; do NOT execute.
+
+10-0873 (HTTP /dequeue endpoint) remains useful for non-MCP consumers but is no longer central to the wake loop.
+
+---
+
+# Original draft (kept for reference)
 
 ## Operator framing (2026-05-05)
 
