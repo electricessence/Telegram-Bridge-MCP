@@ -43,6 +43,11 @@ export const SERVICE_MESSAGES = deepFreeze({
     text: "Save your token to your session memory file.",
   },
 
+  ONBOARDING_LOOP_PATTERN: {
+    eventType: "onboarding_loop_pattern" as const,
+    text: "Loop pattern: dequeue(max_wait: 300) is the standard heartbeat — long-poll, re-call on timed_out. Optional augment: if your harness has a filesystem watcher, register an activity file via action(type: 'activity/file/create'); TMCP bumps its mtime on inbound messages so your watcher can trigger dequeue without keeping a blocking poll open. Activity file is an augment, not a replacement for dequeue.",
+  },
+
   ONBOARDING_ROLE_GOVERNOR: {
     eventType: "onboarding_role" as const,
     text: "You are the governor. Ambiguous messages route to you. Forward to the correct session via DM with message ID — recipient calls message/get to read it. help('guide') for routing protocol.",

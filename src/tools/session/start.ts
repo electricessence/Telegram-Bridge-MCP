@@ -328,6 +328,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_LOOP_PATTERN);
           // First session is always governor — no ternary needed.
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR);
           if (discarded === 0) deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_NO_PENDING_YET);
@@ -398,6 +399,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_LOOP_PATTERN);
           // session_orientation already carries role info (governor vs participant) for multi-session.
           // Skip onboarding_role here to avoid duplication.
           if (discarded === 0) deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_NO_PENDING_YET);
