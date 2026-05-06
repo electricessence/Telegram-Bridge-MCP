@@ -43,9 +43,12 @@ Apply the audit's "Suggested Fix" column to each of the 20 findings. The audit t
 - [ ] Single commit per priority tier acceptable (or one commit total — your call) referencing 10-0886 audit findings table
 - [ ] Direct on `release/7.4`
 
-## Bailout
+## Bailout / presence
 
-- 90 min cap.
+- No fixed time cap. Most fixes are sub-minute edits.
+- At 5 min in: send a brief "still working" status message.
+- Every 5 min after that: status message including why it's taking longer.
+- Always maintain a visible checklist for progress.
 - Any fix that would require changing public-API contract beyond removing a field (e.g., renaming, restructuring) — surface back.
 - Any consumer in src/ (not tests) that relies on a removed field — surface back.
 
