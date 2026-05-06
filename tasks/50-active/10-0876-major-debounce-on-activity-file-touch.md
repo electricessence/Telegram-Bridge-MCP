@@ -157,3 +157,20 @@ Worker time-cap: 4 hours. If the `inflightDequeue` flag turns out to be hard to 
 Paths 2 and 3 are common code paths. After a fast dequeue, `inflightDequeue` is permanently stuck `true` — no further mtime kicks will ever fire for that session. Violates AC 1 (over-suppression) and AC 4 (cycle never re-arms).
 
 **Fix:** Call `setDequeueActive(sid, false)` before each of the three early return statements, OR move `setDequeueActive(sid, true)` inside the `try` block.
+
+## Verification Round 2 — 2026-05-06
+
+**Verdict: APPROVED**
+Verified by: Overseer (code inspection, dev branch)
+
+Gap fix confirmed: `setDequeueActive(sid, true)` is now called at line ~140 of `dequeue.ts` AFTER the `session_closed` early-return guard. All subsequent returns are inside the `try` block — the `finally` at line ~326 unconditionally calls `setDequeueActive(sid, false)`, covering paths 1–3 from NEEDS_REVISION stamp.
+
+Fix was implemented by task 10-0873 (runDrainLoop extraction, squash b5a23a80 on dev) and cherry-picked to release/7.4 as 6423998d.
+
+- AC1 ✅ mtime NOT bumped during active long-poll (inflightDequeue flag works)
+- AC2 ✅ 60s silent + pending → mtime bump (state machine confirmed)
+- AC3 ✅ One-nudge-per-cycle (NUDGE_FIRED state)
+- AC4 ✅ Cycle re-arms on dequeue (fix confirmed — no more leak)
+- AC5 ✅ Any tool call resets debounce
+- AC6 ✅ Existing suppress test replaced (8 unit tests added)
+- AC7 ✅ No regression in activity-file create/delete/get
