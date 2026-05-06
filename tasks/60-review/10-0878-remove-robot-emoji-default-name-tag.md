@@ -69,3 +69,20 @@ Per TMCP convention: feature branch local, merge into `release/7.4` locally. Con
 
 - 10-0869 (custom name tags — landed; default-auto stripped robot).
 - 7.4 release stack — could land in 7.4.1 if Worker is fast post-rehydration.
+
+## Completion
+
+- Branch: `10-0878` merged into `release/7.4` (local, per TMCP convention)
+- Merge commit: `2ddd78d8` on release/7.4; feature commit `f60231e6`
+- 9 production surfaces stripped: multi-session header, session approval/denied/reconnect dialogs, online announce, disconnect notice, governor promotion, /sessions command
+- 5 test files updated (output assertions): animation-state.test.ts, startup-token-cleanup.test.ts, tools/session/close.test.ts + others
+- Input-rejection tests untouched (start.test.ts:711, rename.test.ts:130) — by design
+- Tests: pnpm test — 2955 passed, 0 failed
+- Worker: Copilot Worker (SID 2)
+
+## Verification Stamp
+
+**Verdict:** APPROVED
+**Date:** 2026-05-05
+**Criteria:** 9/9 passed
+**Evidence:** All 9 production surfaces verified robot-free on release/7.4. Robot emoji (`🤖`) found only in 4 expected negative-assertion test locations. Merge commit `2ddd78d8` confirmed on release/7.4. 5 output-assertion test files updated; 2 input-rejection tests preserved unchanged. 2955 tests green.

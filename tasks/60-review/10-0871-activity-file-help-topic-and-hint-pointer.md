@@ -101,3 +101,10 @@ Worker, Sonnet for the help-topic content (needs nuance), Haiku for the hint-str
 - Tests: pnpm test GREEN (2956 tests, 0 failures)
 - Code review: PASSED (1 Critical fixed — test mock hermetic)
 - Worker: Worker 2
+
+## Verification Stamp
+
+**Verdict:** APPROVED
+**Date:** 2026-05-05
+**Criteria:** 6/6 passed
+**Evidence:** `docs/help/activity/file.md` (81 lines) covers purpose/lifecycle/wake/watcher patterns/error modes with correct framing (optional augment, dequeue primary). `activity/file` in RICH_TOPICS Set in help.ts. Both create.ts and edit.ts emit `hint: "Call help('activity/file') now"`. Hermetic test in help.test.ts mocks fs and asserts dequeue/watcher/mtime content. Completion: 2956 tests green. 10-0870 edit.ts shape alignment included in commit `8c5c7b3d`.
