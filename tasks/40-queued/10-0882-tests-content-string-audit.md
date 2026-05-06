@@ -2,14 +2,23 @@
 id: "10-0882"
 title: "Audit tests for content-string assertions (test logic, not copy)"
 type: refactor
-priority: 30
+priority: 10
 status: queued
 created: 2026-05-05
+updated: 2026-05-06
 filed-by: Curator
 delegation: Worker
 target_repo: telegram-bridge-mcp
-target_branch: dev
+target_branch: release/7.4
 ---
+
+## Update 2026-05-06 — release/7.4 CI blocker
+
+Operator: "CI tests failing — most are content-string assertions. Get past the stupid removal of content checking, then we can merge release/7.4." This is now the merge gate for release/7.4. Bumped to P10. Target branch flipped to release/7.4 (was dev — release/7.4 is downstream of dev so the work needs to be there for PR #167 to go green).
+
+The "no string-content tests" prohibition is now codified in `.agents/agents/worker/context/refresh.md` (commit b797e64) — Worker should follow that rule going forward AND retroactively scrub the existing test base.
+
+
 
 # Test-content audit — drop assertions on copy, keep assertions on logic
 
@@ -51,9 +60,12 @@ Survey `src/**/*.test.ts` (and any other test directories) for content-string as
 
 ## Branch flow
 
-Work directly on local `dev`. Stage, run `pnpm test`, DM Curator.
+Work directly on `release/7.4`. Stage, run `pnpm test`, DM Curator. Push when green.
 
-## Bailout
+## Bailout / presence
 
-- 90 min cap.
+- No fixed time cap.
+- At 5 min in: "still working on 10-0882" status DM to Overseer.
+- Every 5 min after: status with what's taking longer and why.
+- Visible checklist throughout — operator's primary progress signal.
 - If audit reveals widespread reliance on copy assertions (>50 sites), surface to operator before refactoring — could indicate tests are doing too much UI-style testing, separate concern.
