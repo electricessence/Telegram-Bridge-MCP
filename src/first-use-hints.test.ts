@@ -37,7 +37,7 @@ describe("getFirstUseHint", () => {
     const sid = makeSession();
     const hint = getFirstUseHint(sid, "send:choice");
     expect(hint).not.toBeNull();
-    expect(hint).toContain("non-blocking");
+    expect(hint).toContain("Non-blocking");
     expect(hint).toContain('send(type: "question", choose: [...])');
   });
 
@@ -94,8 +94,8 @@ describe("getFirstUseHint", () => {
     const sid = makeSession();
     const hint = getFirstUseHint(sid, "send:animation");
     expect(hint).not.toBeNull();
-    expect(hint).toContain("ephemeral animation");
-    expect(hint).toContain("animation/cancel");
+    expect(hint).toContain("Animation is temporary");
+    expect(hint).toContain("help('animation')");
   });
 
   it("returns null on second call for send:animation", () => {

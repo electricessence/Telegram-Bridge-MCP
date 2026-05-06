@@ -273,7 +273,7 @@ export function register(server: McpServer) {
       switch (resolvedType) {
         case "text": {
           if (!text && !audio) {
-            return toError({ code: "MISSING_CONTENT" as const, message: "At least one of 'text' or 'audio' is required.", hint: "Call help(topic: 'send') for usage. Both text and audio are optional individually but at least one is required." });
+            return toError({ code: "MISSING_CONTENT" as const, message: "At least one of 'text' or 'audio' is required.", hint: "Pass text, audio, or both. help('send')." });
           }
           const { parse_mode, disable_notification } = args;
           const reply_to_message_id = args.reply_to;
