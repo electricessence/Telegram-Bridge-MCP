@@ -71,7 +71,7 @@ export function register(server: McpServer) {
           )
           .optional()
           .describe("Reminders to register for this session."),
-        name_tag: z.string().max(64).optional().describe("Custom name tag string for this session. Replaces the auto-default (<color> <name>). No newlines. Max 64 chars."),
+        name_tag: z.string().max(64).regex(/^[^`\n]*$/, "name_tag must not contain backticks or newlines").optional().describe("Custom name tag string for this session. Replaces the auto-default (<color> <name>). No newlines or backticks. Max 64 chars."),
         token: TOKEN_SCHEMA,
       },
     },

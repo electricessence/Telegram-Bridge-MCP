@@ -17,11 +17,14 @@ export function applyProfile(sid: number, profile: ProfileData): ApplyResult | A
   const applied: Record<string, unknown> = {};
 
   try {
-    if (profile.name_tag !== undefined) {
+    // Support legacy `nametag_emoji` field from profiles saved before v7.4
+    const nameTagValue =
+      profile.name_tag ?? (profile as Record<string, unknown>)["nametag_emoji"] as string | undefined;
+    if (nameTagValue !== undefined) {
       const session = getSession(sid);
       if (session) {
-        session.name_tag = profile.name_tag;
-        applied.name_tag = profile.name_tag;
+        session.name_tag = nameTagValue;
+        applied.name_tag = nameTagValue;
       }
     }
 

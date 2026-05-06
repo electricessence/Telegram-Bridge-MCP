@@ -9,21 +9,19 @@
  *   tmcpOwned = true  → TMCP created the file; it will delete it on clear/close.
  *   tmcpOwned = false → agent supplied the path; TMCP never touches lifecycle.
  *
- * Debounce (leading + trailing-if-suppressed):
- *   - First message → touch fires immediately (leading edge).
- *   - Subsequent messages within DEBOUNCE_WINDOW_MS → absorbed.
- *   - When window expires: if absorbedCount > 0 → one trailing touch.
- *   - After trailing (or expiry with no absorbed): next msg is a fresh leading.
+ * State machine (nudge cycle):
+ *   Armed (nudgeArmed=true) → message arrives → kick fires (disarms) or is
+ *   deferred by the debounce window (schedules trailing timer). Dequeue
+ *   completion re-arms the cycle. Any tool call cancels the pending timer and
+ *   resets the activity timestamp, extending the suppression window.
  *
- * Activity-aware suppression:
- *   - If the session had any tool call within ACTIVITY_SUPPRESS_MS, skip touch.
- *     (Agent is already awake — no point kicking it.)
- *   - behavior-tracker.ts does not expose a "last tool call at" timestamp,
- *     so we maintain lastActivityAt per-entry, updated via recordActivityTouch().
+ * Debounce window (kickDebounceMs, per-session via profile/kick-debounce):
+ *   Suppresses repeated kicks if the agent called a tool within the window.
+ *   On window expiry: one trailing touch fires and disarms.
  *
- * Max-interval ceiling (MAX_INTERVAL_MS):
- *   - If no touch has fired for >= MAX_INTERVAL_MS and a message arrives,
- *     force a touch regardless of debounce/activity suppression.
+ * Inflight dequeue suppression:
+ *   Kicks are skipped while a dequeue call is being processed — the agent
+ *   will receive the event directly on dequeue return.
  */
 
 import { appendFile, unlink, mkdir, open } from "fs/promises";
@@ -31,6 +29,7 @@ import { dirname, isAbsolute, resolve } from "path";
 import { randomBytes } from "crypto";
 import { fileURLToPath } from "url";
 import { getKickDebounceMs } from "../../session-manager.js";
+import { dlog } from "../../debug-log.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 /** data/activity/ lives at repo_root/data/activity/ */
@@ -65,8 +64,6 @@ export interface ActivityFileState {
   lastTouchAt: number | null;
   /** Active kick-delay timer handle, or null if none. */
   debounceTimer: ReturnType<typeof setTimeout> | null;
-  /** Unused legacy field — kept for interface compatibility. Remove in next major. */
-  absorbedCount: number;
   /** Timestamp (ms) of the last agent tool call (for kick suppression). */
   lastActivityAt: number;
   /** True while a dequeue call is being processed for this session. */
@@ -104,7 +101,7 @@ export function validateFilePath(filePath: string): string | null {
   if (filePath.includes("\0")) {
     return "file_path must not contain null bytes";
   }
-  if (filePath.includes("..")) {
+  if (filePath.split(/[/\\]/).includes("..")) {
     return "file_path must not contain path traversal (..)";
   }
   if (!isAbsolute(filePath)) {
@@ -120,9 +117,9 @@ async function appendNewline(filePath: string): Promise<void> {
   } catch (err: unknown) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === "ENOENT") {
-      console.warn(`[activity/file] touch skipped — file not found: ${filePath}`);
+      dlog("tool", `activity/file: touch skipped — file not found: ${filePath}`);
     } else {
-      console.warn(`[activity/file] touch failed for ${filePath}:`, err);
+      dlog("tool", `activity/file: touch failed for ${filePath}`, { err: String(err) });
     }
   }
 }

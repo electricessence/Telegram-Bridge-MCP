@@ -20,6 +20,7 @@ import { getCallerSid } from "./session-context.js";
 import { activeSessionCount, getSession } from "./session-manager.js";
 import { maybeReplaceRecoveringAnimation } from "./compaction-recovery.js";
 import { escapeHtml } from "./markdown.js";
+import { resolveNameTag } from "./tools/name-tag.js";
 
 // ---------------------------------------------------------------------------
 // Session header injection
@@ -36,11 +37,11 @@ export function buildHeader(parseMode?: string): { plain: string; formatted: str
   if (activeSessionCount() < 2) return { plain: "", formatted: "" };
   const sid = getCallerSid();
   const session = sid > 0 ? getSession(sid) : undefined;
-  const resolvedName = session?.name || (sid > 0 ? `Session ${sid}` : "");
-  if (!resolvedName) return { plain: "", formatted: "" };
+  // Guard: no sid or no session means we can't produce a header
+  if (sid <= 0 || !session) return { plain: "", formatted: "" };
 
   // Resolve the effective name tag (explicit override or auto-default)
-  const nameTag = session?.name_tag ?? (session?.color ? `${session.color} ${resolvedName}` : resolvedName);
+  const nameTag = resolveNameTag(session, sid);
 
   const plain = `${nameTag}\n`;
 

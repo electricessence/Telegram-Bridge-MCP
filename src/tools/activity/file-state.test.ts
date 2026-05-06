@@ -52,7 +52,6 @@ function makeState(overrides: Partial<{
     tmcpOwned: false,
     lastTouchAt: null,
     debounceTimer: null,
-    absorbedCount: 0,
     lastActivityAt: overrides.lastActivityAt ?? 0,
     inflightDequeue: overrides.inflightDequeue ?? false,
     nudgeArmed: overrides.nudgeArmed ?? true,

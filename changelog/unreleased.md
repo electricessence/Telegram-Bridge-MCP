@@ -1,5 +1,24 @@
 # [Unreleased]
 
+## v7.4.0-review-fixes — in-branch
+
+### Fixed
+
+- `GET|POST /dequeue` async Express handler: added `try/catch` with `next(err)` to prevent unhandled promise rejections crashing Node (Express 4 does not auto-handle async route errors)
+- `GET|POST /dequeue`: removed undocumented `connection_token` pass-through that was accepted but silently ignored; callers needing duplicate-session detection must use the MCP `dequeue` tool
+- `handleNameTag` (`action(type: "name-tag/set")`): added backtick validation — name tags containing `` ` `` are now rejected with `INVALID_NAME_TAG` to prevent broken Markdown in message headers
+- `import_profile` Zod schema: added backtick and newline regex to `name_tag` field validation
+- `applyProfile`: added `nametag_emoji` fallback — profiles saved with the old field name are now correctly migrated to `name_tag` instead of being silently dropped
+- `ActivityFileState`: removed phantom `absorbedCount` field that was marked as a legacy no-op on a brand-new file; all object literals updated accordingly
+- `validateFilePath`: path-traversal check now splits on path separators before matching `..` — prevents false positives on paths containing `..` as a substring (e.g. `/var/log/tmcp..lock`)
+- `appendNewline` in `file-state.ts`: replaced `console.warn` with `dlog("tool", ...)` for consistency with the rest of the codebase
+
+### Changed
+
+- `resolveNameTag` extracted as a shared export from `name-tag.ts` and used by `outbound-proxy.ts#buildHeader` — eliminates the duplicated `name_tag ?? color ?? name` resolution expression
+- `parseIntParam` extracted as a file-local helper in `dequeue-endpoint.ts` — removes the duplicated inline parse expression for token and max_wait
+- `file-state.ts` module doc rewritten to accurately describe the actual state machine; removed false references to non-existent `MAX_INTERVAL_MS` and `ACTIVITY_SUPPRESS_MS` constants
+
 ## v7.2.2 — 2026-04-25
 
 ### Added
