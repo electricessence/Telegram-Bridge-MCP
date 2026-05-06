@@ -222,7 +222,7 @@ describe("button-helpers", () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(300);
       await p;
 
       expect(mocks.editMessageText).toHaveBeenCalledWith(
@@ -239,7 +239,7 @@ describe("button-helpers", () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(300);
       // Should not throw even though stage 1 failed
       await expect(p).resolves.toBeUndefined();
       // Stage 2 still ran
@@ -255,28 +255,28 @@ describe("button-helpers", () => {
       expect(mocks.answerCallbackQuery).not.toHaveBeenCalled();
       expect(mocks.editMessageReplyMarkup).toHaveBeenCalled();
 
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(300);
       await p;
       expect(mocks.editMessageText).toHaveBeenCalled();
     });
 
-    it("stage 2 does not fire before the delay elapses (default 150 ms)", async () => {
+    it("stage 2 does not fire before the delay elapses (default 250 ms)", async () => {
       vi.useFakeTimers();
       const p = highlightThenCollapse(42, 1, "Pick one", "Like it", "cq1", HIGHLIGHTED_ROWS);
       await Promise.resolve();
       await Promise.resolve();
 
-      // Advance to just under the default 150 ms delay — stage 2 must not have fired
+      // Advance to just under the default 250 ms delay — stage 2 must not have fired
       await vi.advanceTimersByTimeAsync(100);
       expect(mocks.editMessageText).not.toHaveBeenCalled();
 
       // Advance past the threshold — stage 2 fires
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(300);
       await p;
       expect(mocks.editMessageText).toHaveBeenCalledTimes(1);
     });
 
-    it("custom delayMs overrides the default 150 ms", async () => {
+    it("custom delayMs overrides the default 250 ms", async () => {
       vi.useFakeTimers();
       const p = highlightThenCollapse(42, 1, "Pick one", "Like it", "cq1", HIGHLIGHTED_ROWS, 50);
       await Promise.resolve();
@@ -292,7 +292,7 @@ describe("button-helpers", () => {
       const p = highlightThenCollapse(42, 1, "Pick one", "Like it", "cq1", HIGHLIGHTED_ROWS);
       await Promise.resolve();
       await Promise.resolve();
-      await vi.advanceTimersByTimeAsync(200);
+      await vi.advanceTimersByTimeAsync(300);
       await p;
 
       const callArgs = mocks.editMessageText.mock.calls[0] as [number, number, string, Record<string, unknown>];

@@ -33,6 +33,7 @@ import { clearSessionReminders } from "./reminder-state.js";
 import { cancelAnimation } from "./animation-state.js";
 import { removeSession as removeBehaviorTrackerSession } from "./behavior-tracker.js";
 import { removeSilenceState } from "./silence-detector.js";
+import { clearActivityFile } from "./tools/activity/file-state.js";
 
 /**
  * Perform the full teardown for a session identified by `sid`.
@@ -43,10 +44,10 @@ import { removeSilenceState } from "./silence-detector.js";
  * The caller is responsible for any pre-flight checks (auth, permissions,
  * operator confirmation). This function only does the teardown.
  *
- * @returns `{ closed: true, sid }` on success, `{ closed: false, sid }` if the
+ * @returns `{ closed: true, sid, name }` on success, `{ closed: false, sid }` if the
  *          session did not exist (already closed or never created).
  */
-export function closeSessionById(sid: number): { closed: boolean; sid: number } {
+export function closeSessionById(sid: number): { closed: boolean; sid: number; name?: string } {
   // Capture session name before closing (used in notifications)
   const sessionInfo = getSession(sid);
   const sessionName = sessionInfo?.name || `Session ${sid}`;
@@ -66,6 +67,8 @@ export function closeSessionById(sid: number): { closed: boolean; sid: number } 
   clearSessionReminders(sid);
   // Cancel any active animation owned by this session
   cancelAnimation(sid).catch(() => {});
+  // Clean up activity file registration; deletes file if TMCP-owned
+  clearActivityFile(sid).catch(() => {});
   revokeAllForSession(sid);
   if (getActiveSession() === sid) setActiveSession(0);
 
@@ -73,7 +76,7 @@ export function closeSessionById(sid: number): { closed: boolean; sid: number } 
   const remaining = listSessions().sort((a, b) => a.sid - b.sid);
 
   // Always notify the operator that this session disconnected
-  sendServiceMessage(`🤖 ${sessionName} has disconnected.`).catch(() => {});
+  sendServiceMessage(`${sessionName} has disconnected.`).catch(() => {});
 
   // Unpin the session's announcement message, if one was pinned
   if (announcementMsgId !== undefined) {
@@ -126,7 +129,7 @@ export function closeSessionById(sid: number): { closed: boolean; sid: number } 
       setGovernorSid(next.sid);
       const label = next.name || `Session ${next.sid}`;
       sendServiceMessage(
-        `⚠️ Governor session closed. 🤖 ${label} promoted to governor.`,
+        `⚠️ Governor session closed. ${label} promoted to governor.`,
       ).catch(() => {});
       // Notify the promoted governor
       deliverServiceMessage(
@@ -192,7 +195,7 @@ export function closeSessionById(sid: number): { closed: boolean; sid: number } 
   });
 
   if (activeSessionCount() === 0) stopPoller();
-  return { closed: true, sid };
+  return { closed: true, sid, name: sessionName };
 }
 
 function dlogOrphans(sid: number, count: number): void {

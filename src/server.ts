@@ -23,6 +23,7 @@ import {
   recordOutboundText as btRecordOutboundText,
   recordPresenceSignal,
 } from "./behavior-tracker.js";
+import { recordActivityTouch as activityRecordTouch } from "./tools/activity/file-state.js";
 import { deliverServiceMessage } from "./session-queue.js";
 import { setPresenceNudgeInjector } from "./silence-detector.js";
 
@@ -67,6 +68,9 @@ export function dispatchBehaviorTracking(
   callResult: unknown,
 ): void {
   initSession(sid);
+  // Notify the activity-file subsystem that the agent is active.
+  // This resets the activity suppression window so we don't kick an already-awake agent.
+  activityRecordTouch(sid);
 
   if (name === "show_typing" || (name === "action" && cleanArgs.type === "show-typing")) {
     const isCancel = cleanArgs.cancel === true;

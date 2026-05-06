@@ -3,7 +3,7 @@ import { getAnimationStatus, getAllActiveAnimations } from "../../animation-stat
 import { requireAuth } from "../../session-gate.js";
 import { getGovernorSid } from "../../routing-mode.js";
 
-export async function handleAnimationStatus({ token, sid }: {
+export function handleAnimationStatus({ token, sid }: {
   token: number;
   sid?: number;
 }) {
@@ -18,14 +18,14 @@ export async function handleAnimationStatus({ token, sid }: {
       return toError({ code: "UNAUTHORIZED", message: "Cross-session status requires governor privileges" });
     }
     // Governor requesting a specific other session
-    return toResult({ session: getAnimationStatus(sid) });
+    return toResult(getAnimationStatus(sid));
   }
 
   // Governor with no sid → return all active sessions
   if (sid === undefined && isGovernor) {
-    return toResult({ sessions: getAllActiveAnimations() });
+    return toResult(getAllActiveAnimations());
   }
 
   // Default: return status for the caller's own session
-  return toResult({ session: getAnimationStatus(callSid) });
+  return toResult(getAnimationStatus(callSid));
 }

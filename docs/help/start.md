@@ -6,16 +6,11 @@ If you have a saved profile: action(type: 'profile/load', key: 'YourProfileKey',
 Restores voice, animation presets, reminders. Skip if no profile exists.
 
 ## Dequeue Loop
-Call dequeue(token) to enter the loop. Default timeout
-is 5 minutes. This is intentional — blocking reduces
-token use.
-Returns { timed_out: true } on timeout → call again. Returns { empty: true } on instant poll.
-Pattern: drain → block → handle → drain again.
-When pending > 0: dequeue(max_wait: 0, token) until
-pending == 0, then block.
-Claude Code sessions (long-lived):
-action(type: 'profile/dequeue-default', timeout: N,
-token) to increase default.
+dequeue(token) IS the loop. Long-poll every cycle.
+Default timeout: 5 min. timed_out → call again. empty → block again.
+Pattern: drain (max_wait: 0) until empty → block (max_wait: 300) → handle → repeat.
+To increase default: action(type: 'profile/dequeue-default', timeout: N, token)
+If your runtime supports file watching, create an activity file and watch it. On change, call dequeue(max_wait: 0). help('activity/file') and help('dequeue-http').
 
 ## Send Basics
 send(type: 'text', token, text: 'Hello') → text message

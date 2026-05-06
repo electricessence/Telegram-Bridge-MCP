@@ -18,6 +18,7 @@ import { getMessage, CURRENT } from "./message-store.js";
 import { getGovernorSid } from "./routing-mode.js";
 import { dlog } from "./debug-log.js";
 import type { ReminderEvent } from "./reminder-state.js";
+import { touchActivityFile } from "./tools/activity/file-state.js";
 
 // ---------------------------------------------------------------------------
 // Voice-ready predicate (shared with message-store's queue)
@@ -198,8 +199,9 @@ export function routeToSession(event: TimelineEvent): void {
 
   // Fallback: broadcast to all sessions
   dlog("route", `broadcast event=${event.id} → ${_queues.size} sessions`);
-  for (const q of _queues.values()) {
+  for (const [sid, q] of _queues.entries()) {
     q.enqueue(event);
+    touchActivityFile(sid);
   }
 }
 
@@ -229,6 +231,8 @@ function enqueueToSession(
   const q = _queues.get(sid);
   if (!q) return;
   q.enqueue(event);
+  // Touch the activity file (if registered) after the event is fully enqueued.
+  touchActivityFile(sid);
 }
 
 // ---------------------------------------------------------------------------

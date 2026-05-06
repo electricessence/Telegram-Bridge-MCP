@@ -19,38 +19,39 @@ import { clearAllTempReactions } from "./temp-reaction.js";
 import { getCallerSid } from "./session-context.js";
 import { activeSessionCount, getSession } from "./session-manager.js";
 import { maybeReplaceRecoveringAnimation } from "./compaction-recovery.js";
-import { escapeHtml, escapeV2 } from "./markdown.js";
+import { escapeHtml } from "./markdown.js";
+import { resolveNameTag } from "./tools/name-tag.js";
 
 // ---------------------------------------------------------------------------
 // Session header injection
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the `{emoji} {name}\n` header when 2+ sessions are active,
- * where emoji defaults to 🤖 if no nametag_emoji is set on the session.
+ * Returns the `{name_tag}\n` header when 2+ sessions are active.
+ * Uses the session's explicit `name_tag` if set; otherwise computes the default
+ * (`<color-emoji> <name>` or just `<name>`). The name tag is wrapped in
+ * monospace in the formatted output.
  * Returns `""` when fewer than 2 sessions are active or the session has no name.
- * Uses parse-mode specific formatting for the name portion.
  */
 export function buildHeader(parseMode?: string): { plain: string; formatted: string } {
   if (activeSessionCount() < 2) return { plain: "", formatted: "" };
   const sid = getCallerSid();
   const session = sid > 0 ? getSession(sid) : undefined;
-  const name = session?.name || (sid > 0 ? `Session ${sid}` : "");
-  if (!name) return { plain: "", formatted: "" };
-  const emoji = session?.nametag_emoji ?? "🤖";
-  const colorPrefix = session?.color ? `${session.color} ` : "";
-  const plain = `${colorPrefix}${emoji} ${name}\n`;
+  // Guard: no sid or no session means we can't produce a header
+  if (sid <= 0 || !session) return { plain: "", formatted: "" };
+
+  // Resolve the effective name tag (explicit override or auto-default)
+  const nameTag = resolveNameTag(session, sid);
+
+  const plain = `${nameTag}\n`;
 
   let formatted: string;
-  if (parseMode === "MarkdownV2") {
-    formatted = `${colorPrefix}${emoji} \`${escapeV2(name)}\`\n`;
-  } else if (parseMode === "HTML") {
-    formatted = `${colorPrefix}${emoji} <code>${escapeHtml(name)}</code>\n`;
+  if (parseMode === "HTML") {
+    formatted = `<code>${escapeHtml(nameTag)}</code>\n`;
   } else {
-    // Markdown (legacy) or no parse_mode — use backtick formatting.
-    // The caller is responsible for setting parse_mode: "Markdown" when
-    // no parse_mode was originally provided (see sendMessage proxy).
-    formatted = `${colorPrefix}${emoji} \`${name}\`\n`;
+    // Markdown, MarkdownV2, or no parse_mode — backtick inline code.
+    // Content inside backticks is literal in both Markdown and MarkdownV2.
+    formatted = `\`${nameTag}\`\n`;
   }
 
   return { plain, formatted };
@@ -243,7 +244,7 @@ export function createOutboundProxy(realApi: Api): Api {
           const skipHeader = cleanOpts?._skipHeader === true;
           if (cleanOpts) delete cleanOpts._skipHeader;
 
-          // Session header — prepend "🤖 Name\n" in multi-session mode
+          // Session header — prepend "Name\n" in multi-session mode
           let parseMode = cleanOpts?.parse_mode as string | undefined;
           const { plain: headerPlain, formatted: headerFormatted } = buildHeader(parseMode);
           const finalText = headerFormatted && !skipHeader ? headerFormatted + text : text;

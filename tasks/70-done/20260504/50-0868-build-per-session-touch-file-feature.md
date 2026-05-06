@@ -1,0 +1,198 @@
+---
+id: "50-0868"
+title: "Build per-session touch-file feature (Monitor-friendly inbound signal)"
+type: task
+priority: 50
+status: queued
+created: 2026-05-04
+repo: Telegram MCP
+delegation: Worker
+depends_on: []
+---
+
+# Build per-session touch-file feature
+
+## Background
+
+Operator (2026-05-04) wants this shipped without waiting for Monitor
+wakeup-semantics validation. Even if a particular consumer can't
+react mid-tool-call, the touch file is a useful feature anyone (Claude
+sessions OR external pollers) can consume. Ship the bridge side; agent
+integration follows.
+
+Full design captured in `consumer agents repo: tasks/40-queued/30-0942-spike-monitor-kicker-touch-file-validation.md`.
+This task implements that design on the TMCP side.
+
+## Scope
+
+Bridge-side only. **Agent owns the file; TMCP just touches it.**
+
+1. New top-level action namespace **`activity/file/`** —
+   semantically describes what the file signals (activity), not who
+   owns it. Each session can have its own activity file; the
+   namespace lives parallel to `session/`. Agnostic, not
+   tied to Claude Code's Monitor concept — any consumer can poll
+   the file with `tail`, `inotify`, or whatever).
+
+   Verbs:
+   - **`activity/file/create`** — opt-in start. Two call shapes:
+     - With `file_path: <abs path>` — agent supplies its own path.
+       TMCP records, never creates/deletes the file.
+     - Without `file_path` — TMCP generates a cryptographically
+       random filename in its own data dir, creates the file,
+       returns the absolute path in the response. TMCP owns the
+       lifecycle.
+   - **`activity/file/edit`** — change which file the session is
+     pointing at (e.g. agent moves it). New `file_path` replaces
+     the old. Ownership rules apply per-call.
+   - **`activity/file/delete`** — stop touching for this session.
+     If TMCP created the file (no path supplied at create time),
+     TMCP deletes it. If agent-supplied, TMCP just forgets.
+   - **`activity/file/get`** — query current registration (path,
+     ownership, last-touch timestamp). Read-only.
+
+   Either way, TMCP does NOTHING until `activity/file/create` is
+   called. No default I/O.
+
+2. Auto-cleanup on `session/close`: equivalent to firing
+   `activity/file/delete` (deletes TMCP-owned file, forgets
+   agent-supplied path).
+
+### Auto-shorten dequeue default on activity/file enable
+
+Operator (2026-05-04): when an agent calls `activity/file/create`,
+TMCP applies a **temporary override** of that session's default
+`max_wait` to **5s** (familiar to Claude users). On
+`activity/file/delete`, the override clears and the default
+returns to the standard **5 minutes (300s)**.
+
+Important: this is NOT a profile mutation. The session's profile
+default is unchanged. The override lives only while
+`activity/file` is active. Per-call `max_wait` argument still
+trumps the override. Agent can also adjust the session-level
+default at any time via the existing `profile/dequeue-default`
+action — that overrides the override.
+
+Rationale: with the kicker in play, 5s dequeues stay near-real-
+time AND keep context cache warm.
+
+### Emergent simplification — loop guard becomes redundant
+
+Operator (2026-05-04): once `activity/file` is in active use, the
+Telegram loop-guard hook (catches "agent silently stuck in long
+dequeue") becomes redundant. The loop guard exists because of
+the failure mode where a 300s blocking dequeue masks an unhealthy
+agent. With 5s default dequeue + activity-file kicker:
+
+- Agent loops back every 5s anyway → "stuck in dequeue" window
+  shrinks 60x.
+- Health-watcher fires on actual unhealthy events, not on long
+  cooperative blocks.
+- Loop guard's signal-to-noise ratio drops to zero.
+
+Future task (after this lands + agents adopt activity/file): mark
+the loop-guard hook as deprecated, plan removal. Will require
+verifying no agents still depend on it.
+
+### Naming rationale
+
+Operator (2026-05-04): "Maybe we shouldn't call it monitor from
+TMCP's perspective. Should be session-file or something —
+agnostic, not tied directly to Claude Code." TMCP exposes a
+filesystem hook; how the consumer watches it (Claude `Monitor`,
+shell `tail -f`, custom polling) is the consumer's choice.
+3. **Touch fires only after the message is fully ready and enqueued**
+   (post-transcription, post-routing, post-enqueue — last step).
+4. **Leading + trailing-if-suppressed debounce.** Floor 1s, default
+   window 5s, configurable via env or session config.
+5. **Activity-aware reset.** While agent is mid-tool-call (any
+   recent dequeue/send/react in the last N seconds — default 10s),
+   suppress touches.
+6. **Max-interval ceiling.** Default 30s, configurable.
+7. On `session/close`: TMCP forgets the registered path. If TMCP
+   had created the file (TMCP-supplied path mode), TMCP deletes
+   it. If agent-supplied: TMCP does not touch the file again,
+   agent owns cleanup.
+8. If file doesn't exist when TMCP goes to touch it: log warning,
+   continue. Don't crash.
+9. **Opt-in by default off.** If agent never calls `monitor/enable`,
+   TMCP never touches or creates anything. Existing agents
+   unchanged.
+
+TMCP does NOT (in agent-supplied mode):
+
+- Allocate or generate filenames.
+- Create or delete the touch file.
+
+TMCP DOES (in TMCP-supplied mode):
+
+- Generate a random-hash filename.
+- Create the file in its own data dir.
+- Delete the file on `session/close`.
+
+In both modes, NOTHING happens until `monitor/enable` is called.
+
+## Acceptance criteria
+
+- `monitor/register` action accepts absolute `file_path` and
+  records it against the session.
+- Inbound message → registered file's mtime updates within the
+  configured cadence.
+- Floods within debounce window: max 2 touches (leading +
+  trailing-if-suppressed). Single message: 1 touch.
+- Activity-reset works: if agent did a tool call within last N
+  seconds, touch is suppressed.
+- `session/close` clears the registration WITHOUT deleting the
+  file.
+- File-missing on touch: warning logged, no crash.
+- Without registration: zero filesystem activity.
+- Spec passes spec-audit.
+- Smoke test: agent registers a path, send 10 messages in 1s,
+  observe ≤ 2 mtime changes within the window.
+
+## Out of scope
+
+- Agent-side Monitor integration (separate concern; agents opt in).
+- Validation that Monitor wakes the agent mid-tool-call (separate
+  spike — `30-0942`).
+- Channel-based push (different design, on hold pending auth).
+
+## Dispatch
+
+Worker. Sonnet for the design + impl (TS).
+
+## Bailout
+
+Hard cap 4 hours total. 15-min progress heartbeats to Curator. If
+the existing TMCP routing layer makes the "post-routing, post-
+enqueue" hook awkward to wire cleanly, surface — better to refactor
+the routing layer than tape-on a touch fire that can race ahead.
+
+## Related
+
+- `consumer agents repo: tasks/40-queued/30-0942-spike-monitor-kicker-touch-file-validation.md`
+  (full design — read first)
+- `tasks/40-queued/50-0865-bridge-auto-terminate-stuck-sessions.md`
+  (sibling bridge work)
+- Operator framing: "we don't need to know if monitor works. We
+  should just do this." (2026-05-04)
+
+## Completion
+
+**Worker 1 — 2026-05-04**
+
+Implemented the full `activity/file/` namespace. Commit `1f15e703` on branch `50-0868`.
+
+### What was built
+
+- `src/tools/activity/file-state.ts` — core state module with debounce engine, activity-aware suppression, max-interval ceiling, TMCP-owned file creation
+- `src/tools/activity/create.ts` — `activity/file/create` (agent-supplied or TMCP-generated path)
+- `src/tools/activity/edit.ts` — `activity/file/edit` (swap registered path, old TMCP-owned file deleted)
+- `src/tools/activity/delete.ts` — `activity/file/delete` (idempotent; deletes TMCP-owned file)
+- `src/tools/activity/get.ts` — `activity/file/get` (read-only registration query)
+- `src/session-queue.ts` — `touchActivityFile(sid)` wired after `q.enqueue()` in both `enqueueToSession()` and the broadcast loop in `routeToSession()`
+- `src/tools/dequeue.ts` — 5s dequeue cap injected when `isActivityFileActive(sid)` and no explicit `max_wait`
+- `src/session-teardown.ts` — `clearActivityFile(sid)` in cleanup sequence
+- `src/server.ts` — `recordActivityTouch(sid)` in `dispatchBehaviorTracking()` to reset activity suppression on every authenticated tool call
+
+Build: `pnpm build` passes (tsc clean, 0 errors).

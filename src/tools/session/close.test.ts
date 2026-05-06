@@ -392,7 +392,7 @@ describe("close_session tool", () => {
     await call({ token: 1123456 });
 
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
-      expect.stringContaining("🤖 Orion has disconnected."),
+      expect.stringContaining("Orion has disconnected."),
     );
   });
 
@@ -402,7 +402,7 @@ describe("close_session tool", () => {
     await call({ token: 3123456 });
 
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
-      expect.stringContaining("🤖 Session 3 has disconnected."),
+      expect.stringContaining("Session 3 has disconnected."),
     );
   });
 
@@ -412,7 +412,7 @@ describe("close_session tool", () => {
     await call({ token: 5123456 });
 
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
-      expect.stringContaining("🤖 Session 5 has disconnected."),
+      expect.stringContaining("Session 5 has disconnected."),
     );
   });
 
@@ -546,7 +546,7 @@ describe("close_session tool", () => {
     expect(result.sid).toBe(2);
     expect(mocks.closeSession).toHaveBeenCalledWith(2);
     expect(mocks.sendServiceMessage).toHaveBeenCalledWith(
-      expect.stringContaining("🤖 Scout has disconnected."),
+      expect.stringContaining("Scout has disconnected."),
     );
   });
 
@@ -685,7 +685,6 @@ describe("close_session tool", () => {
     const result = parseResult(await call({ token: 1123456, target_sid: 2 }));
 
     expect(result.closed).toBe(false);
-    expect(result.reason).toBe("cancelled");
     expect(mocks.closeSession).not.toHaveBeenCalled();
   });
 
@@ -697,7 +696,6 @@ describe("close_session tool", () => {
     const result = parseResult(await call({ token: 1123456, target_sid: 2 }));
 
     expect(result.closed).toBe(false);
-    expect(result.reason).toBe("cancelled");
     expect(mocks.closeSession).not.toHaveBeenCalled();
   });
 

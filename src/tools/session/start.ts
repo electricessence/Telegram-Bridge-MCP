@@ -73,7 +73,7 @@ async function requestApproval(
 ): Promise<{ approved: boolean; color?: string; forceColor?: boolean }> {
   const label = reconnect ? "Session reconnecting:" : "New session requesting access:";
   const reconnectHint = reconnect ? `\nThe agent may have a saved token — approve only if token recovery failed\\.` : "";
-  const text = `🤖 *${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:${reconnectHint}`;
+  const text = `*${label}* ${markdownToV2(name)}\nPick a color to approve, or deny:${reconnectHint}`;
   const availableColors = getAvailableColors(colorHint);
   if (checkAndConsumeAutoApprove()) {
     return { approved: true, color: colorHint ?? availableColors[0], forceColor: true };
@@ -151,7 +151,7 @@ async function requestApproval(
     await getApi().editMessageText(
       chatId,
       msgId,
-      `🤖 *Session denied:* ${markdownToV2(name)} ✗`,
+      `*Session denied:* ${markdownToV2(name)} ✗`,
       { parse_mode: "MarkdownV2" },
     ).catch(() => {});
   }
@@ -165,7 +165,7 @@ async function requestApproval(
  */
 async function requestReconnectApproval(chatId: number, name: string, sid: number): Promise<boolean> {
   if (checkAndConsumeAutoApprove()) return true;
-  const text = `🤖 *Session reconnecting:* ${markdownToV2(name)}`;
+  const text = `*Session reconnecting:* ${markdownToV2(name)}`;
   const sent = await getApi().sendMessage(chatId, text, {
     parse_mode: "MarkdownV2",
     reply_markup: {
@@ -203,7 +203,7 @@ async function requestReconnectApproval(chatId: number, name: string, sid: numbe
       .editMessageText(
         chatId,
         msgId,
-        `🤖 *Session reconnect denied:* ${markdownToV2(name)} ✗`,
+        `*Session reconnect denied:* ${markdownToV2(name)} ✗`,
         { parse_mode: "MarkdownV2", reply_markup: { inline_keyboard: [] } },
       )
       .catch(() => {});
@@ -214,11 +214,7 @@ async function requestReconnectApproval(chatId: number, name: string, sid: numbe
 }
 
 const DESCRIPTION =
-  "Call once at the start of every session. Creates a fresh session " +
-  "with a unique ID and token. Fresh sessions auto-drain pending messages. " +
-  "If you lost your token (context loss, crash), use action(type: 'session/reconnect', ...) instead. " +
-  "Returns { token, sid, suffix, sessions_active, action, pending }. " +
-  "Call help() first to load the API guide, then call action(type: 'session/start', ...) to join.";
+  "Start a named session and return its token. If you lost the token, use action(type: 'session/reconnect'). No args are reused.";
 
 export async function handleSessionStart({ name, color }: { name: string; color?: string }) {
       const chatId = resolveChat();
@@ -293,17 +289,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
         const res: Record<string, unknown> = {
           token: sessionToken,
           sid: session.sid,
-          suffix: session.suffix,
-          sessions_active: session.sessionsActive,
-          action: "fresh",
-          pending: 0,
-          discarded,
-          fellow_sessions: [] as unknown[],
-          // connection_token: UUID assigned to this session start instance.
-          // Pass it on every dequeue call to enable duplicate-session detection.
-          // The bridge alerts the governor (without rejecting) if two callers
-          // share the same SID/suffix but present different connection tokens.
-          connection_token: session.connectionToken,
+          hint: "Call dequeue(token) to get your first message.",
         };
         if (isFirstSession) {
           // First session is the governor by default
@@ -312,7 +298,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           // buildHeader() intentionally skips single-session mode; compose inline.
           const _announcement = await Promise.resolve(
             runInSessionContext(session.sid, () =>
-              getApi().sendMessage(chatId, `${session.color} 🤖 \`${markdownToV2(effectiveName)}\`\nSession ${session.sid} — 🟢 Online`, { parse_mode: "MarkdownV2" }),
+              getApi().sendMessage(chatId, `${session.color} \`${markdownToV2(effectiveName)}\`\nSession ${session.sid} — 🟢 Online`, { parse_mode: "MarkdownV2" }),
             ),
           ).catch(() => undefined);
           const announcementMsgId = _announcement?.message_id;
@@ -328,12 +314,12 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             { sid: session.sid, name: effectiveName, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_LOOP_PATTERN);
           // First session is always governor — no ternary needed.
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_ROLE_GOVERNOR);
           if (discarded === 0) deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_NO_PENDING_YET);
         } else if (session.sessionsActive > 1) {
           const allSessions = listSessions();
-          res.fellow_sessions = allSessions.filter(s => s.sid !== session.sid);
           if (session.sessionsActive === 2) {
             // Fresh joiners use lowest-SID heuristic (original session is the anchor).
             const governorSid = Math.min(...allSessions.map(s => s.sid));
@@ -343,7 +329,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
           // Broadcast a visible announcement via the outbound proxy so the
           // operator (and other sessions) can reply-to-address this session.
           // runInSessionContext sets the ALS SID so the proxy prepends the
-          // correct name tag ("🟨 🤖 Worker 1\nSession 2 — 🟢 Online").
+          // correct name tag ("🟨 Worker 1\nSession 2 — 🟢 Online").
           const _announcement = await Promise.resolve(
             runInSessionContext(session.sid, () =>
               getApi().sendMessage(chatId, `Session ${session.sid} — 🟢 Online`),
@@ -398,6 +384,7 @@ export async function handleSessionStart({ name, color }: { name: string; color?
             { sid: session.sid, name: effectiveName, governor_sid: governorSid, ...(announcementMsgId !== undefined && { announcement_message_id: announcementMsgId }) },
           );
           deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_TOKEN_SAVE);
+          deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_LOOP_PATTERN);
           // session_orientation already carries role info (governor vs participant) for multi-session.
           // Skip onboarding_role here to avoid duplication.
           if (discarded === 0) deliverServiceMessage(session.sid, SERVICE_MESSAGES.ONBOARDING_NO_PENDING_YET);
@@ -462,7 +449,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
     return toError({
       code: "SESSION_DENIED",
       message: `Session reconnect for "${existing.name}" was denied by the operator. Check memory for a previously saved token — if found, use that token directly without calling action(type: 'session/reconnect', ...) again.`,
-      hint: "Wipe your stored session token before exiting. If your loop guard re-prompts, do NOT call session/start -- wipe the token, then exit.",
+      hint: "Wipe the stored token, then exit. Do not call session/start again.",
     });
   }
 
@@ -535,9 +522,7 @@ export async function handleSessionReconnect({ name }: { name: string }) {
   return toResult({
     token: reconToken,
     sid: fullSession.sid,
-    sessions_active: reconSessActive,
-    action: "reconnected",
-    pending,
+    hint: "Call dequeue(token) to get your first message.",
   });
 }
 

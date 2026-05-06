@@ -9,6 +9,7 @@ import { dequeueMatch, waitForEnqueue, type TimelineEvent } from "../message-sto
 import { getSessionQueue } from "../session-queue.js";
 
 const NO_TIMEOUT_CEILING_SECONDS = 86_400; // 24 h server-side ceiling when no timeout requested
+export const BUTTON_COLLAPSE_DELAY_MS = 250;
 
 // ---------------------------------------------------------------------------
 // Result types
@@ -252,6 +253,10 @@ async function appendSuffixAndEdit(
  * host message to show ▸ chosenLabel. When highlightedRows is provided the
  * keyboard is updated to mark the clicked button as primary; otherwise all
  * buttons are removed.
+ *
+ * @param delayMs - Milliseconds to wait after acking before editing. Only
+ *   applied when callbackQueryId is provided (i.e. a button was actually
+ *   clicked and a color-flip occurred). Default BUTTON_COLLAPSE_DELAY_MS.
  */
 export async function ackAndEditSelection(
   chatId: number,
@@ -261,11 +266,15 @@ export async function ackAndEditSelection(
   callbackQueryId: string | undefined,
   isVoice?: boolean,
   highlightedRows?: { text: string; callback_data: string; style?: ButtonStyle }[][],
+  delayMs = BUTTON_COLLAPSE_DELAY_MS,
 ): Promise<void> {
   if (callbackQueryId) {
     await getApi()
       .answerCallbackQuery(callbackQueryId)
       .catch((e: unknown) => { console.error('[ackAndEditSelection] answerCallbackQuery failed:', e); });
+    // Brief delay so the button color-flip (from answerCallbackQuery) is visible
+    // before the keyboard collapses and the selection suffix appears.
+    await new Promise<void>((r) => setTimeout(r, delayMs));
   }
   const replyMarkup = highlightedRows ? { inline_keyboard: highlightedRows } : undefined;
   await appendSuffixAndEdit(chatId, messageId, originalText, `▸ *${chosenLabel}*`, isVoice, replyMarkup);
@@ -289,7 +298,7 @@ export async function ackAndEditSelection(
  * re-enter this path). This is acceptable because the user already committed
  * to a choice in stage 1.
  *
- * @param delayMs - Milliseconds between stage 1 and stage 2. Default 150 ms.
+ * @param delayMs - Milliseconds between stage 1 and stage 2. Default BUTTON_COLLAPSE_DELAY_MS.
  */
 export async function highlightThenCollapse(
   chatId: number,
@@ -298,7 +307,7 @@ export async function highlightThenCollapse(
   chosenLabel: string,
   callbackQueryId: string | undefined,
   highlightedRows: { text: string; callback_data: string; style?: ButtonStyle }[][],
-  delayMs = 150,
+  delayMs = BUTTON_COLLAPSE_DELAY_MS,
 ): Promise<void> {
   // Stage 1: ack spinner + show highlight keyboard immediately.
   if (callbackQueryId) {
@@ -381,7 +390,7 @@ export function buildKeyboardRows(
  * - All other buttons have their style stripped (plain Telegram default — no color).
  *
  * This creates a clear visual "winner" before the keyboard collapses entirely
- * in the subsequent collapse step (~150 ms later).
+ * in the subsequent collapse step (~250 ms later).
  */
 export function buildHighlightedRows(
   options: KeyboardOption[],

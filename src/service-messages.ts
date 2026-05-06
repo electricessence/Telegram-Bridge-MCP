@@ -43,6 +43,16 @@ export const SERVICE_MESSAGES = deepFreeze({
     text: "Save your token to your session memory file.",
   },
 
+  ONBOARDING_LOOP_PATTERN: {
+    eventType: "onboarding_loop_pattern" as const,
+    text: `Welcome to the loop. Stay in it.
+
+1. Call dequeue(token) every turn.
+2. Check your tools for an option to monitor a file. If you have one, call action(type: 'activity/file/create') and watch the returned file. On change, call dequeue.
+
+Details: help('start'), help('dequeue'), help('activity/file').`,
+  },
+
   ONBOARDING_ROLE_GOVERNOR: {
     eventType: "onboarding_role" as const,
     text: "You are the governor. Ambiguous messages route to you. Forward to the correct session via DM with message ID — recipient calls message/get to read it. help('guide') for routing protocol.",
@@ -50,27 +60,27 @@ export const SERVICE_MESSAGES = deepFreeze({
 
   ONBOARDING_PROTOCOL: {
     eventType: "onboarding_protocol" as const,
-    text: "Show-typing before every reply. For longer work, use animations. Reactions are acknowledgments, not action triggers. Voice messages are auto-saluted on dequeue — add a reaction only to convey meaning beyond receipt. help('reactions') for full protocol.",
+    text: "Show-typing before replies. Use animations for longer work. Reactions acknowledge receipt; they do not trigger action. Voice is auto-saluted on dequeue. help('reactions').",
   },
 
   ONBOARDING_BUTTONS_TEXT: {
     eventType: "onboarding_buttons" as const,
-    text: `Buttons over typing. action(type: "confirm/ok"), action(type: "confirm/ok-cancel"), action(type: "confirm/yn") for standard prompts. send(type: "question", choose: [...]) for custom options. Free-text ask only when needed. For voice+caption, use type: "text" with audio: "..." — not a separate type. help('send') for full reference.`,
+    text: `Use buttons for finite choices. Use confirm/* for standard prompts and send(type: "question", choose: [...]) for custom buttons. Use free-text ask only for open input. help('send').`,
   },
 
   ONBOARDING_HYBRID_MESSAGING: {
     eventType: "onboarding_hybrid_messaging" as const,
-    text: "Hybrid send rules: long audio + brief topic label OR short audio + long structured payload. Never restate audio content in the text caption — pick one register, not both. For voice+structured, keep caption to a topic tag only. Reference help('audio') for full hybrid protocol.",
+    text: "Hybrid rule: use long audio + short label, or short audio + structured text. Do not restate audio in the caption. help('audio').",
   },
 
   ONBOARDING_MODALITY_PRIORITY: {
     eventType: "onboarding_modality_priority" as const,
-    text: "Default modality priority: buttons > text > audio. Mirror operator modality — if they use voice, prefer voice in reply. Match the user's modality — if operator sends voice, prefer voice reply; if text, prefer text. Audio is presence and nuance, not primary information delivery. Reference help('modality') for the full priority model.",
+    text: "Prefer buttons > text > audio. Match operator modality. Use audio for nuance, not structured payload. help('modality').",
   },
 
   ONBOARDING_PRESENCE_SIGNALS: {
     eventType: "onboarding_presence_signals" as const,
-    text: "Presence cascade: react on receipt → show-typing for short work → animation for work exceeding show-typing's window (~20 s) or with no clear ETA. >30 s silence with no escalation is a protocol violation. Escalate to animation BEFORE show-typing's timeout expires — do not wait for it to lapse. Reference help('presence') for thresholds and presets.",
+    text: "Presence order: react -> show-typing -> animation. Do not leave the operator without a visible signal. help('presence').",
   },
 
   ONBOARDING_NO_PENDING_YET: {

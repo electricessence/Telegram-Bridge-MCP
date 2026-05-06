@@ -43,7 +43,7 @@ const mocks = vi.hoisted(() => ({
   getGovernorSid: vi.fn((): number => 0),
   setGovernorSid: vi.fn(),
   // session-teardown
-  closeSessionById: vi.fn((..._args: unknown[]): { closed: boolean; sid: number } => ({ closed: true, sid: 0 })),
+  closeSessionById: vi.fn((..._args: unknown[]): { closed: boolean; sid: number; name?: string } => ({ closed: true, sid: 0 })),
   // session-queue
   deliverServiceMessage: vi.fn((): boolean => true),
   // session-context
@@ -1392,8 +1392,8 @@ describe("built-in-commands", () => {
         expect(data).toContain("session:close_cancel:2");
       });
 
-      it("session:close_confirm:{sid} — success: calls closeSessionById, edits to '✓ Session closed.'", async () => {
-        mocks.closeSessionById.mockReturnValue({ closed: true, sid: 2 });
+      it("session:close_confirm:{sid} — success: calls closeSessionById, edits to '✅ Session closed: Worker (SID 2)'", async () => {
+        mocks.closeSessionById.mockReturnValue({ closed: true, sid: 2, name: "Worker" });
         const panelId = await createSessionPanel();
         mocks.editMessageText.mockResolvedValue(true);
         await handleIfBuiltIn(callbackUpdate(panelId, "session:close_confirm:2"));
@@ -1401,7 +1401,7 @@ describe("built-in-commands", () => {
         expect(mocks.editMessageText).toHaveBeenCalledWith(
           123,
           panelId,
-          "✓ Session closed.",
+          "✅ Session closed: Worker (SID 2)",
           expect.objectContaining({ reply_markup: { inline_keyboard: [] } }),
         );
       });

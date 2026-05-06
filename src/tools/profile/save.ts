@@ -72,9 +72,9 @@ export function handleSaveProfile({ key, token }: { key: string; token: number }
     sections.push("reminders");
   }
 
-  if (sessionObj?.nametag_emoji !== undefined) {
-    data.nametag_emoji = sessionObj.nametag_emoji;
-    sections.push("nametag_emoji");
+  if (sessionObj?.name_tag !== undefined) {
+    data.name_tag = sessionObj.name_tag;
+    sections.push("name_tag");
   }
 
   let path: string;
@@ -85,7 +85,7 @@ export function handleSaveProfile({ key, token }: { key: string; token: number }
     return toError({ code: "WRITE_FAILED", message: `Failed to write profile "${key}": ${(err as Error).message}. Check that the profiles directory is writable.` });
   }
 
-  return toResult({ saved: true, key, path, sections });
+  return toResult({ key, path, sections });
 }
 
 export function register(server: McpServer) {
