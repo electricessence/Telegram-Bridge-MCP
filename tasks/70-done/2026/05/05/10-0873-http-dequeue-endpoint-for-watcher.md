@@ -91,3 +91,29 @@ Worker time-cap: 4 hours including tests. Checkpoint with Curator if exceeded.
 - `10-0872` (watcher pre-drain consumes this endpoint).
 - `10-0871` (activity/file help topic — references this URL after merge).
 - `00-ideas/spike-monitor-vs-dequeue-tmcp-2026-05-04.md` (prior architecture survey).
+
+## Completion
+
+- Branch: `10-0873`
+- Commit: `493ea987ca668c58ad641119180c48aca9c64f7d`
+- New files: `src/dequeue-endpoint.ts`, `src/dequeue-endpoint.test.ts`
+- Modified: `src/tools/dequeue.ts` (extracted `runDrainLoop`; fixed session_closed/setDequeueActive bug), `src/index.ts`
+- Build: pnpm build GREEN
+- Tests: pnpm test GREEN (2972 tests, 0 failures — 17 new endpoint tests)
+- Code review: PASSED (1 Critical + 2 Majors fixed; 2 iterations)
+- Worker: Worker 2
+
+## Verification
+
+**Verdict: APPROVED** — 2026-05-05
+Verified by: Overseer dispatch (Sonnet verifier, 2 rounds)
+
+- AC1 ✅ `GET /dequeue?token=<num>` — handler delegates to `runDrainLoop`, shape parity structural
+- AC2 ✅ `POST /dequeue` with JSON body
+- AC3 ✅ Invalid token → 401 (3 paths)
+- AC4 ✅ `max_wait: 0` instant poll confirmed by test
+- AC5 ✅ Same semantics via shared `runDrainLoop`
+- AC6 ✅ `src/tools/activity/create.ts` lines 51+78 updated to reference `GET /dequeue?token=<your-token>`; `docs/help/dequeue-http.md` added with curl + PowerShell `Invoke-RestMethod` + Node fetch examples; `dequeue-http` registered in `src/tools/help.ts` RICH_TOPICS
+- AC7 ✅ MCP `dequeue` tool unchanged
+- setDequeueActive bug ✅ Fixed — `session_closed` check before `setDequeueActive(sid, true)`; `finally` covers all paths
+- AC6 fix commit: `69ea884e` (on top of `493ea987`)

@@ -90,3 +90,21 @@ Worker, Sonnet for the help-topic content (needs nuance), Haiku for the hint-str
 - Dependency: `10-0870` must land first so the edit-side response shape is normalized; otherwise this task has to do that reshape too.
 - The hint string change is trivial; the help topic is the real work.
 - Workspace memory `feedback_telegram_session_lifecycle.md` may want a pointer to this help topic post-merge.
+
+## Completion
+
+- Branch: `10-0871`
+- Commit: `8c5c7b3ddf7a562dd4a0ed35830cf08c61eca555`
+- Changed: `docs/help/activity/file.md` (new), `src/tools/help.ts`, `src/tools/activity/create.ts`, `src/tools/activity/edit.ts`, `src/tools/help.test.ts`
+- Note: also applies 10-0870 edit.ts shape alignment since that branch hasn't merged to dev
+- Build: pnpm build GREEN
+- Tests: pnpm test GREEN (2956 tests, 0 failures)
+- Code review: PASSED (1 Critical fixed — test mock hermetic)
+- Worker: Worker 2
+
+## Verification Stamp
+
+**Verdict:** APPROVED
+**Date:** 2026-05-05
+**Criteria:** 6/6 passed
+**Evidence:** `docs/help/activity/file.md` (81 lines) covers purpose/lifecycle/wake/watcher patterns/error modes with correct framing (optional augment, dequeue primary). `activity/file` in RICH_TOPICS Set in help.ts. Both create.ts and edit.ts emit `hint: "Call help('activity/file') now"`. Hermetic test in help.test.ts mocks fs and asserts dequeue/watcher/mtime content. Completion: 2956 tests green. 10-0870 edit.ts shape alignment included in commit `8c5c7b3d`.
