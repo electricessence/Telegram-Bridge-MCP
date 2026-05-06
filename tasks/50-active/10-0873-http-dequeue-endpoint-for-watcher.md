@@ -105,23 +105,15 @@ Worker time-cap: 4 hours including tests. Checkpoint with Curator if exceeded.
 
 ## Verification
 
-**Verdict: NEEDS_REVISION** — 2026-05-05
-Verified by: Overseer dispatch (Sonnet verifier)
+**Verdict: APPROVED** — 2026-05-05
+Verified by: Overseer dispatch (Sonnet verifier, 2 rounds)
 
-### Passing (6/7 AC)
-- AC1 ✅ `GET /dequeue?token=<num>` — `attachDequeueRoute` registers handler, delegates to `runDrainLoop`, response shape from `runDrainLoop` directly
-- AC2 ✅ `POST /dequeue` with JSON body — registered at line 101, body merged into args
-- AC3 ✅ Invalid token → 401 with clear error body (3 paths: missing, non-numeric, validateSession failure)
-- AC4 ✅ `max_wait: 0` instant poll — parsed and passed as `effectiveTimeout=0` to `runDrainLoop`; test confirms
-- AC5 ✅ Same `pending`/`empty`/`timed_out`/`error:session_closed` semantics — structural parity (both paths call same `runDrainLoop`)
-- AC7 ✅ MCP `dequeue` tool unchanged — `runDrainLoop` exported from `src/tools/dequeue.ts:121`, `register()` untouched
-- setDequeueActive bug ✅ Confirmed fixed: `session_closed` check fires before `setDequeueActive(sid, true)` (line 140); `finally` block unconditionally calls `setDequeueActive(sid, false)` covering all paths
-
-### Gap (blocking)
-
-**AC6 — Help topic not updated**
-`src/tools/activity/create.ts` hint text at lines 51 and 78 still reads:
-`"Configure your watcher to call dequeue() when this file changes"` — no HTTP URL, no curl/PS/Node examples.
-`docs/help/dequeue.md` is unchanged and has no HTTP endpoint reference.
-
-**Required fix:** Update the `activity/file/create` response hint to reference the `/dequeue` HTTP URL with platform-agnostic intent. Add examples for curl, PowerShell `Invoke-RestMethod`, and Node `fetch`. Pattern: follow `docs/help/events.md` (endpoint shape, auth, request/response table). Can be new `docs/help/dequeue-http.md` or update existing `docs/help/dequeue.md`.
+- AC1 ✅ `GET /dequeue?token=<num>` — handler delegates to `runDrainLoop`, shape parity structural
+- AC2 ✅ `POST /dequeue` with JSON body
+- AC3 ✅ Invalid token → 401 (3 paths)
+- AC4 ✅ `max_wait: 0` instant poll confirmed by test
+- AC5 ✅ Same semantics via shared `runDrainLoop`
+- AC6 ✅ `src/tools/activity/create.ts` lines 51+78 updated to reference `GET /dequeue?token=<your-token>`; `docs/help/dequeue-http.md` added with curl + PowerShell `Invoke-RestMethod` + Node fetch examples; `dequeue-http` registered in `src/tools/help.ts` RICH_TOPICS
+- AC7 ✅ MCP `dequeue` tool unchanged
+- setDequeueActive bug ✅ Fixed — `session_closed` check before `setDequeueActive(sid, true)`; `finally` covers all paths
+- AC6 fix commit: `69ea884e` (on top of `493ea987`)
