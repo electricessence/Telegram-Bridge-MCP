@@ -43,3 +43,15 @@ Verdict: PASS
 Review type: light-scan
 Checked: scope clear, target_repo correct, delegation complete, ACs binary
 Not checked: technical correctness of skill content (worker verifies against live schema)
+
+## Verification
+
+Verifier: Dispatch sub-agent (sonnet)
+Date: 2026-05-18
+Verdict: APPROVED
+
+AC1 PASS — `skills/sub-session-dispatch/SKILL.md` exists (207 lines), covers spawn-child, child/forward, revoke-child with input schemas, process steps, failure modes, report schema, and worked example.
+AC2 PASS — Cross-checked against live implementations: spawn-child (spawn-child.ts lines 11-54, SPAWN_CHILD_SCHEMA lines 56-81), child/forward (forward-child.ts lines 7-10, action.ts line 669), revoke-child (revoke-child.ts lines 9-11, REVOKE_CHILD_SCHEMA lines 44-54). Three corrections applied vs EC source (spawn-child return fields token/sid, numeric token in example, revoke-child child_token is SID integer).
+AC3 PASS — Committed on worker branch, squash-merged to dev as e4f24b8.
+
+Sealed-By: Foreman (claude-sonnet-4-6)
