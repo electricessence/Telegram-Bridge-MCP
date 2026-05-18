@@ -42,7 +42,7 @@ import { handleDisableReminder } from "./reminder/disable.js";
 import { handleEnableReminder } from "./reminder/enable.js";
 import { handleSleepReminder } from "./reminder/sleep.js";
 import { handleSetDequeueDefault } from "./profile/dequeue-default.js";
-import { handleKickDebounce } from "./profile/kick-debounce.js";
+import { handleKickLockout, handleKickDebounce } from "./profile/kick-lockout.js";
 import { handleSetDefaultAnimation } from "./animation/default.js";
 import { handleToggleLogging } from "./logging/toggle.js";
 // Phase 2 imports — message/history, message/get
@@ -74,7 +74,7 @@ import { handleActivityFileCreate } from "./activity/create.js";
 import { handleActivityFileEdit } from "./activity/edit.js";
 import { handleActivityFileDelete } from "./activity/delete.js";
 import { handleActivityFileGet } from "./activity/get.js";
-import { KICK_DEBOUNCE_MIN_MS, KICK_DEBOUNCE_MAX_MS } from "./activity/file-state.js";
+import { KICK_DEBOUNCE_MIN_MS, KICK_DEBOUNCE_MAX_MS, LOCKOUT_MIN_MS, LOCKOUT_MAX_MS } from "./activity/file-state.js";
 import { handleNameTag } from "./name-tag.js";
 import { decodeToken } from "./identity-schema.js";
 import { getSession } from "../session-manager.js";
@@ -168,6 +168,7 @@ export function setupActionRegistry(): void {
   registerAction("reminder/enable", toActionHandler(handleEnableReminder));
   registerAction("reminder/sleep", toActionHandler(handleSleepReminder));
   registerAction("profile/dequeue-default", toActionHandler(handleSetDequeueDefault));
+  registerAction("profile/kick-lockout", toActionHandler(handleKickLockout));
   registerAction("profile/kick-debounce", toActionHandler(handleKickDebounce));
   registerAction("animation/default", toActionHandler(handleSetDefaultAnimation));
   registerAction("logging/toggle", toActionHandler(handleToggleLogging));
@@ -474,14 +475,17 @@ export function register(server: McpServer): void {
           .max(3600)
           .optional()
           .describe("profile/dequeue-default: Default dequeue timeout in seconds (0–3600)."),
-        // profile/kick-debounce params
+        // profile/kick-lockout and profile/kick-debounce (deprecated) params
         ms: z
           .number()
           .int()
-          .min(KICK_DEBOUNCE_MIN_MS)
-          .max(KICK_DEBOUNCE_MAX_MS)
+          .min(LOCKOUT_MIN_MS)
+          .max(LOCKOUT_MAX_MS)
           .optional()
-          .describe(`profile/kick-debounce: Activity-file kick debounce window in milliseconds (${KICK_DEBOUNCE_MIN_MS}–${KICK_DEBOUNCE_MAX_MS}). Omit to get current value.`),
+          .describe(
+            `profile/kick-lockout: Post-kick lockout window in milliseconds (${LOCKOUT_MIN_MS}–${LOCKOUT_MAX_MS}). Omit to get current value. ` +
+            `profile/kick-debounce (deprecated): Accepted range ${KICK_DEBOUNCE_MIN_MS}–${KICK_DEBOUNCE_MAX_MS}; use profile/kick-lockout instead.`,
+          ),
         // animation/default params
         frames: z
           .array(z.string())

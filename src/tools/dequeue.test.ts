@@ -28,11 +28,13 @@ interface SessionQueue {
 const fileStateMocks = vi.hoisted(() => ({
   setDequeueActive: vi.fn(),
   getActivityFile: vi.fn((_sid: number): { filePath: string } | undefined => ({ filePath: "/mock/activity.txt" })),
+  releaseKickLockout: vi.fn((_sid: number) => {}),
 }));
 
 vi.mock("./activity/file-state.js", () => ({
   setDequeueActive: (sid: number, active: boolean) => fileStateMocks.setDequeueActive(sid, active),
   getActivityFile: (sid: number) => fileStateMocks.getActivityFile(sid),
+  releaseKickLockout: (sid: number) => fileStateMocks.releaseKickLockout(sid),
 }));
 
 const mocks = vi.hoisted(() => ({

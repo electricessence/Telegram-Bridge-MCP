@@ -7,7 +7,7 @@ import {
   type TimelineEvent,
 } from "../message-store.js";
 import { setActiveSession, touchSession, getDequeueDefault, setDequeueIdle, getSession, takeSilenceHint, checkConnectionToken } from "../session-manager.js";
-import { setDequeueActive, getActivityFile } from "./activity/file-state.js";
+import { setDequeueActive, getActivityFile, releaseKickLockout } from "./activity/file-state.js";
 import { recordNonToolEvent } from "../trace-log.js";
 import { getSessionQueue, getMessageOwner, peekSessionCategories, deliverServiceMessage } from "../session-queue.js";
 import { getAnimationStatus } from "../animation-state.js";
@@ -224,20 +224,14 @@ export async function runDrainLoop(
     const result = buildBatchResult(batch);
     resyncActiveSession();
     dlog("queue", `dequeue returning sid=${sid} batch=${batch.length} payloadLen=${JSON.stringify(result).length}`);
-    // Regression fix for 10-0895 (post-7.4.2 kick-still-broken): the
-    // immediate-batch return path is outside the try/finally below, so we
-    // must clear inflightDequeue here. Without this, the flag stays stuck
-    // at true and every subsequent inbound message hits the
-    // entry.inflightDequeue gate in touchActivityFile and is silently
-    // suppressed — no kicks ever fire.
+    // Immediate-batch return is outside the try/finally below — clear state here.
     setDequeueActive(sid, false);
+    releaseKickLockout(sid); // content-returning exit
     return result;
   }
 
   if (timeout === 0) {
-    // Regression fix for 10-0895 (post-7.4.2 kick-still-broken): see comment
-    // above on the batch-return path. The timeout=0 empty-poll return also
-    // bypasses the try/finally below.
+    // Timeout=0 empty-poll: not content-returning — do NOT release kick lockout.
     setDequeueActive(sid, false);
     return { pending: pendingCountAny() };
   }
@@ -249,6 +243,9 @@ export async function runDrainLoop(
   const reminderIdleStart = Date.now();
   let _staleWarnSent = false;
   setDequeueIdle(sid, true);
+  // Tracks whether this dequeue call exits via a content-returning path.
+  // Only content-returning exits release the kick lockout; timeout exits skip.
+  let _lockoutRelease = false;
   try {
     while (Date.now() < deadline) {
       if (signal.aborted) break;
@@ -265,6 +262,7 @@ export async function runDrainLoop(
             _lastStaleWarningSentAt.set(sid, Date.now());
             resyncActiveSession();
             dlog("queue", `dequeue stale animation warning sid=${sid} message_id=${_animStatus.message_id}`);
+            _lockoutRelease = true;
             return {
               updates: [{
                 event: "animation_stale_warning",
@@ -300,6 +298,7 @@ export async function runDrainLoop(
         // responseFormat is not applied here: the reminder response only contains
         // `updates` (real event data) and optionally `pending` (when > 0), neither
         // of which are compact-suppressible fields.
+        _lockoutRelease = true;
         return reminderResult;
       }
 
@@ -324,6 +323,7 @@ export async function runDrainLoop(
           const result = buildBatchResult(batch);
           resyncActiveSession();
           dlog("queue", `dequeue returning sid=${sid} batch=${batch.length} payloadLen=${JSON.stringify(result).length}`);
+          _lockoutRelease = true;
           return result;
         }
       }
@@ -344,6 +344,7 @@ export async function runDrainLoop(
         const result = buildBatchResult(batch);
         resyncActiveSession();
         dlog("queue", `dequeue returning sid=${sid} batch=${batch.length} payloadLen=${JSON.stringify(result).length}`);
+        _lockoutRelease = true;
         return result;
       }
     }
@@ -357,8 +358,9 @@ export async function runDrainLoop(
     // is still waiting. This is acceptable — the session is not fully idle in
     // that case. A refcount would be needed to handle it precisely.
     setDequeueIdle(sid, false);
-    // Re-arm activity-file nudge cycle and update lastActivityAt.
     setDequeueActive(sid, false);
+    // Release kick lockout only on content-returning exits; timeout exits skip.
+    if (_lockoutRelease) releaseKickLockout(sid);
   }
 }
 

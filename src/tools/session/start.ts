@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { resetKickGateState } from "../activity/file-state.js";
 import { z } from "zod";
 import { getApi, toResult, toError, resolveChat } from "../../telegram.js";
 import { markdownToV2 } from "../../markdown.js";
@@ -456,6 +457,8 @@ export async function handleSessionReconnect({ name }: { name: string }) {
   // Reset health markers; preserve queued messages for the reconnecting session
   fullSession.lastPollAt = undefined;
   fullSession.healthy = true;
+  // Reset kick gate state so the new agent gets a kick on the next inbound (AC #10)
+  resetKickGateState(existing.sid);
   const _pending = getSessionQueue(existing.sid)?.pendingCount() ?? 0;
   setActiveSession(existing.sid);
 

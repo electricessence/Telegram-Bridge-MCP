@@ -18,7 +18,7 @@ import { getMessage, CURRENT } from "./message-store.js";
 import { getGovernorSid } from "./routing-mode.js";
 import { dlog } from "./debug-log.js";
 import type { ReminderEvent } from "./reminder-state.js";
-import { touchActivityFile } from "./tools/activity/file-state.js";
+import { kickIfAllowed, isDequeueActive } from "./tools/activity/file-state.js";
 
 // ---------------------------------------------------------------------------
 // Voice-ready predicate (shared with message-store's queue)
@@ -201,7 +201,7 @@ export function routeToSession(event: TimelineEvent): void {
   dlog("route", `broadcast event=${event.id} → ${_queues.size} sessions`);
   for (const [sid, q] of _queues.entries()) {
     q.enqueue(event);
-    touchActivityFile(sid);
+    kickIfAllowed(sid, "operator", isDequeueActive(sid));
   }
 }
 
@@ -231,8 +231,7 @@ function enqueueToSession(
   const q = _queues.get(sid);
   if (!q) return;
   q.enqueue(event);
-  // Touch the activity file (if registered) after the event is fully enqueued.
-  touchActivityFile(sid);
+  kickIfAllowed(sid, "operator", isDequeueActive(sid));
 }
 
 // ---------------------------------------------------------------------------
@@ -369,6 +368,7 @@ export function deliverAsyncSendCallback(
   };
 
   q.enqueue(event);
+  // send_callback is bridge-internal housekeeping — no kick
   dlog("async-send", `callback → sid=${targetSid}`, { pendingId: payload.pendingId, status: payload.status });
   return true;
 }
@@ -396,6 +396,7 @@ export function deliverDirectMessage(
   };
 
   q.enqueue(event);
+  kickIfAllowed(targetSid, "operator", isDequeueActive(targetSid));
   dlog("dm", `delivered DM from sid=${senderSid} → sid=${targetSid}`, { eventId: event.id });
   return true;
 }
@@ -469,6 +470,7 @@ export function deliverServiceMessage(
   };
 
   q.enqueue(event);
+  kickIfAllowed(targetSid, "service", isDequeueActive(targetSid));
   dlog("service", `service message → sid=${targetSid}`, { eventType, eventId: event.id });
   return true;
 }
@@ -506,6 +508,7 @@ export function deliverReminderEvent(
   });
 
   q.enqueue(event);
+  kickIfAllowed(targetSid, "reminder", isDequeueActive(targetSid));
   dlog("service", `startup reminder → sid=${targetSid}`, { reminderId: src.reminder_id });
   return true;
 }
@@ -529,6 +532,7 @@ export function routeMessage(messageId: number, targetSid: number, routerSid: nu
     content: { ...event.content, routed_by: routerSid },
   };
   q.enqueue(routed);
+  kickIfAllowed(targetSid, "operator", isDequeueActive(targetSid));
   dlog("route", `governor delegated msg=${messageId} → sid=${targetSid}`, { routerSid });
   return true;
 }

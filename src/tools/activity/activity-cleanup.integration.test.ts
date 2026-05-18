@@ -50,11 +50,11 @@ function makeEntry(filePath: string, tmcpOwned: boolean) {
   return {
     filePath,
     tmcpOwned,
-    lastTouchAt: null as number | null,
-    debounceTimer: null as ReturnType<typeof setTimeout> | null,
-    lastActivityAt: 0,
     inflightDequeue: false,
-    nudgeArmed: true,
+    kickLockedUntil: null as number | null,
+    kickPendingBecauseLocked: false,
+    touchInFlight: false,
+    pendingRetryHandle: null as ReturnType<typeof setTimeout> | null,
   };
 }
 

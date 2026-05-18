@@ -19,7 +19,8 @@ export interface Session {
   announcementMsgId?: number;
   reauthDialogMsgId?: number;
   dequeueDefault?: number; // per-session timeout default, undefined = use server default (300)
-  kickDebounceMs?: number; // per-session activity-file kick debounce window (ms), undefined = use default (60_000)
+  kickDebounceMs?: number; // deprecated — translated to kickLockoutMs on use via profile/kick-debounce
+  kickLockoutMs?: number; // per-session post-kick lockout window (ms), undefined = use default (300_000)
   dequeueIdleAt?: number; // timestamp when session entered dequeue blocking wait; undefined = not idle
   pendingEnvelopeHint?: string;
   silenceThresholdS?: number;
@@ -335,6 +336,23 @@ export function getKickDebounceMs(sid: number): number {
 export function setKickDebounceMs(sid: number, ms: number): void {
   const session = _sessions.get(sid);
   if (session) session.kickDebounceMs = ms;
+}
+
+/**
+ * Get the per-session post-kick lockout window (ms).
+ * Falls back to 300 000 ms (5 min) if not set.
+ */
+export function getKickLockoutMs(sid: number): number {
+  return _sessions.get(sid)?.kickLockoutMs ?? 300_000;
+}
+
+/**
+ * Set the per-session post-kick lockout window (ms).
+ * No-op if the session does not exist.
+ */
+export function setKickLockoutMs(sid: number, ms: number): void {
+  const session = _sessions.get(sid);
+  if (session) session.kickLockoutMs = ms;
 }
 
 /** Set a pending envelope hint to be included on the next dequeue response for this session. */

@@ -52,11 +52,11 @@ export async function handleActivityFileCreate(args: Record<string, unknown>) {
     await replaceActivityFile(sid, {
       filePath,
       tmcpOwned: false,
-      lastTouchAt: null,
-      debounceTimer: null,
-      lastActivityAt: 0,
       inflightDequeue: false,
-      nudgeArmed: true,
+      kickLockedUntil: null,
+      kickPendingBecauseLocked: false,
+      touchInFlight: false,
+      pendingRetryHandle: null,
     });
 
     return toResult({
@@ -79,11 +79,11 @@ export async function handleActivityFileCreate(args: Record<string, unknown>) {
   await replaceActivityFile(sid, {
     filePath: generatedPath,
     tmcpOwned: true,
-    lastTouchAt: null,
-    debounceTimer: null,
-    lastActivityAt: 0,
     inflightDequeue: false,
-    nudgeArmed: true,
+    kickLockedUntil: null,
+    kickPendingBecauseLocked: false,
+    touchInFlight: false,
+    pendingRetryHandle: null,
   });
 
   return toResult({
