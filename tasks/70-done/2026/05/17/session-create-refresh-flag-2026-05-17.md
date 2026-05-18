@@ -125,3 +125,12 @@ This rejects the two-pods-same-name silent merge that the Architect swarm flagge
 - Open question on collapse with session/reconnect: consciously deferred (keep both)
 
 **Not checked:** Technical correctness of the TMCP implementation; TypeScript-side test harness wiring.
+
+## Verification
+
+- **Verifier:** Independent sub-agent (task-verification skill)
+- **Date:** 2026-05-17
+- **Verdict:** APPROVED
+- **Squash commit:** 7fb1774 on dev
+- **Evidence:** 141 test files, 3124 tests, 0 failures. All 6 ACs confirmed against implementation. Worktree clean at closure.
+- **Notes:** `code: "NAME_IN_USE"` used instead of `error:` field — consistent with all other TelegramError shapes in the file (acceptable deviation). `toLowerCase()` in name lookup consistent with pre-existing collision guard (C3 additive, no regression).
