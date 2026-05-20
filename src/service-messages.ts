@@ -48,7 +48,7 @@ export const SERVICE_MESSAGES = deepFreeze({
     text: `Welcome to the loop. Stay in it.
 
 1. Call dequeue(token) every turn.
-2. **Preferred wakeup:** Subscribe to \`telegram://inbox/<token>\` via MCP resource subscriptions. TMCP pushes \`notifications/resources/updated\` on new messages and auto-caps your max_wait to 90 s.
+2. **Preferred wakeup:** Subscribe to \`telegram://inbox/<token>\` via MCP resource subscriptions. TMCP pushes \`notifications/resources/updated\` on new messages and caps your \`max_wait\` to 90 s.
 3. **Fallback wakeup (no subscription support):** call action(type: 'activity/file/create') and watch the file with a Monitor tool.
 
 Details: help('start'), help('dequeue'), help('activity/file').`,
@@ -91,7 +91,7 @@ Details: help('start'), help('dequeue'), help('activity/file').`,
 
   ONBOARDING_ACTIVITY_FILE_HINT: {
     eventType: "onboarding_activity_file_hint" as const,
-    text: "**Preferred:** Subscribe to your inbox channel via MCP resource subscriptions — URI: `telegram://inbox/<your-token>`. TMCP will push `notifications/resources/updated` when messages arrive and auto-cap your `max_wait` to 90 s.\n**Alternative:** If your MCP client does not support resource subscriptions, call `activity/file/create` to register an activity file instead.",
+    text: "**Preferred:** Subscribe to your inbox channel via MCP resource subscriptions — URI: `telegram://inbox/<token>`. TMCP will push `notifications/resources/updated` when messages arrive and cap your `max_wait` to 90 s.\n**Alternative:** If your MCP client does not support resource subscriptions, call `activity/file/create` to register an activity file instead.",
   },
 
   // ── Governor change notifications ─────────────────────────────────────────

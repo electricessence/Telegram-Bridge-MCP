@@ -8,7 +8,7 @@ import {
 } from "../message-store.js";
 import { setActiveSession, touchSession, getDequeueDefault, setDequeueIdle, getSession, takeSilenceHint, checkConnectionToken } from "../session-manager.js";
 import { setDequeueActive, getActivityFile, releaseKickLockout } from "./activity/file-state.js";
-import { resetChannelDebounce, isChannelActive } from "../channel.js";
+import { resetChannelCooldown, isChannelActive } from "../channel.js";
 import { recordNonToolEvent } from "../trace-log.js";
 import { getSessionQueue, getMessageOwner, peekSessionCategories, deliverServiceMessage } from "../session-queue.js";
 import { getAnimationStatus } from "../animation-state.js";
@@ -230,6 +230,7 @@ export async function runDrainLoop(
     // Immediate-batch return is outside the try/finally below — clear state here.
     setDequeueActive(sid, false);
     releaseKickLockout(sid); // content-returning exit
+    resetChannelCooldown(sid);
     return result;
   }
 
@@ -365,7 +366,7 @@ export async function runDrainLoop(
     // Release kick lockout only on content-returning exits; timeout exits skip.
     if (_lockoutRelease) {
       releaseKickLockout(sid);
-      resetChannelDebounce(sid);
+      resetChannelCooldown(sid);
     }
   }
 }

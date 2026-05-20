@@ -1,6 +1,16 @@
 # [Unreleased]
 
-## v7.4.1
+## v7.5.0
+
+### Added
+
+- **MCP resource subscription for inbox channel**: clients can subscribe to `telegram://inbox/<token>` via `resources/subscribe` to receive `notifications/resources/updated` push notifications when messages arrive, eliminating the need for activity-file polling
+- `src/channel.ts`: new channel subscription registry — cooldown model mirrors activity-file kick gate (leading-edge fire, cooldown window, pending flag); `registerChannelSubscriber`, `unregisterChannelSubscriber`, `notifyChannelSubscriber`, `resetChannelCooldown`, `isChannelActive`, `INBOX_URI_RE` exported
+- `server.ts`: `resources/subscribe` and `resources/unsubscribe` request handlers wired to the channel registry; `resources.subscribe: true` capability advertised
+- `dequeue.ts`: hint suppression when channel subscription is active (`ONBOARDING_ACTIVITY_FILE_HINT` skipped); `resetChannelCooldown` called on both content-returning exit paths (early-return batch and `finally` block)
+- `session-queue.ts`: `notifyChannelSubscriber` called after all enqueue paths (`enqueueToSession`, broadcast, `deliverDirectMessage`, `deliverServiceMessage`, `deliverReminderEvent`, `routeMessage`)
+- `session-teardown.ts`: `unregisterChannelSubscriber(sid)` called on session close
+- Onboarding messages and docs updated to prefer channel subscription over activity-file polling
 
 ### Changed
 
