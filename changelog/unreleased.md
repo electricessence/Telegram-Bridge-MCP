@@ -1,6 +1,6 @@
 # [Unreleased]
 
-## v7.5.0
+## v7.5.2
 
 ### Added
 
